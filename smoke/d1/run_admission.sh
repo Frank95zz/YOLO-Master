@@ -12,10 +12,12 @@ D1_DINOV2_WEIGHTS=/root/.cache/torch/hub/checkpoints/dinov2_vits14_pretrain.pth
 
 mkdir -p "${D1_ROOT}/tmp" "${D1_ROOT}/datasets" "${D1_ROOT}/feature_cache" "${D1_ROOT}/logs" "${D1_ROOT}/manifests"
 
-if [[ ! -f "${D1_ARCHIVE}" ]]; then
-  curl -L --fail --output "${D1_ARCHIVE}" \
+if [[ ! -s "${D1_ARCHIVE}" ]]; then
+  curl --http1.1 -L --fail --retry 5 --retry-delay 2 --retry-all-errors \
+    --output "${D1_ARCHIVE}" \
     https://github.com/ultralytics/assets/releases/download/v0.0.0/coco128.zip
 fi
+unzip -tq "${D1_ARCHIVE}" >/dev/null
 if [[ ! -d "${D1_DATASET}/images/train2017" ]]; then
   unzip -q -n "${D1_ARCHIVE}" -d "${D1_ROOT}/datasets"
 fi
