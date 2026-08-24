@@ -15,6 +15,7 @@ from ultralytics.nn.modules.routing_protocol import (
     iter_aux_records,
 )
 from ultralytics.nn.tasks import DetectionModel
+from ultralytics.utils.torch_utils import ModelEMA
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -201,6 +202,9 @@ def test_yolo26_latent_model_deepcopy_after_stride_probe():
     assert len(latent_layers) == 3
     assert all(layer.routing_logits is None and layer.routing_probs is None for layer in latent_layers)
     copy.deepcopy(model)
+    model(torch.zeros(2, 3, 64, 64))
+    assert any(layer.routing_logits is not None for layer in latent_layers)
+    ModelEMA(model)
 
 
 def test_latent_detection_model_load_skips_non_tensor_extra_state():
