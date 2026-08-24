@@ -1,0 +1,8 @@
+54812298	checkpoints/admission-511b2675-weights.tar.gz
+54812407	checkpoints/portable-aca4ee6b-weights.tar.gz
+16043646	datasets/coco-test2017-mini100.tar.gz
+442144	datasets/coco8.tar.gz
+146651345	feature-cache/admission-511b2675-feature-cache.tar.gz
+146653715	feature-cache/portable-aca4ee6b-feature-cache.tar.gz
+88283115	foundation-weights/dinov2_vits14_pretrain.pth
+5544453	foundation-weights/yolo26n.pt

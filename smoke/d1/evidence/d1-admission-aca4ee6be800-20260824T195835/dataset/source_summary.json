@@ -1,0 +1,10 @@
+{
+  "result": "PASS",
+  "dataset": "COCO test2017 mini-100",
+  "source": "http://images.cocodataset.org/test2017",
+  "metadata_source": "http://images.cocodataset.org/annotations/image_info_test2017.zip",
+  "metadata_archive_sha256": "e52f412dd7195ac8f98d782b44c6dd30ea10241e9f42521f67610fbe055a74f8",
+  "image_count": 100,
+  "unique_image_sha256_count": 100,
+  "source_manifest_sha256": "62cce262d93c6e5f5d163be44de8f505330a5ceca04ff3a7eceacef9894f467d"
+}

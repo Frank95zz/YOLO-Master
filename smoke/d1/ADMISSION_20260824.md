@@ -199,6 +199,12 @@ python smoke/d1/compare_feature_caches.py \
 d1-admission-511b26754fd1-20260824T191535
 ```
 
+可移植脚本复现 run id：
+
+```text
+d1-admission-aca4ee6be800-20260824T195835
+```
+
 | 证据 | 仓库内路径 |
 | --- | --- |
 | 证据根目录 | [`evidence/d1-admission-511b26754fd1-20260824T191535/`](evidence/d1-admission-511b26754fd1-20260824T191535/) |
@@ -207,6 +213,9 @@ d1-admission-511b26754fd1-20260824T191535
 | 缓存 run 2 元数据 | [`cache-run2/`](evidence/d1-admission-511b26754fd1-20260824T191535/cache-run2/) |
 | 训练参数与结果表 | [`train/`](evidence/d1-admission-511b26754fd1-20260824T191535/train/) |
 | 预测结果图片 | [`predict/`](evidence/d1-admission-511b26754fd1-20260824T191535/predict/) |
+| 可移植脚本复现证据 | [`evidence/d1-admission-aca4ee6be800-20260824T195835/`](evidence/d1-admission-aca4ee6be800-20260824T195835/) |
+| 原服务器环境参考 | [`environment/`](environment/) |
+| 云盘备份清单与校验值 | [`backup/`](backup/) |
 
 日志目录中的关键文件：
 
@@ -237,9 +246,10 @@ dimension_table.md
 resource_report.md
 ```
 
-训练结果目录包含 `args.yaml` 和 `results.csv`，预测结果目录包含 4 张 JPG。两份
-`features/*.pt` 缓存和 `best.pt`、`last.pt`、`last_healthy.pt` checkpoint 均可由准入脚本重新生成，
-因体积较大未复制到 Git；其文件生成记录、模型/数据哈希、张量哈希和资源统计已包含在上述日志与元数据中。
+训练结果目录包含 `args.yaml` 和 `results.csv`，预测结果目录包含 4 张 JPG。`features/*.pt`
+缓存和 `best.pt`、`last.pt`、`last_healthy.pt` checkpoint 因体积较大未复制到 Git；原始准入与
+可移植复现的大文件已经生成云盘待上传包，文件大小和 SHA256 见 [`backup/`](backup/)。上传完成前，
+服务器待上传目录不视为异地备份，也不删除原始数据、权重、缓存或 checkpoint。
 
 ## 8. 风险与降级
 

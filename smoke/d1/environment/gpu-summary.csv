@@ -1,0 +1,7 @@
+index, name, driver_version, memory.total [MiB], memory.used [MiB], utilization.gpu [%]
+0, NVIDIA A40, 550.54.15, 46068 MiB, 362 MiB, 29 %
+1, NVIDIA A40, 550.54.15, 46068 MiB, 362 MiB, 54 %
+2, NVIDIA A40, 550.54.15, 46068 MiB, 362 MiB, 59 %
+3, NVIDIA A40, 550.54.15, 46068 MiB, 362 MiB, 60 %
+4, NVIDIA A40, 550.54.15, 46068 MiB, 362 MiB, 60 %
+5, NVIDIA A40, 550.54.15, 46068 MiB, 362 MiB, 60 %

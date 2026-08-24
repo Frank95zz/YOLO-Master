@@ -1,0 +1,7 @@
+result=PASS
+commit=aca4ee6be800689b5d11772a681c6700b53132eb
+log_dir=/root/yolo-master/yolo-master-d1-work/logs/d1-admission-aca4ee6be800-20260824T195835
+cache_run1=/root/yolo-master/yolo-master-d1-work/feature_cache/d1-admission-aca4ee6be800-20260824T195835-run1
+cache_run2=/root/yolo-master/yolo-master-d1-work/feature_cache/d1-admission-aca4ee6be800-20260824T195835-run2
+train_run=/root/yolo-master/yolo-master-d1-work/runs/d1-admission-aca4ee6be800-20260824T195835-train
+predict_run=/root/yolo-master/yolo-master-d1-work/runs/d1-admission-aca4ee6be800-20260824T195835-predict
