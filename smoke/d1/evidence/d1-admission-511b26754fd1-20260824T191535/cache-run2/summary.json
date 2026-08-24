@@ -1,0 +1,111 @@
+{
+  "result": "PASS",
+  "generated_at": "2026-08-24T19:15:53+0800",
+  "git_commit": "511b26754fd1c4d76407dadf26dc96539925d5ed",
+  "git_worktree_clean": true,
+  "dataset": {
+    "name": "COCO test2017 mini-100",
+    "source": "http://images.cocodataset.org/test2017",
+    "source_root": "/root/yolo-master/datasets/coco-test2017-mini100/images",
+    "image_count": 100,
+    "source_bytes": 16146837,
+    "source_manifest_sha256": "6942b9c6ae77d4c899a64e990745be3912029615ab03e463d11a05c23c95791a"
+  },
+  "foundation_model": {
+    "requested": "DINOv3 ViT-S/16",
+    "actual": "DINOv2 ViT-S/14",
+    "downgrade_declared": true,
+    "downgrade_reason": "DINOv3 weights are gated; DINOv2 is the licensed fallback allowed by D1.",
+    "weights": "/root/.cache/torch/hub/checkpoints/dinov2_vits14_pretrain.pth",
+    "weights_bytes": 88283115,
+    "weights_sha256": "b938bf1bc15cd2ec0feacfe3a1bb553fe8ea9ca46a7e1d8d00217f29aef60cd9",
+    "parameter_count": 22056576,
+    "frozen_parameter_count": 22056576
+  },
+  "interface": {
+    "input": [
+      "B",
+      3,
+      224,
+      224
+    ],
+    "patch_size": 14,
+    "layers": {
+      "block03": [
+        "B",
+        384,
+        16,
+        16
+      ],
+      "block06": [
+        "B",
+        384,
+        16,
+        16
+      ],
+      "block09": [
+        "B",
+        384,
+        16,
+        16
+      ],
+      "block12": [
+        "B",
+        384,
+        16,
+        16
+      ]
+    },
+    "pooled": [
+      "B",
+      384
+    ],
+    "cache_dtype": "float16",
+    "latent_mixture_targets_at_imgsz_224": {
+      "p3": [
+        "B",
+        256,
+        28,
+        28
+      ],
+      "p4": [
+        "B",
+        512,
+        14,
+        14
+      ],
+      "p5": [
+        "B",
+        1024,
+        7,
+        7
+      ]
+    }
+  },
+  "resources": {
+    "device": "cuda:0",
+    "gpu": "NVIDIA A40",
+    "batch": 8,
+    "encode_seconds": 2.1051376163959503,
+    "images_per_second": 47.502832698986474,
+    "cache_bytes": 79004500,
+    "cache_mib_per_image": 0.7534456253051758,
+    "estimated_cache_gib_per_100k_images": 73.57867434620857,
+    "cache_read_seconds": 0.12528196722269058,
+    "cache_read_mib_per_second": 601.3998997684279,
+    "peak_cuda_allocated_bytes": 159123968,
+    "peak_cuda_reserved_bytes": 201326592,
+    "disk_free_bytes_after": 690412691456
+  },
+  "verification": {
+    "cache_reload_count": 100,
+    "cache_reload_verified": true,
+    "aggregate_feature_tensor_sha256": "38e33873159d69389c1761ed4c128261f5dcb90e6826b22a60d8d740d3ea90ed",
+    "manifest_sha256": "544843ec8af28d4b7dfd1547c6a0e960852dc2d859f87d3c8cbe018d87a098a5"
+  },
+  "runtime": {
+    "python": "3.11.15",
+    "torch": "2.6.0+cu124",
+    "cuda": "12.4"
+  }
+}

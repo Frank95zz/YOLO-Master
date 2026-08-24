@@ -184,11 +184,11 @@ python smoke/d1/compare_feature_caches.py \
 
 | 项目 | 结果 | 证据 |
 | --- | --- | --- |
-| D1 单元测试 | `59 passed in 3.63s` | `pytest-d1.txt` |
-| LatentMixture train | `coco8`、1 epoch、GPU 0，完成且无 traceback | `train-smoke.txt` |
-| 辅助损失可观测 | 日志列包含 `mixture_aux_loss`，本次值为 `3` | `train-smoke.txt` |
-| Checkpoint | `best.pt`、`last.pt`、`last_healthy.pt` | train run 的 `weights/` |
-| Predict | `best.pt` 成功处理 4 张 val 图片并保存 4 个 JPG | `predict-smoke.txt` 和 predict run |
+| D1 单元测试 | `59 passed in 3.63s` | [`pytest-d1.txt`](evidence/d1-admission-511b26754fd1-20260824T191535/logs/pytest-d1.txt) |
+| LatentMixture train | `coco8`、1 epoch、GPU 0，完成且无 traceback | [`train-smoke.txt`](evidence/d1-admission-511b26754fd1-20260824T191535/logs/train-smoke.txt) |
+| 辅助损失可观测 | 日志列包含 `mixture_aux_loss`，本次值为 `3` | [`train-smoke.txt`](evidence/d1-admission-511b26754fd1-20260824T191535/logs/train-smoke.txt) |
+| Checkpoint | 已生成 `best.pt`、`last.pt`、`last_healthy.pt` | 生成记录见 [`train-smoke.txt`](evidence/d1-admission-511b26754fd1-20260824T191535/logs/train-smoke.txt)；权重二进制不提交 Git |
+| Predict | `best.pt` 成功处理 4 张 val 图片并保存 4 个 JPG | [`predict-smoke.txt`](evidence/d1-admission-511b26754fd1-20260824T191535/logs/predict-smoke.txt) 和 [`predict/`](evidence/d1-admission-511b26754fd1-20260824T191535/predict/) |
 | Smoke 指标 | mAP50 与 mAP50-95 均为 `0` | 只训练 1 epoch 的链路检查，不作精度结论 |
 
 ## 7. 证据索引
@@ -199,15 +199,14 @@ python smoke/d1/compare_feature_caches.py \
 d1-admission-511b26754fd1-20260824T191535
 ```
 
-| 证据 | 路径 |
+| 证据 | 仓库内路径 |
 | --- | --- |
-| 完整日志 | `/root/yolo-master/logs/d1-admission-511b26754fd1-20260824T191535` |
-| 缓存 run 1 | `/root/yolo-master/feature_cache/d1-admission-511b26754fd1-20260824T191535-run1` |
-| 缓存 run 2 | `/root/yolo-master/feature_cache/d1-admission-511b26754fd1-20260824T191535-run2` |
-| Train run | `/root/yolo-master/runs/d1-admission-511b26754fd1-20260824T191535-train` |
-| Predict run | `/root/yolo-master/runs/d1-admission-511b26754fd1-20260824T191535-predict` |
-| 最新日志指针 | `/root/yolo-master/logs/latest-d1-admission.txt` |
-| 最新主缓存指针 | `/root/yolo-master/feature_cache/latest-d1-admission.txt` |
+| 证据根目录 | [`evidence/d1-admission-511b26754fd1-20260824T191535/`](evidence/d1-admission-511b26754fd1-20260824T191535/) |
+| 完整文本日志 | [`logs/`](evidence/d1-admission-511b26754fd1-20260824T191535/logs/) |
+| 缓存 run 1 元数据 | [`cache-run1/`](evidence/d1-admission-511b26754fd1-20260824T191535/cache-run1/) |
+| 缓存 run 2 元数据 | [`cache-run2/`](evidence/d1-admission-511b26754fd1-20260824T191535/cache-run2/) |
+| 训练参数与结果表 | [`train/`](evidence/d1-admission-511b26754fd1-20260824T191535/train/) |
+| 预测结果图片 | [`predict/`](evidence/d1-admission-511b26754fd1-20260824T191535/predict/) |
 
 日志目录中的关键文件：
 
@@ -229,15 +228,18 @@ disk-before.txt
 disk-after.txt
 ```
 
-缓存目录中的关键文件：
+每份缓存元数据目录包含：
 
 ```text
-features/*.pt
 manifest.jsonl
 summary.json
 dimension_table.md
 resource_report.md
 ```
+
+训练结果目录包含 `args.yaml` 和 `results.csv`，预测结果目录包含 4 张 JPG。两份
+`features/*.pt` 缓存和 `best.pt`、`last.pt`、`last_healthy.pt` checkpoint 均可由准入脚本重新生成，
+因体积较大未复制到 Git；其文件生成记录、模型/数据哈希、张量哈希和资源统计已包含在上述日志与元数据中。
 
 ## 8. 风险与降级
 

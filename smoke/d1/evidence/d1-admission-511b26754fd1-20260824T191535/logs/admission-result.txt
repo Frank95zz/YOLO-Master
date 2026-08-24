@@ -1,0 +1,7 @@
+result=PASS
+commit=511b26754fd1c4d76407dadf26dc96539925d5ed
+log_dir=/root/yolo-master/logs/d1-admission-511b26754fd1-20260824T191535
+cache_run1=/root/yolo-master/feature_cache/d1-admission-511b26754fd1-20260824T191535-run1
+cache_run2=/root/yolo-master/feature_cache/d1-admission-511b26754fd1-20260824T191535-run2
+train_run=/root/yolo-master/runs/d1-admission-511b26754fd1-20260824T191535-train
+predict_run=/root/yolo-master/runs/d1-admission-511b26754fd1-20260824T191535-predict

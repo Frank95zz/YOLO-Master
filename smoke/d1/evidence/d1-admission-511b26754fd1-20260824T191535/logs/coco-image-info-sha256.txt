@@ -1,0 +1,1 @@
+e52f412dd7195ac8f98d782b44c6dd30ea10241e9f42521f67610fbe055a74f8  /root/yolo-master/tmp/image_info_test2017.zip

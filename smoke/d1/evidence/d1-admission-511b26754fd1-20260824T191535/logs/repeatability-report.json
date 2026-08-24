@@ -1,0 +1,9 @@
+{
+  "result": "PASS",
+  "first": "/root/yolo-master/feature_cache/d1-admission-511b26754fd1-20260824T191535-run1",
+  "second": "/root/yolo-master/feature_cache/d1-admission-511b26754fd1-20260824T191535-run2",
+  "image_count_first": 100,
+  "image_count_second": 100,
+  "matching_tensor_hashes": 100,
+  "mismatch_indices": []
+}
