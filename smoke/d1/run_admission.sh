@@ -5,22 +5,18 @@ D1_ROOT=/root/yolo-master
 D1_REPO=${D1_ROOT}/repo
 D1_PYTHON=${D1_ROOT}/.conda/d1/bin/python
 D1_YOLO=${D1_ROOT}/.conda/d1/bin/yolo
-D1_DATASET=${D1_ROOT}/datasets/coco128
-D1_ARCHIVE=${D1_ROOT}/tmp/coco128.zip
+D1_DATASET=${D1_ROOT}/datasets/coco-test2017-mini100
+D1_METADATA_ARCHIVE=${D1_ROOT}/tmp/image_info_test2017.zip
 D1_DINOV2_REPO=/root/.cache/torch/hub/facebookresearch_dinov2_main
 D1_DINOV2_WEIGHTS=/root/.cache/torch/hub/checkpoints/dinov2_vits14_pretrain.pth
 
 mkdir -p "${D1_ROOT}/tmp" "${D1_ROOT}/datasets" "${D1_ROOT}/feature_cache" "${D1_ROOT}/logs" "${D1_ROOT}/manifests"
 
-if [[ ! -s "${D1_ARCHIVE}" ]]; then
-  curl --http1.1 -L --fail --retry 5 --retry-delay 2 --retry-all-errors \
-    --output "${D1_ARCHIVE}" \
-    https://github.com/ultralytics/assets/releases/download/v0.0.0/coco128.zip
-fi
-unzip -tq "${D1_ARCHIVE}" >/dev/null
-if [[ ! -d "${D1_DATASET}/images/train2017" ]]; then
-  unzip -q -n "${D1_ARCHIVE}" -d "${D1_ROOT}/datasets"
-fi
+"${D1_PYTHON}" "${D1_REPO}/smoke/d1/prepare_coco_mini.py" \
+  --output "${D1_DATASET}" \
+  --metadata-archive "${D1_METADATA_ARCHIVE}" \
+  --count 100 \
+  --workers 8
 
 cd "${D1_REPO}"
 if [[ -n "$(git status --short)" ]]; then
@@ -42,9 +38,9 @@ mkdir -p "${D1_LOG_DIR}"
 
 git rev-parse HEAD | tee "${D1_LOG_DIR}/git-commit.txt"
 git status --short --branch | tee "${D1_LOG_DIR}/git-status.txt"
-sha256sum "${D1_ARCHIVE}" | tee "${D1_LOG_DIR}/coco128-archive-sha256.txt"
+sha256sum "${D1_METADATA_ARCHIVE}" | tee "${D1_LOG_DIR}/coco-image-info-sha256.txt"
 sha256sum "${D1_DINOV2_WEIGHTS}" | tee "${D1_LOG_DIR}/dinov2-weights-sha256.txt"
-find "${D1_DATASET}/images/train2017" -type f | sort | head -n 100 > "${D1_LOG_DIR}/source-images-100.txt"
+find "${D1_DATASET}/images" -type f | sort | head -n 100 > "${D1_LOG_DIR}/source-images-100.txt"
 test "$(wc -l < "${D1_LOG_DIR}/source-images-100.txt")" -eq 100
 nvidia-smi | tee "${D1_LOG_DIR}/nvidia-smi-before.txt"
 df -h "${D1_ROOT}" | tee "${D1_LOG_DIR}/disk-before.txt"
@@ -58,7 +54,7 @@ df -h "${D1_ROOT}" | tee "${D1_LOG_DIR}/disk-before.txt"
   2>&1 | tee "${D1_LOG_DIR}/pytest-d1.txt"
 
 CUDA_VISIBLE_DEVICES=0 "${D1_PYTHON}" smoke/d1/build_feature_cache.py \
-  --images "${D1_DATASET}/images/train2017" \
+  --images "${D1_DATASET}/images" \
   --output "${D1_CACHE_ONE}" \
   --repo "${D1_REPO}" \
   --dinov2-repo "${D1_DINOV2_REPO}" \
@@ -67,10 +63,12 @@ CUDA_VISIBLE_DEVICES=0 "${D1_PYTHON}" smoke/d1/build_feature_cache.py \
   --limit 100 \
   --batch 8 \
   --imgsz 224 \
+  --dataset-name "COCO test2017 mini-100" \
+  --dataset-source "http://images.cocodataset.org/test2017" \
   2>&1 | tee "${D1_LOG_DIR}/feature-cache-run1.txt"
 
 CUDA_VISIBLE_DEVICES=0 "${D1_PYTHON}" smoke/d1/build_feature_cache.py \
-  --images "${D1_DATASET}/images/train2017" \
+  --images "${D1_DATASET}/images" \
   --output "${D1_CACHE_TWO}" \
   --repo "${D1_REPO}" \
   --dinov2-repo "${D1_DINOV2_REPO}" \
@@ -79,6 +77,8 @@ CUDA_VISIBLE_DEVICES=0 "${D1_PYTHON}" smoke/d1/build_feature_cache.py \
   --limit 100 \
   --batch 8 \
   --imgsz 224 \
+  --dataset-name "COCO test2017 mini-100" \
+  --dataset-source "http://images.cocodataset.org/test2017" \
   2>&1 | tee "${D1_LOG_DIR}/feature-cache-run2.txt"
 
 "${D1_PYTHON}" smoke/d1/compare_feature_caches.py \

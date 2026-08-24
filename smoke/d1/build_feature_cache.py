@@ -35,6 +35,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--batch", type=int, default=8)
     parser.add_argument("--imgsz", type=int, default=224)
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument("--dataset-name", default="custom-mini-100")
+    parser.add_argument("--dataset-source", default="local")
     return parser.parse_args()
 
 
@@ -220,7 +222,8 @@ def main() -> None:
         "git_commit": commit,
         "git_worktree_clean": True,
         "dataset": {
-            "name": "COCO128",
+            "name": args.dataset_name,
+            "source": args.dataset_source,
             "source_root": str(args.images),
             "image_count": len(records),
             "source_bytes": source_bytes,
@@ -304,7 +307,8 @@ implementation boundary for the D1 P0 train/predict route; this report does not 
     resource_report = f"""# D1 Resource Report
 
 - Result: PASS
-- Images: {len(records)} distinct COCO128 images
+- Dataset: {args.dataset_name}
+- Images: {len(records)} distinct images
 - Encode time: {encode_seconds:.3f} s ({len(records) / encode_seconds:.2f} images/s)
 - Source image size: {format_mib(source_bytes)}
 - Feature cache size: {format_mib(cache_bytes)} ({cache_bytes / len(records) / 1024**2:.3f} MiB/image)
