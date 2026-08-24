@@ -1,16 +1,43 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-D1_ROOT=/root/yolo-master
-D1_REPO=${D1_ROOT}/repo
-D1_PYTHON=${D1_ROOT}/.conda/d1/bin/python
-D1_YOLO=${D1_ROOT}/.conda/d1/bin/yolo
-D1_DATASET=${D1_ROOT}/datasets/coco-test2017-mini100
-D1_METADATA_ARCHIVE=${D1_ROOT}/tmp/image_info_test2017.zip
-D1_DINOV2_REPO=/root/.cache/torch/hub/facebookresearch_dinov2_main
-D1_DINOV2_WEIGHTS=/root/.cache/torch/hub/checkpoints/dinov2_vits14_pretrain.pth
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+D1_REPO=${D1_REPO:-$(cd -- "${SCRIPT_DIR}/../.." && pwd)}
+D1_ROOT=${D1_ROOT:-$(dirname "${D1_REPO}")/yolo-master-d1-work}
+D1_PYTHON=${D1_PYTHON:-python}
+D1_YOLO=${D1_YOLO:-yolo}
+D1_DATASET=${D1_DATASET:-${D1_ROOT}/datasets/coco-test2017-mini100}
+D1_METADATA_ARCHIVE=${D1_METADATA_ARCHIVE:-${D1_ROOT}/tmp/image_info_test2017.zip}
+D1_TORCH_HOME=${TORCH_HOME:-${HOME}/.cache/torch}
+D1_DINOV2_REPO=${D1_DINOV2_REPO:-${D1_TORCH_HOME}/hub/facebookresearch_dinov2_main}
+D1_DINOV2_WEIGHTS=${D1_DINOV2_WEIGHTS:-${D1_TORCH_HOME}/hub/checkpoints/dinov2_vits14_pretrain.pth}
+D1_DINOV2_SHA256=b938bf1bc15cd2ec0feacfe3a1bb553fe8ea9ca46a7e1d8d00217f29aef60cd9
+
+command -v "${D1_PYTHON}" >/dev/null 2>&1 || {
+  echo "ERROR: Python executable not found: ${D1_PYTHON}" >&2
+  exit 2
+}
+command -v "${D1_YOLO}" >/dev/null 2>&1 || {
+  echo "ERROR: YOLO executable not found: ${D1_YOLO}; run 'pip install -e .' first" >&2
+  exit 2
+}
+
+D1_COCO8_DIR=${D1_COCO8_DIR:-$("${D1_PYTHON}" -c \
+  'from pathlib import Path; from ultralytics.utils import SETTINGS; print(Path(SETTINGS["datasets_dir"]).expanduser().resolve() / "coco8")')}
 
 mkdir -p "${D1_ROOT}/tmp" "${D1_ROOT}/datasets" "${D1_ROOT}/feature_cache" "${D1_ROOT}/logs" "${D1_ROOT}/manifests"
+
+if [[ ! -f "${D1_DINOV2_REPO}/hubconf.py" || ! -f "${D1_DINOV2_WEIGHTS}" ]]; then
+  echo "Preparing the official DINOv2 source and ViT-S/14 weights in the PyTorch Hub cache..."
+  "${D1_PYTHON}" -c \
+    'import torch; torch.hub.load("facebookresearch/dinov2", "dinov2_vits14", pretrained=True)'
+fi
+
+D1_ACTUAL_DINOV2_SHA256=$(sha256sum "${D1_DINOV2_WEIGHTS}" | awk '{print $1}')
+if [[ "${D1_ACTUAL_DINOV2_SHA256}" != "${D1_DINOV2_SHA256}" ]]; then
+  echo "ERROR: unexpected DINOv2 weight SHA256: ${D1_ACTUAL_DINOV2_SHA256}" >&2
+  exit 2
+fi
 
 "${D1_PYTHON}" "${D1_REPO}/smoke/d1/prepare_coco_mini.py" \
   --output "${D1_DATASET}" \
@@ -103,7 +130,7 @@ CUDA_VISIBLE_DEVICES=0 "${D1_YOLO}" detect train \
 
 CUDA_VISIBLE_DEVICES=0 "${D1_YOLO}" detect predict \
   model="${D1_ROOT}/runs/${D1_TRAIN_NAME}/weights/best.pt" \
-  source="${D1_ROOT}/datasets/coco8/images/val" \
+  source="${D1_COCO8_DIR}/images/val" \
   imgsz=160 \
   device=0 \
   project="${D1_ROOT}/runs" \

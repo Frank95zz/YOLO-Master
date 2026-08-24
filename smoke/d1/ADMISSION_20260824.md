@@ -63,10 +63,6 @@ LatentMixture train/predict 链路可用；Foundation 缓存和 LatentMixture �
 
 | 项目 | 实测值 |
 | --- | --- |
-| 服务器 | `root@10.210.22.36:30722` |
-| 工作区 | `/root/yolo-master` |
-| 代码仓库 | `/root/yolo-master/repo` |
-| Conda 环境 | `/root/yolo-master/.conda/d1` |
 | Python | `3.11.15` |
 | Ultralytics | `8.4.101`，editable install 指向当前仓库 |
 | PyTorch | `2.6.0+cu124` |
@@ -118,13 +114,36 @@ https://dl.fbaipublicfiles.com/dinov2/dinov2_vits14/dinov2_vits14_pretrain.pth
 
 ## 6. 复现命令
 
-### 6.1 一键复现完整准入
+### 6.1 从克隆仓库开始复现
 
 ```bash
-ssh root@10.210.22.36 -p 30722
-cd /root/yolo-master/repo
+# 1. 克隆课题分支
+git clone --branch feat/topic-d1-fengyanqi --single-branch \
+  https://github.com/Frank95zz/YOLO-Master.git
+cd YOLO-Master
+
+# 2. 创建与准入测试一致的 Python/CUDA 环境
+conda create -n yolo-master-d1 python=3.11 -y
+conda activate yolo-master-d1
+pip install torch==2.6.0 torchvision==0.21.0 \
+  --index-url https://download.pytorch.org/whl/cu124
+pip install -r requirements.txt
+pip install -e .
+pip install pytest
+
+# 3. 一键执行完整准入测试
 bash smoke/d1/run_admission.sh
 ```
+
+脚本默认将数据、日志、缓存和训练产物写入仓库同级的 `yolo-master-d1-work/`，不会依赖作者的
+服务器目录。需要使用其他数据盘时，可显式覆盖工作目录：
+
+```bash
+D1_ROOT=/path/to/yolo-master-d1-work bash smoke/d1/run_admission.sh
+```
+
+首次运行需要联网下载 COCO image-info、100 张 COCO test2017 图片、`coco8`，以及 Meta 官方
+DINOv2 源码与 ViT-S/14 权重。脚本会校验 DINOv2 权重 SHA256，GPU 0 为默认执行设备。
 
 脚本会执行以下步骤：
 
@@ -136,19 +155,20 @@ bash smoke/d1/run_admission.sh
 6. 运行 `coco8` 1 epoch LatentMixture 训练和 checkpoint predict。
 7. 写入日志、缓存和 run 的 latest 指针以及最终 `admission-result.txt`。
 
-### 6.2 独立核验已有结果
+### 6.2 独立核验本机结果
 
 ```bash
-LOG_DIR=/root/yolo-master/logs/d1-admission-511b26754fd1-20260824T191535
-CACHE_RUN1=/root/yolo-master/feature_cache/d1-admission-511b26754fd1-20260824T191535-run1
-CACHE_RUN2=/root/yolo-master/feature_cache/d1-admission-511b26754fd1-20260824T191535-run2
+D1_ROOT=${D1_ROOT:-"$(dirname "$PWD")/yolo-master-d1-work"}
+LOG_DIR=$(cat "$D1_ROOT/logs/latest-d1-admission.txt")
+CACHE_RUN1=$(cat "$D1_ROOT/feature_cache/latest-d1-admission.txt")
+CACHE_RUN2=$(sed -n 's/^cache_run2=//p' "$LOG_DIR/admission-result.txt")
 
 cat "$LOG_DIR/admission-result.txt"
 cat "$CACHE_RUN1/summary.json"
 cat "$CACHE_RUN1/dimension_table.md"
 cat "$CACHE_RUN1/resource_report.md"
 
-/root/yolo-master/.conda/d1/bin/python smoke/d1/compare_feature_caches.py \
+python smoke/d1/compare_feature_caches.py \
   "$CACHE_RUN1" "$CACHE_RUN2" \
   --output "$LOG_DIR/repeatability-report-recheck.json"
 ```
