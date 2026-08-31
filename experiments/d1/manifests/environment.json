@@ -1,0 +1,32 @@
+{
+  "code": {
+    "branch": "feat/topic-d1-fengyanqi",
+    "commit": "c13dc18bf7078049700ff10b2a86c5af1b5332e8"
+  },
+  "cuda": {
+    "available": true,
+    "cudnn": 90100,
+    "gpu_count": 6,
+    "runtime": "12.4"
+  },
+  "gpus": [
+    "NVIDIA A40, 550.54.15, 46068 MiB",
+    "NVIDIA A40, 550.54.15, 46068 MiB",
+    "NVIDIA A40, 550.54.15, 46068 MiB",
+    "NVIDIA A40, 550.54.15, 46068 MiB",
+    "NVIDIA A40, 550.54.15, 46068 MiB",
+    "NVIDIA A40, 550.54.15, 46068 MiB"
+  ],
+  "os": {
+    "machine": "x86_64",
+    "platform": "Linux-5.4.0-216-generic-x86_64-with-glibc2.35",
+    "system": "Linux"
+  },
+  "packages": {
+    "torch": "2.6.0+cu124",
+    "transformers": "5.15.1",
+    "ultralytics": "8.4.101"
+  },
+  "python": "3.11.15",
+  "schema_version": "d1-environment-v1"
+}

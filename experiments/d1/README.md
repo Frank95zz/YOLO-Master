@@ -111,10 +111,10 @@ ViT 的多层输出具有不同语义深度，但原生空间分辨率都为 str
 
 ### WP0：实验合同与数据划分
 
-- [ ] 新建 `ultralytics/cfg/experiments/d1/p0-dinov3-vits16-coco2017.yaml`。
-- [ ] 锁定完整 COCO 2017 `train2017`/`val2017` manifest，不二次随机划分。
-- [ ] 记录数据许可、教师许可、commit、环境和权重哈希。
-- [ ] 明确输入尺寸、letterbox、归一化、层编号和缓存版本。
+- [x] 新建 `ultralytics/cfg/experiments/d1/p0-dinov3-vits16-coco2017.yaml`。
+- [x] 锁定完整 COCO 2017 `train2017`/`val2017` manifest，不二次随机划分。
+- [x] 记录数据许可、教师许可、commit、环境和权重哈希。
+- [x] 明确输入尺寸、letterbox、归一化、层编号和缓存版本。
 
 ### WP1：DINOv3 多层特征
 
