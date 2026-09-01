@@ -107,6 +107,29 @@ F4 / F8 / F12
 
 ViT 的多层输出具有不同语义深度，但原生空间分辨率都为 stride 16。P3/P5 必须由可训练适配器生成，不能把不同 Transformer 层直接命名为 P3/P4/P5。
 
+### 5.3 WP1 Teacher API
+
+默认调用保持 Foundation 蒸馏链路兼容，只返回最终层：
+
+```python
+teacher = DINOv3Teacher(weights_path=weights_dir)
+features = teacher.encode(images)
+assert tuple(features.dense) == ("p4",)
+```
+
+D1 离线抽取器显式请求一基 block 4/8/12；Teacher 通过 Transformers Backbone 的公开 stage 选择接口一次前向返回三层：
+
+```python
+teacher = DINOv3Teacher(
+    weights_path=weights_dir,
+    output_layers=(4, 8, 12),
+)
+features = teacher.encode(images)
+assert tuple(features.dense) == ("block4", "block8", "block12")
+```
+
+正式 ViT-S/16 在 640×640 输入下，三个张量均为 `[B, 384, 40, 40]`。metadata 记录一基层号 `(4, 8, 12)`、实现索引 `(3, 7, 11)`、backbone stage、feature name、patch size、grid、hidden dim 和 prefix token 数量。多层特征不命名为 P3/P4/P5；尺度转换留给 WP3 Adapter。Teacher 每次编码前重新进入 eval 并冻结参数，输出处于 inference mode，且现有 wrapper 继续保证 Teacher 不进入 student optimizer、DDP、EMA 或 checkpoint。
+
 ## 6. 实现工作包
 
 ### WP0：实验合同与数据划分
@@ -118,11 +141,11 @@ ViT 的多层输出具有不同语义深度，但原生空间分辨率都为 str
 
 ### WP1：DINOv3 多层特征
 
-- [ ] 扩展 `DINOv3Teacher`，支持显式 `output_layers`。
-- [ ] 保持默认单层行为兼容现有 Foundation 蒸馏测试。
-- [ ] 返回 block4/block8/block12 的 BCHW 特征。
-- [ ] 在 metadata 中记录层编号、patch size、grid、hidden dim 和 prefix token 数量。
-- [ ] 断言教师始终为 eval、无梯度且不在 optimizer。
+- [x] 扩展 `DINOv3Teacher`，支持显式 `output_layers`。
+- [x] 保持默认单层行为兼容现有 Foundation 蒸馏测试。
+- [x] 返回 block4/block8/block12 的 BCHW 特征。
+- [x] 在 metadata 中记录层编号、patch size、grid、hidden dim 和 prefix token 数量。
+- [x] 断言教师始终为 eval、无梯度且不在 optimizer。
 
 ### WP2：特征缓存
 
