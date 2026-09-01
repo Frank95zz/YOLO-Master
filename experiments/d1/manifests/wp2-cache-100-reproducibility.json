@@ -1,0 +1,130 @@
+{
+  "code_commit": "5cd566dcdb1e47a9227a81852296ade76d9ba20f",
+  "comparison": {
+    "content_sha256": "0102f2e707b369ca8bfb3d996d54fa0d8ba9eba79787501bd5fe6542f90c1a8d",
+    "contract_sha256": "6bfda0e13bde01001c3f3f2d72631a2401fb9a77b146d6fb2794303e379e47a7",
+    "first_shards": 1,
+    "identical": true,
+    "sample_count": 100,
+    "second_shards": 1,
+    "tensor_bytes": 368640000,
+    "tensor_count": 300
+  },
+  "first_build": {
+    "batch_size": 8,
+    "cache_id": "wp2-train100-a",
+    "code_commit": "5cd566dcdb1e47a9227a81852296ade76d9ba20f",
+    "contract": {
+      "dtype": "float16",
+      "expected_shape": [
+        384,
+        40,
+        40
+      ],
+      "feature_names": [
+        "block4",
+        "block8",
+        "block12"
+      ],
+      "model_id": "facebook/dinov3-vits16-pretrain-lvd1689m",
+      "output_layers": [
+        4,
+        8,
+        12
+      ],
+      "preprocessing_sha256": "a7f5465a821e5a6088ed2214b33bd43300c1141ce39e68755b6a95639837e3c7",
+      "schema_version": "d1-cache-v1",
+      "teacher_weights_sha256": "4610ad75edef83e75afdebf162d148dc628045ea6cbb83d67d4708c709c4f91d"
+    },
+    "metrics": {
+      "extraction_seconds": 12.754686646163464,
+      "new_images_per_second": 7.840255333131169,
+      "peak_gpu_bytes": 320947200,
+      "read": {
+        "images_per_second": 790.3313203057967,
+        "mib_per_second": 2778.5085479500663,
+        "seconds": 0.12652921304106712,
+        "tensor_bytes": 368640000
+      }
+    },
+    "new_sample_count": 100,
+    "online_cache_validation": "exact FP16 tensor SHA256 verified after safetensors reload",
+    "resumed_sample_count": 0,
+    "schema_version": "d1-wp2-build-report-v1",
+    "selected_paths_sha256": "d2c16d9021e923f4435c14af706048784e558ca57c2addb676d67a46352bb080",
+    "selected_sample_count": 100,
+    "split": "train2017",
+    "target_shard_bytes": 2147483648,
+    "verification": {
+      "cache_bytes": 368791336,
+      "content_sha256": "0102f2e707b369ca8bfb3d996d54fa0d8ba9eba79787501bd5fe6542f90c1a8d",
+      "contract_sha256": "6bfda0e13bde01001c3f3f2d72631a2401fb9a77b146d6fb2794303e379e47a7",
+      "part_files": [],
+      "sample_count": 100,
+      "schema_version": "d1-cache-v1",
+      "shard_count": 1,
+      "tensor_bytes": 368640000,
+      "tensor_count": 300
+    }
+  },
+  "first_cache_id": "wp2-train100-a",
+  "schema_version": "d1-wp2-reproducibility-v1",
+  "second_build": {
+    "batch_size": 8,
+    "cache_id": "wp2-train100-b",
+    "code_commit": "5cd566dcdb1e47a9227a81852296ade76d9ba20f",
+    "contract": {
+      "dtype": "float16",
+      "expected_shape": [
+        384,
+        40,
+        40
+      ],
+      "feature_names": [
+        "block4",
+        "block8",
+        "block12"
+      ],
+      "model_id": "facebook/dinov3-vits16-pretrain-lvd1689m",
+      "output_layers": [
+        4,
+        8,
+        12
+      ],
+      "preprocessing_sha256": "a7f5465a821e5a6088ed2214b33bd43300c1141ce39e68755b6a95639837e3c7",
+      "schema_version": "d1-cache-v1",
+      "teacher_weights_sha256": "4610ad75edef83e75afdebf162d148dc628045ea6cbb83d67d4708c709c4f91d"
+    },
+    "metrics": {
+      "extraction_seconds": 13.820513591170311,
+      "new_images_per_second": 7.235621117864121,
+      "peak_gpu_bytes": 320947200,
+      "read": {
+        "images_per_second": 784.9804760435659,
+        "mib_per_second": 2759.6969860906615,
+        "seconds": 0.12739170342683792,
+        "tensor_bytes": 368640000
+      }
+    },
+    "new_sample_count": 100,
+    "online_cache_validation": "exact FP16 tensor SHA256 verified after safetensors reload",
+    "resumed_sample_count": 0,
+    "schema_version": "d1-wp2-build-report-v1",
+    "selected_paths_sha256": "d2c16d9021e923f4435c14af706048784e558ca57c2addb676d67a46352bb080",
+    "selected_sample_count": 100,
+    "split": "train2017",
+    "target_shard_bytes": 2147483648,
+    "verification": {
+      "cache_bytes": 368791336,
+      "content_sha256": "0102f2e707b369ca8bfb3d996d54fa0d8ba9eba79787501bd5fe6542f90c1a8d",
+      "contract_sha256": "6bfda0e13bde01001c3f3f2d72631a2401fb9a77b146d6fb2794303e379e47a7",
+      "part_files": [],
+      "sample_count": 100,
+      "schema_version": "d1-cache-v1",
+      "shard_count": 1,
+      "tensor_bytes": 368640000,
+      "tensor_count": 300
+    }
+  },
+  "second_cache_id": "wp2-train100-b"
+}

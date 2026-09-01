@@ -168,6 +168,26 @@ python scripts/cache_d1_features.py verify \
 
 两次构建的一致性以 cache contract、样本 cache key 和逐 tensor SHA256 为准。safetensors metadata 映射的容器字节顺序不保证规范化，因此不同构建的 shard 文件 SHA256 可以不同；每次构建仍必须用各自 `index.json` 中记录的 shard SHA256 完整校验。
 
+WP2 固定 100 图验收已在代码 commit `5cd566dcdb1e47a9227a81852296ade76d9ba20f` 上完成：
+
+| 指标 | Build A | Build B |
+| --- | ---: | ---: |
+| 样本 / tensor | 100 / 300 | 100 / 300 |
+| cache bytes | 368,791,336 | 368,791,336 |
+| 抽取时间 | 12.755 s | 13.821 s |
+| 抽取吞吐 | 7.840 images/s | 7.236 images/s |
+| 峰值 GPU 显存 | 320,947,200 bytes | 320,947,200 bytes |
+| 热缓存读取吞吐 | 2,778.5 MiB/s | 2,759.7 MiB/s |
+
+两次构建的 contract SHA256 均为 `6bfda0e13bde01001c3f3f2d72631a2401fb9a77b146d6fb2794303e379e47a7`，tensor 内容摘要均为 `0102f2e707b369ca8bfb3d996d54fa0d8ba9eba79787501bd5fe6542f90c1a8d`。固定路径列表 SHA256 为 `d2c16d9021e923f4435c14af706048784e558ca57c2addb676d67a46352bb080`。读取吞吐是 100 图单 shard 在操作系统热页缓存下的微基准，不代表完整训练时的冷缓存或多 worker 吞吐；WP8 仍需记录正式训练的数据等待比例。
+
+Git 证据位于：
+
+- `experiments/d1/manifests/wp2-cache-100-reproducibility.json`
+- `experiments/d1/manifests/wp2-cache-100-index-a.json`
+- `experiments/d1/manifests/wp2-cache-100-index-b.json`
+- `experiments/d1/manifests/wp2-cache-100-samples.jsonl`
+
 ## 6. 实现工作包
 
 ### WP0：实验合同与数据划分
@@ -187,12 +207,12 @@ python scripts/cache_d1_features.py verify \
 
 ### WP2：特征缓存
 
-- [ ] 新增 `ultralytics/nn/foundation/cache.py` 或等价职责模块。
-- [ ] 支持分片写入、原子提交、中断续跑、只校验模式。
-- [ ] cache key 覆盖图像哈希、预处理、教师权重、层编号和 dtype。
-- [ ] manifest 记录 sample ID、split、shard、tensor key、shape 和 checksum。
-- [ ] 完成固定 100 张图的两次独立构建与一致性验证。
-- [ ] 记录磁盘占用、抽取耗时、峰值显存和读取吞吐。
+- [x] 新增 `ultralytics/nn/foundation/cache.py` 或等价职责模块。
+- [x] 支持分片写入、原子提交、中断续跑、只校验模式。
+- [x] cache key 覆盖图像哈希、预处理、教师权重、层编号和 dtype。
+- [x] manifest 记录 sample ID、split、shard、tensor key、shape 和 checksum。
+- [x] 完成固定 100 张图的两次独立构建与一致性验证。
+- [x] 记录磁盘占用、抽取耗时、峰值显存和读取吞吐。
 
 ### WP3：多尺度适配器
 

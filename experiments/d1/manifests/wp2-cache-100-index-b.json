@@ -1,0 +1,43 @@
+{
+  "content_sha256": "0102f2e707b369ca8bfb3d996d54fa0d8ba9eba79787501bd5fe6542f90c1a8d",
+  "contract": {
+    "dtype": "float16",
+    "expected_shape": [
+      384,
+      40,
+      40
+    ],
+    "feature_names": [
+      "block4",
+      "block8",
+      "block12"
+    ],
+    "model_id": "facebook/dinov3-vits16-pretrain-lvd1689m",
+    "output_layers": [
+      4,
+      8,
+      12
+    ],
+    "preprocessing_sha256": "a7f5465a821e5a6088ed2214b33bd43300c1141ce39e68755b6a95639837e3c7",
+    "schema_version": "d1-cache-v1",
+    "teacher_weights_sha256": "4610ad75edef83e75afdebf162d148dc628045ea6cbb83d67d4708c709c4f91d"
+  },
+  "contract_sha256": "6bfda0e13bde01001c3f3f2d72631a2401fb9a77b146d6fb2794303e379e47a7",
+  "sample_count": 100,
+  "samples_manifest": "samples.jsonl",
+  "samples_manifest_sha256": "614d09210d23af9f65a68f9d8dedb0cc9d9f3743bb1731c364faa1882166ffd6",
+  "schema_version": "d1-cache-v1",
+  "shards": [
+    {
+      "bytes": 368791336,
+      "filename": "train2017-00000.safetensors",
+      "sample_count": 100,
+      "sha256": "3f648a4186432a0a02a6ba6cb76a9e78d93637562bb96e379238b7f7b65550fa",
+      "split": "train2017"
+    }
+  ],
+  "split_counts": {
+    "train2017": 100
+  },
+  "target_shard_bytes": 2147483648
+}
