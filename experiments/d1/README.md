@@ -130,6 +130,44 @@ assert tuple(features.dense) == ("block4", "block8", "block12")
 
 正式 ViT-S/16 在 640×640 输入下，三个张量均为 `[B, 384, 40, 40]`。metadata 记录一基层号 `(4, 8, 12)`、实现索引 `(3, 7, 11)`、backbone stage、feature name、patch size、grid、hidden dim 和 prefix token 数量。多层特征不命名为 P3/P4/P5；尺度转换留给 WP3 Adapter。Teacher 每次编码前重新进入 eval 并冻结参数，输出处于 inference mode，且现有 wrapper 继续保证 Teacher 不进入 student optimizer、DDP、EMA 或 checkpoint。
 
+### 5.4 WP2 特征缓存
+
+`ultralytics.nn.foundation.cache` 定义 `d1-cache-v1` 协议。cache key 由原始图像 SHA256、WP0 预处理 SHA256、Teacher 权重 SHA256、输出层、dtype 和 schema version 共同决定。每个样本在 `samples.jsonl` 中记录 split、相对图像路径、cache key、shard、tensor key、shape、dtype、字节数和 tensor SHA256；`index.json` 记录合同、内容摘要和每个 shard 的文件 SHA256。
+
+分片先写入隐藏的 `.part` 文件，通过 safetensors header 校验后再原子改名。已提交 shard 的完整样本记录同时嵌入 header，因此 `index.json` 丢失或在更新前中断时可自动重建。续跑会校验当前图像和合同后跳过已提交样本；`verify` 子命令不加载 Teacher，只检查 manifest、shard 和 tensor。
+
+固定 100 图的两次独立构建命令：
+
+```bash
+python scripts/cache_d1_features.py build \
+  --workspace /data/yingxi/yolo-master-d1 \
+  --cache-dir /data/yingxi/yolo-master-d1/feature_cache/wp2-train100-a \
+  --split train2017 --limit 100 --batch-size 8 --device 0 \
+  --report /data/yingxi/yolo-master-d1/manifests/wp2-train100-a.json
+
+python scripts/cache_d1_features.py build \
+  --workspace /data/yingxi/yolo-master-d1 \
+  --cache-dir /data/yingxi/yolo-master-d1/feature_cache/wp2-train100-b \
+  --split train2017 --limit 100 --batch-size 8 --device 0 \
+  --report /data/yingxi/yolo-master-d1/manifests/wp2-train100-b.json
+
+python scripts/cache_d1_features.py compare \
+  --cache-dir /data/yingxi/yolo-master-d1/feature_cache/wp2-train100-a \
+  --other-cache-dir /data/yingxi/yolo-master-d1/feature_cache/wp2-train100-b \
+  --first-report /data/yingxi/yolo-master-d1/manifests/wp2-train100-a.json \
+  --second-report /data/yingxi/yolo-master-d1/manifests/wp2-train100-b.json \
+  --report /data/yingxi/yolo-master-d1/manifests/wp2-train100-reproducibility.json
+```
+
+独立只校验命令：
+
+```bash
+python scripts/cache_d1_features.py verify \
+  --cache-dir /data/yingxi/yolo-master-d1/feature_cache/wp2-train100-a
+```
+
+两次构建的一致性以 cache contract、样本 cache key 和逐 tensor SHA256 为准。safetensors metadata 映射的容器字节顺序不保证规范化，因此不同构建的 shard 文件 SHA256 可以不同；每次构建仍必须用各自 `index.json` 中记录的 shard SHA256 完整校验。
+
 ## 6. 实现工作包
 
 ### WP0：实验合同与数据划分
