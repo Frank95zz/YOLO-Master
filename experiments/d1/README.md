@@ -22,8 +22,9 @@
 | WP1：DINOv3 多层特征输出 | [WP1.md](WP1.md) | 已完成 |
 | WP2：可复现特征缓存 | [WP2.md](WP2.md) | 已完成 |
 | WP3：DINOv3 多尺度特征适配器 | [WP3.md](WP3.md) | 已完成 |
+| WP4：缓存特征检测模型 | [WP4.md](WP4.md) | 已完成 |
 
-阶段报告记录已经完成的实现、实测结果和复现证据；本文继续维护总体技术方案、WP4-WP8 路线及完整背景。后续阶段沿用 `WPn.md` 的方式补充完成报告。
+阶段报告记录已经完成的实现、实测结果和复现证据；本文继续维护总体技术方案、WP5-WP8 路线及完整背景。后续阶段沿用 `WPn.md` 的方式补充完成报告。
 
 `smoke/d1/` 不再承载正式 P0 实现。数据集、DINOv3 权重、特征缓存和训练 checkpoint 不提交 Git，只提交 manifest、校验值、配置、日志摘要和云盘说明。
 
@@ -56,6 +57,7 @@ P0 暂不包含：
 - `FoundationTeacher` / `FoundationFeatures`：统一教师协议；
 - `FeatureCacheReader` / `FeatureCacheWriter`：可复现的分片特征缓存；
 - `DINOFeaturePyramidAdapter`：生成 P3/P4/P5 三组多层候选特征；
+- `D1FoundationDetectionModel`：连接 Adapter、三个 LatentMixture、Detect 和 CompositeCriterion；
 - `LatentMixture`：同尺度多特征融合、Router、balance loss 和 z-loss；
 - `Detect`：P3/P4/P5 检测头；
 - `CompositeCriterion`：将 routed aux loss 加入检测损失；
@@ -64,8 +66,7 @@ P0 暂不包含：
 当前缺口：
 
 - 没有从缓存特征开始训练的 D1 Dataset/Trainer/Validator；
-- 没有连接 Adapter、三个 LatentMixture 和 Detect 的独立 D1 检测模型；
-- 没有覆盖完整 D1 前向、loss、反向和评测的集成测试。
+- 没有覆盖缓存 Dataset、完整训练、Validator 和 COCO 评测的端到端集成测试。
 
 ## 4. P0 固定技术方案
 
@@ -236,11 +237,11 @@ Git 证据位于：
 
 ### WP4：D1 检测模型
 
-- [ ] 新增独立的 D1 Foundation Detection Model，输入为特征字典而非 RGB 图像。
-- [ ] 连接 Adapter、三个 LatentMixture 和 Detect。
-- [ ] 显式设置 Detect stride `[8, 16, 32]`，不使用 RGB dummy forward 推断。
-- [ ] 使用现有 E2E/Detect loss 和 `CompositeCriterion`。
-- [ ] checkpoint 只保存下游模型参数、配置和教师引用信息。
+- [x] 新增独立的 D1 Foundation Detection Model，输入为特征字典而非 RGB 图像。
+- [x] 连接 Adapter、三个 LatentMixture 和 Detect。
+- [x] 显式设置 Detect stride `[8, 16, 32]`，不使用 RGB dummy forward 推断。
+- [x] 使用现有 E2E/Detect loss 和 `CompositeCriterion`。
+- [x] checkpoint 只保存下游模型参数、配置和教师引用信息。
 
 ### WP5：缓存 Dataset、Trainer 与 Validator
 
@@ -281,7 +282,7 @@ Git 证据位于：
 ```text
 experiments/d1/
   README.md                         # 本文档，研发与复现入口
-  WP0.md ... WP3.md                # 各阶段完成报告
+  WP0.md ... WP4.md                # 各阶段完成报告
   manifests/                       # 小型数据/缓存/运行 manifest
   results/                         # CSV/JSON 汇总，不放大 checkpoint
 
@@ -299,6 +300,9 @@ ultralytics/nn/foundation/
   teachers/dinov3.py               # 扩展多层输出
   cache.py                         # 新增缓存与 manifest 协议
 
+ultralytics/nn/
+  foundation_detection_model.py    # D1 缓存特征检测模型
+
 ultralytics/nn/modules/
   foundation_adapter.py            # DINO 多尺度适配器
 
@@ -312,6 +316,7 @@ tests/
   test_d1_wp2_feature_cache.py
   test_d1_wp2_cache_cli.py
   test_d1_wp3_foundation_adapter.py
+  test_d1_wp4_foundation_detection_model.py
   test_d1_train_step.py
 ```
 
