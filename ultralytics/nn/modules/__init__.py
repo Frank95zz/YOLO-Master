@@ -78,6 +78,7 @@ from .conv import (
     RepConv,
     SpatialAttention,
 )
+from .foundation_adapter import DINOFeaturePyramidAdapter
 from .head import (
     OBB,
     OBB26,
@@ -150,6 +151,7 @@ __all__ = (
     "CBAM",
     "CIB",
     "DFL",
+    "DINOFeaturePyramidAdapter",
     "DyC2f",
     "DyMoEBlock",
     "ELAN1",
