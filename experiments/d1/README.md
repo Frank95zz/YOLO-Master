@@ -21,8 +21,9 @@
 | WP0：实验合同、正式数据与 Teacher 准备 | [WP0.md](WP0.md) | 已完成 |
 | WP1：DINOv3 多层特征输出 | [WP1.md](WP1.md) | 已完成 |
 | WP2：可复现特征缓存 | [WP2.md](WP2.md) | 已完成 |
+| WP3：DINOv3 多尺度特征适配器 | [WP3.md](WP3.md) | 已完成 |
 
-阶段报告记录已经完成的实现、实测结果和复现证据；本文继续维护总体技术方案、WP3-WP8 路线及完整背景。后续阶段沿用 `WPn.md` 的方式补充完成报告。
+阶段报告记录已经完成的实现、实测结果和复现证据；本文继续维护总体技术方案、WP4-WP8 路线及完整背景。后续阶段沿用 `WPn.md` 的方式补充完成报告。
 
 `smoke/d1/` 不再承载正式 P0 实现。数据集、DINOv3 权重、特征缓存和训练 checkpoint 不提交 Git，只提交 manifest、校验值、配置、日志摘要和云盘说明。
 
@@ -51,8 +52,10 @@ P0 暂不包含：
 
 已有能力：
 
-- `DINOv3Teacher`：加载、冻结、预处理和解析 DINOv3 特征；
+- `DINOv3Teacher`：加载、冻结、预处理并一次返回 block 4/8/12；
 - `FoundationTeacher` / `FoundationFeatures`：统一教师协议；
+- `FeatureCacheReader` / `FeatureCacheWriter`：可复现的分片特征缓存；
+- `DINOFeaturePyramidAdapter`：生成 P3/P4/P5 三组多层候选特征；
 - `LatentMixture`：同尺度多特征融合、Router、balance loss 和 z-loss；
 - `Detect`：P3/P4/P5 检测头；
 - `CompositeCriterion`：将 routed aux loss 加入检测损失；
@@ -60,10 +63,8 @@ P0 暂不包含：
 
 当前缺口：
 
-- `DINOv3Teacher` 当前只返回最后一层 `dense={"p4": feature}`；
-- 仓库中没有正式的 Foundation 特征缓存、索引和校验实现；
 - 没有从缓存特征开始训练的 D1 Dataset/Trainer/Validator；
-- 没有将 DINOv3 多层 stride-16 特征重组为 P3/P4/P5 的适配器；
+- 没有连接 Adapter、三个 LatentMixture 和 Detect 的独立 D1 检测模型；
 - 没有覆盖完整 D1 前向、loss、反向和评测的集成测试。
 
 ## 4. P0 固定技术方案
@@ -227,11 +228,11 @@ Git 证据位于：
 
 ### WP3：多尺度适配器
 
-- [ ] 新增 `DINOFeaturePyramidAdapter`。
-- [ ] 每个 DINO 层分别投影到 P3/P4/P5 对应通道。
-- [ ] P3 使用 2 倍上采样，P4 保持 stride 16，P5 使用 stride-2 卷积。
-- [ ] 使用适合小 batch 的归一化，例如 GroupNorm。
-- [ ] 输出三组同尺度候选特征供 LatentMixture 融合。
+- [x] 新增 `DINOFeaturePyramidAdapter`。
+- [x] 每个 DINO 层分别投影到 P3/P4/P5 对应通道。
+- [x] P3 使用 2 倍上采样，P4 保持 stride 16，P5 使用 stride-2 卷积。
+- [x] 使用适合小 batch 的 GroupNorm。
+- [x] 输出三组同尺度候选特征供 LatentMixture 融合。
 
 ### WP4：D1 检测模型
 
@@ -280,6 +281,7 @@ Git 证据位于：
 ```text
 experiments/d1/
   README.md                         # 本文档，研发与复现入口
+  WP0.md ... WP3.md                # 各阶段完成报告
   manifests/                       # 小型数据/缓存/运行 manifest
   results/                         # CSV/JSON 汇总，不放大 checkpoint
 
@@ -298,7 +300,7 @@ ultralytics/nn/foundation/
   cache.py                         # 新增缓存与 manifest 协议
 
 ultralytics/nn/modules/
-  foundation_adapter.py            # 新增 DINO 多尺度适配器
+  foundation_adapter.py            # DINO 多尺度适配器
 
 ultralytics/models/yolo/detect/
   foundation_train.py              # 名称按最终扩展方式确定
@@ -309,7 +311,7 @@ tests/
   test_d1_wp1_dinov3.py
   test_d1_wp2_feature_cache.py
   test_d1_wp2_cache_cli.py
-  test_d1_foundation_adapter.py
+  test_d1_wp3_foundation_adapter.py
   test_d1_train_step.py
 ```
 
