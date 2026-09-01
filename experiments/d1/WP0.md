@@ -60,7 +60,7 @@ WP0 解决的是“后续实验使用什么数据、模型和预处理”的问�
 
 ### 3.4 准备与校验工具
 
-新增 [prepare_d1_wp0.py](../../scripts/prepare_d1_wp0.py)，支持：
+新增 [prepare_wp0.py](../../scripts/d1/prepare_wp0.py)，支持：
 
 - 断点下载和 `.part` 临时文件；
 - 文件大小、ZIP CRC 和 SHA256 校验；
@@ -89,13 +89,13 @@ WP0 解决的是“后续实验使用什么数据、模型和预处理”的问�
 export D1_WORKSPACE=/path/to/yolo-master-d1
 
 # 首次下载、解压、校验并生成 manifest
-python scripts/prepare_d1_wp0.py \
+python scripts/d1/prepare_wp0.py \
   --workspace "$D1_WORKSPACE" \
   --repo "$PWD" \
   --download
 
 # 已有数据与权重时只做校验
-python scripts/prepare_d1_wp0.py \
+python scripts/d1/prepare_wp0.py \
   --workspace "$D1_WORKSPACE" \
   --repo "$PWD" \
   --verify-only

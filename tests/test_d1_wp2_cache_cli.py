@@ -1,4 +1,4 @@
-"""Contracts for the D1 WP2 extraction entrypoint."""
+"""Contracts for the D1 WP2 feature-cache command."""
 
 import json
 from pathlib import Path
@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 import torch
 
-from scripts.cache_d1_features import cache_contract, load_image, make_letterbox, split_paths
+from scripts.d1.cache_features import cache_contract, load_image, make_letterbox, split_paths
 from ultralytics.nn.foundation.cache import sha256_bytes
 
 

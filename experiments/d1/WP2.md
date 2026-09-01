@@ -41,7 +41,7 @@ COCO 图像
 
 ### 3.2 命令行工具
 
-[`scripts/cache_d1_features.py`](../../scripts/cache_d1_features.py) 提供三个子命令：
+[`scripts/d1/cache_features.py`](../../scripts/d1/cache_features.py) 提供三个子命令：
 
 | 子命令 | 作用 |
 | --- | --- |
@@ -118,13 +118,13 @@ export D1_WORKSPACE=/path/to/yolo-master-d1
 独立构建两份 100 图缓存：
 
 ```bash
-python scripts/cache_d1_features.py build \
+python scripts/d1/cache_features.py build \
   --workspace "$D1_WORKSPACE" \
   --cache-dir "$D1_WORKSPACE/feature_cache/wp2-train100-a" \
   --split train2017 --limit 100 --batch-size 8 --device 0 \
   --report "$D1_WORKSPACE/manifests/wp2-train100-a.json"
 
-python scripts/cache_d1_features.py build \
+python scripts/d1/cache_features.py build \
   --workspace "$D1_WORKSPACE" \
   --cache-dir "$D1_WORKSPACE/feature_cache/wp2-train100-b" \
   --split train2017 --limit 100 --batch-size 8 --device 0 \
@@ -134,14 +134,14 @@ python scripts/cache_d1_features.py build \
 只校验缓存，不运行 Teacher：
 
 ```bash
-python scripts/cache_d1_features.py verify \
+python scripts/d1/cache_features.py verify \
   --cache-dir "$D1_WORKSPACE/feature_cache/wp2-train100-a"
 ```
 
 比较两份独立构建：
 
 ```bash
-python scripts/cache_d1_features.py compare \
+python scripts/d1/cache_features.py compare \
   --cache-dir "$D1_WORKSPACE/feature_cache/wp2-train100-a" \
   --other-cache-dir "$D1_WORKSPACE/feature_cache/wp2-train100-b" \
   --first-report "$D1_WORKSPACE/manifests/wp2-train100-a.json" \
@@ -152,10 +152,10 @@ python scripts/cache_d1_features.py compare \
 
 ```bash
 python -m pytest -q \
-  tests/test_d1_feature_cache.py \
-  tests/test_d1_cache_script.py \
+  tests/test_d1_wp2_feature_cache.py \
+  tests/test_d1_wp2_cache_cli.py \
   tests/test_d1_wp0_contract.py \
-  tests/test_dinov3_teacher.py
+  tests/test_foundation_dinov3.py
 ```
 
 WP2 交付时的相关测试汇总为 `121 passed, 1 skipped`。

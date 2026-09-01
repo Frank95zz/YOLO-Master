@@ -11,6 +11,7 @@
 - Foundation 教师与缓存：`ultralytics/nn/foundation/`
 - LatentMixture 等网络模块：`ultralytics/nn/modules/`
 - 检测训练与评测入口：`ultralytics/models/yolo/detect/`
+- D1 数据准备与缓存命令：`scripts/d1/`
 - 自动化测试：`tests/`
 
 ### 阶段完成报告
@@ -149,19 +150,19 @@ assert tuple(features.dense) == ("block4", "block8", "block12")
 固定 100 图的两次独立构建命令：
 
 ```bash
-python scripts/cache_d1_features.py build \
+python scripts/d1/cache_features.py build \
   --workspace /data/yingxi/yolo-master-d1 \
   --cache-dir /data/yingxi/yolo-master-d1/feature_cache/wp2-train100-a \
   --split train2017 --limit 100 --batch-size 8 --device 0 \
   --report /data/yingxi/yolo-master-d1/manifests/wp2-train100-a.json
 
-python scripts/cache_d1_features.py build \
+python scripts/d1/cache_features.py build \
   --workspace /data/yingxi/yolo-master-d1 \
   --cache-dir /data/yingxi/yolo-master-d1/feature_cache/wp2-train100-b \
   --split train2017 --limit 100 --batch-size 8 --device 0 \
   --report /data/yingxi/yolo-master-d1/manifests/wp2-train100-b.json
 
-python scripts/cache_d1_features.py compare \
+python scripts/d1/cache_features.py compare \
   --cache-dir /data/yingxi/yolo-master-d1/feature_cache/wp2-train100-a \
   --other-cache-dir /data/yingxi/yolo-master-d1/feature_cache/wp2-train100-b \
   --first-report /data/yingxi/yolo-master-d1/manifests/wp2-train100-a.json \
@@ -172,7 +173,7 @@ python scripts/cache_d1_features.py compare \
 独立只校验命令：
 
 ```bash
-python scripts/cache_d1_features.py verify \
+python scripts/d1/cache_features.py verify \
   --cache-dir /data/yingxi/yolo-master-d1/feature_cache/wp2-train100-a
 ```
 
@@ -282,6 +283,10 @@ experiments/d1/
   manifests/                       # 小型数据/缓存/运行 manifest
   results/                         # CSV/JSON 汇总，不放大 checkpoint
 
+scripts/d1/
+  prepare_wp0.py                    # WP0 数据、权重与 manifest 准备
+  cache_features.py                 # WP2 缓存构建、校验与比较
+
 ultralytics/cfg/experiments/d1/
   p0-dinov3-vits16-coco2017.yaml
 
@@ -300,8 +305,10 @@ ultralytics/models/yolo/detect/
   foundation_val.py
 
 tests/
-  test_d1_dinov3_multilayer.py
-  test_d1_feature_cache.py
+  test_d1_wp0_contract.py
+  test_d1_wp1_dinov3.py
+  test_d1_wp2_feature_cache.py
+  test_d1_wp2_cache_cli.py
   test_d1_foundation_adapter.py
   test_d1_train_step.py
 ```

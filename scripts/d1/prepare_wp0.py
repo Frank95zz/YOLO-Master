@@ -422,7 +422,7 @@ def verify_contract(repo: Path) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workspace", type=Path, required=True, help="External D1 data and weight workspace")
-    parser.add_argument("--repo", type=Path, default=Path(__file__).resolve().parents[1], help="YOLO-Master repository")
+    parser.add_argument("--repo", type=Path, default=Path(__file__).resolve().parents[2], help="YOLO-Master repository")
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--download", action="store_true", help="Download, extract, verify, and generate manifests")
     mode.add_argument("--verify-only", action="store_true", help="Verify existing artifacts and regenerate manifests")

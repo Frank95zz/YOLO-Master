@@ -1,4 +1,4 @@
-"""Offline tests for the D1 sharded feature-cache protocol."""
+"""Offline WP2 tests for the D1 sharded feature-cache protocol."""
 
 import json
 from pathlib import Path

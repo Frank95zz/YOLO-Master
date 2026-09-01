@@ -293,7 +293,7 @@ def parser() -> argparse.ArgumentParser:
     subparsers = result.add_subparsers(dest="command", required=True)
 
     build_parser = subparsers.add_parser("build", help="build or resume one deterministic cache")
-    build_parser.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[1])
+    build_parser.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[2])
     build_parser.add_argument("--workspace", type=Path, required=True)
     build_parser.add_argument("--data-root", type=Path)
     build_parser.add_argument("--weights-dir", type=Path)
@@ -313,7 +313,7 @@ def parser() -> argparse.ArgumentParser:
     verify_parser.set_defaults(handler=verify)
 
     compare_parser = subparsers.add_parser("compare", help="compare two independent verified cache builds")
-    compare_parser.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[1])
+    compare_parser.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[2])
     compare_parser.add_argument("--cache-dir", type=Path, required=True)
     compare_parser.add_argument("--other-cache-dir", type=Path, required=True)
     compare_parser.add_argument("--first-report", type=Path)

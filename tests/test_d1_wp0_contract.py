@@ -13,11 +13,11 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "ultralytics/cfg/experiments/d1/p0-dinov3-vits16-coco2017.yaml"
 CONTRACT = ROOT / "experiments/d1/manifests/p0-experiment-contract.json"
-SCRIPT = ROOT / "scripts/prepare_d1_wp0.py"
+SCRIPT = ROOT / "scripts/d1/prepare_wp0.py"
 
 
 def _load_script():
-    spec = importlib.util.spec_from_file_location("prepare_d1_wp0", SCRIPT)
+    spec = importlib.util.spec_from_file_location("prepare_wp0", SCRIPT)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
