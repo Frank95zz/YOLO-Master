@@ -519,6 +519,7 @@ def run_training(
         overrides=overrides,
         feature_caches={"train": args.cache_dir, "val": args.cache_dir},
     )
+    last_training_routing: dict[str, Any] = {}
 
     def capture_initial(trainer_instance) -> None:
         model = unwrap_model(trainer_instance.model)
@@ -529,11 +530,14 @@ def run_training(
 
     def capture_batch(trainer_instance) -> None:
         model = unwrap_model(trainer_instance.model)
+        routing = compact_routing(model)
         payload = {
             "epoch": int(trainer_instance.epoch),
             "optimizer_steps": int(trainer_instance.optimizer_steps),
-            "routing": compact_routing(model),
+            "routing": routing,
         }
+        last_training_routing.clear()
+        last_training_routing.update(routing)
         with trace_path.open("a", encoding="utf-8") as stream:
             stream.write(json.dumps(payload, sort_keys=True, ensure_ascii=True) + "\n")
 
@@ -544,6 +548,10 @@ def run_training(
     elapsed = time.perf_counter() - started
     rows = read_results_csv(trainer.csv)
     metrics, failures = evaluate_training_rows(rows, profile_name, profile)
+    if set(last_training_routing) != {"p3", "p4", "p5"} or any(
+        not values["finite"] for values in last_training_routing.values()
+    ):
+        failures.append("last training batch has missing or non-finite Router diagnostics")
     if trainer.optimizer_steps < int(profile["min_optimizer_steps"]):
         failures.append(
             f"optimizer_steps={trainer.optimizer_steps} is below {int(profile['min_optimizer_steps'])}"
@@ -580,7 +588,7 @@ def run_training(
         "elapsed_seconds": elapsed,
         "metrics": metrics,
         "routing_deltas": deltas,
-        "routing_final": compact_routing(unwrap_model(trainer.model)),
+        "routing_final": last_training_routing,
         "checkpoint": checkpoint_report,
         "failures": failures,
     }
