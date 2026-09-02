@@ -168,8 +168,7 @@ python -m pytest -q \
 WP5 已完成缓存数据进入训练基础设施的闭环，但尚未完成：
 
 - 完整 COCO train2017/val2017 特征缓存；
-- WP6 的 balance loss、z-loss 和 latent aux 分项记录与开关证据；
 - 32 图过拟合和正式 COCO 训练；
 - 收敛精度、训练成本、I/O 等待比例和训练成本降低结论。
 
-下一阶段 WP6 将验证三个 LatentMixture 的 aux 收集、日志、开关和 Router 梯度闭环。完整缓存构建和正式训练留在 WP8，不能用本阶段的两图一批次结果替代。
+LatentMixture 的 aux 收集、日志、开关和 Router 梯度闭环现已由 [WP6](WP6.md) 完成。下一阶段 WP7 进行最小训练与过拟合验证；完整缓存构建和正式训练留在 WP8，不能用本阶段的两图一批次结果替代。

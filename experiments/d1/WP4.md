@@ -56,10 +56,10 @@ block4/block8/block12
 
 - E2E one-to-many 和 one-to-one 分支均产生合法预测；
 - 检测 loss 与 latent aux 均为有限值；
-- loss items 在 box/cls/dfl 后附加 mixture aux；
+- loss items 在 box/cls/dfl 后附加 latent balance、z、原始 aux 和最终 mixture aux；
 - Adapter、Detect 和三个 Router 均获得有限非零梯度。
 
-WP6 仍需补齐每个 Router 的 balance loss、z-loss、latent aux 日志，以及关闭 aux、每步只收集一次等完整闭环证据。
+上述分项日志、关闭语义和单 step 三次发布证据现已由 [WP6](WP6.md) 补齐。
 
 ## 5. Checkpoint 合同
 
@@ -123,11 +123,11 @@ WP0-WP4、LatentMixture、CompositeCriterion、路由和 checkpoint 相关回归
 
 - 代码提交：`a1255c0 feat(d1): add cached-feature detection model`
 
-WP4 尚未完成：
+WP4 提交时尚未完成：
 
-- 未根据 COCO sample ID 从缓存读取特征并同时返回标签与几何元数据；
-- 未接入专用 Trainer 和 Validator；
+- 未根据 COCO sample ID 从缓存读取特征并同时返回标签与几何元数据，后由 [WP5](WP5.md) 完成；
+- 未接入专用 Trainer 和 Validator，后由 [WP5](WP5.md) 完成；
 - 未运行 32 图过拟合、COCO8 或完整 COCO 训练；
-- 未完成 WP6 的 latent aux 指标记录和逐步收集证明。
+- 未完成 latent aux 指标记录和逐步收集证明，后由 [WP6](WP6.md) 完成。
 
 下一阶段 WP5 将实现缓存 Dataset、Trainer 和 Validator，使该模型能够进入正式训练与评测流程。

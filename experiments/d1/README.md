@@ -24,8 +24,9 @@
 | WP3：DINOv3 多尺度特征适配器 | [WP3.md](WP3.md) | 已完成 |
 | WP4：缓存特征检测模型 | [WP4.md](WP4.md) | 已完成 |
 | WP5：缓存 Dataset、Trainer 与 Validator | [WP5.md](WP5.md) | 已完成 |
+| WP6：Latent aux 损失闭环 | [WP6.md](WP6.md) | 已完成 |
 
-阶段报告记录已经完成的实现、实测结果和复现证据；本文继续维护总体技术方案、WP6-WP8 路线及完整背景。后续阶段沿用 `WPn.md` 的方式补充完成报告。
+阶段报告记录已经完成的实现、实测结果和复现证据；本文继续维护总体技术方案、WP7-WP8 路线及完整背景。后续阶段沿用 `WPn.md` 的方式补充完成报告。
 
 `smoke/d1/` 不再承载正式 P0 实现。数据集、DINOv3 权重、特征缓存和训练 checkpoint 不提交 Git，只提交 manifest、校验值、配置、日志摘要和云盘说明。
 
@@ -67,7 +68,6 @@ P0 暂不包含：
 当前缺口：
 
 - 尚未构建完整 COCO train2017/val2017 特征缓存；
-- 尚未完成 WP6 latent aux 分项日志与开关证据；
 - 尚未执行 32 图过拟合、正式完整训练和 COCO val2017 精度评测。
 
 ## 4. P0 固定技术方案
@@ -255,11 +255,11 @@ Git 证据位于：
 
 ### WP6：Latent aux 闭环
 
-- [ ] 确认三个 LatentMixture 均发布 `kind="latent"`。
-- [ ] 确认 D1 criterion 未绕过 `CompositeCriterion`。
-- [ ] 记录 balance loss、z-loss、latent aux 和总 aux。
-- [ ] 证明 latent aux 保持计算图连接且 Router 获得非零梯度。
-- [ ] 确认 aux 关闭时结果为 0，且每个模块每步只收集一次。
+- [x] 确认三个 LatentMixture 均发布 `kind="latent"`。
+- [x] 确认 D1 criterion 未绕过 `CompositeCriterion`。
+- [x] 记录 balance loss、z-loss、latent aux 和总 aux。
+- [x] 证明 latent aux 保持计算图连接且 Router 获得非零梯度。
+- [x] 确认 aux 关闭时结果为 0，且每个模块每步只收集一次。
 
 ### WP7：测试与最小训练
 
@@ -284,7 +284,7 @@ Git 证据位于：
 ```text
 experiments/d1/
   README.md                         # 本文档，研发与复现入口
-  WP0.md ... WP5.md                # 各阶段完成报告
+  WP0.md ... WP6.md                # 各阶段完成报告
   manifests/                       # 小型数据/缓存/运行 manifest
   results/                         # CSV/JSON 汇总，不放大 checkpoint
 
@@ -320,6 +320,7 @@ tests/
   test_d1_wp3_foundation_adapter.py
   test_d1_wp4_foundation_detection_model.py
   test_d1_wp5_cached_pipeline.py
+  test_d1_wp6_latent_aux.py
 ```
 
 文件名是当前建议，实施时可以依据现有模块边界微调，但职责不得混入 `smoke/d1/`。
