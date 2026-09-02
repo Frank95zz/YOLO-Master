@@ -430,6 +430,10 @@ class BaseTrainer:
         self._save_run_args()
         self._setup_scheduler()
 
+    def check_amp_compatibility(self) -> bool:
+        """Run the model-family-specific AMP compatibility check."""
+        return check_amp(self.model)
+
     def _setup_train(self):
         """Configure model, optimizer, dataloaders, and training utilities before the training loop."""
         ckpt = self.setup_model()
@@ -458,7 +462,7 @@ class BaseTrainer:
         self.amp = torch.tensor(self.args.amp).to(self.device)  # True or False
         if self.amp and RANK in {-1, 0}:  # Single-GPU and DDP
             callbacks_backup = callbacks.default_callbacks.copy()  # backup callbacks as check_amp() resets them
-            self.amp = torch.tensor(check_amp(self.model), device=self.device)
+            self.amp = torch.tensor(self.check_amp_compatibility(), device=self.device)
             callbacks.default_callbacks = callbacks_backup  # restore callbacks
         if RANK > -1 and self.world_size > 1:  # DDP
             amp_flag = self.amp.to(dtype=torch.int32)

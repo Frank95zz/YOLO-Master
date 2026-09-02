@@ -25,6 +25,7 @@ from ultralytics.models.yolo.detect import D1FoundationDetectionTrainer
 from ultralytics.nn import D1FoundationDetectionModel
 from ultralytics.nn.foundation import DINOv3Teacher
 from ultralytics.nn.foundation.cache import FeatureCacheReader, sha256_file, verify_feature_cache
+from ultralytics.nn.mixture_loss import initialize_mixture_loss_ema_buffer
 from ultralytics.nn.tasks import load_checkpoint
 from ultralytics.utils import YAML
 from ultralytics.utils.torch_utils import unwrap_model
@@ -351,6 +352,7 @@ def validate_checkpoint(
     if not isinstance(checkpoint_model, D1FoundationDetectionModel):
         raise TypeError("WP7 checkpoint does not contain a D1FoundationDetectionModel.")
     restored = D1FoundationDetectionModel(checkpoint_model.config_dict()).eval()
+    initialize_mixture_loss_ema_buffer(restored)
     restored.load_state_dict(checkpoint_model.float().state_dict(), strict=True)
     state_keys = tuple(restored.state_dict())
     teacher_keys = [key for key in state_keys if "teacher" in key.lower() or "dinov3" in key.lower()]

@@ -19,7 +19,7 @@ from ultralytics.nn.foundation_detection_model import (
 )
 from ultralytics.nn.tasks import load_checkpoint
 from ultralytics.utils import DEFAULT_CFG, LOCAL_RANK, LOGGER, RANK, colorstr
-from ultralytics.utils.torch_utils import strip_optimizer, torch_distributed_zero_first
+from ultralytics.utils.torch_utils import strip_optimizer, torch_distributed_zero_first, unwrap_model
 
 
 _DISABLED_AUGMENTATIONS = (
@@ -95,6 +95,35 @@ class D1FoundationDetectionTrainer(DetectionTrainer):
             raise ValueError(f"D1 cached training requires disabled RGB/geometric augmentations: {enabled}.")
         if self.validation_feature_mode == "online" and self.args.workers != 0:
             raise ValueError("online parity validation requires workers=0 to keep the Teacher in the main process.")
+
+    def check_amp_compatibility(self) -> bool:
+        """Check AMP with D1 feature inputs without downloading an unrelated RGB model."""
+        if self.device.type != "cuda":
+            return False
+        model = unwrap_model(self.model)
+        if not isinstance(model, D1FoundationDetectionModel):
+            raise TypeError("D1 AMP check requires D1FoundationDetectionModel.")
+        inputs = self.checkpoint_smoke_inputs(model)[1]
+        was_training = model.training
+        try:
+            model.eval()
+            with torch.no_grad():
+                fp32 = model(inputs)[0].float()
+                with torch.autocast(device_type="cuda", dtype=torch.float16):
+                    mixed = model(inputs)[0].float()
+        finally:
+            model.train(was_training)
+        passed = (
+            fp32.shape == mixed.shape
+            and bool(torch.isfinite(fp32).all())
+            and bool(torch.isfinite(mixed).all())
+            and fp32.numel() > 0
+        )
+        if passed:
+            LOGGER.info("AMP: D1 cached-feature checks passed")
+        else:
+            LOGGER.warning("AMP: D1 cached-feature checks failed; AMP will be disabled")
+        return passed
 
     def build_dataset(self, img_path: str, mode: str = "train", batch: int | None = None):
         """Build a COCO-label dataset backed by the selected split cache."""

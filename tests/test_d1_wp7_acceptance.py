@@ -7,6 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import torch
 
 from scripts.d1 import run_wp7
 from scripts.d1.run_wp7 import (
@@ -17,6 +18,8 @@ from scripts.d1.run_wp7 import (
     select_records,
     validate_source_files,
 )
+from ultralytics.models.yolo.detect import D1FoundationDetectionTrainer
+from ultralytics.nn import D1FoundationDetectionModel
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -96,6 +99,16 @@ def test_source_validation_requires_real_images_and_nonempty_labels(tmp_path: Pa
         validate_source_files(tmp_path, records, require_nonempty_labels=True)
     label.write_text("0 0.5 0.5 0.2 0.2\n", encoding="utf-8")
     assert validate_source_files(tmp_path, records, require_nonempty_labels=True) == [image.resolve()]
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is required for the D1 AMP check")
+def test_d1_amp_check_uses_feature_inputs_without_rgb_model() -> None:
+    trainer = object.__new__(D1FoundationDetectionTrainer)
+    trainer.device = torch.device("cuda:0")
+    trainer.model = D1FoundationDetectionModel().cuda()
+
+    assert trainer.check_amp_compatibility() is True
+    assert trainer.model.training is True
 
 
 def test_overfit_metrics_apply_loss_and_map_thresholds() -> None:
