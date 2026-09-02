@@ -14,7 +14,7 @@ from ultralytics.cfg import get_cfg
 from ultralytics.nn.mixture_loss import build_composite_criterion
 from ultralytics.nn.modules import DINOFeaturePyramidAdapter, Detect, LatentMixture
 from ultralytics.nn.tasks import BaseModel
-from ultralytics.utils import YAML
+from ultralytics.utils import LOGGER, YAML
 from ultralytics.utils.loss import E2ELoss, v8DetectionLoss
 
 
@@ -189,6 +189,14 @@ class D1FoundationDetectionModel(BaseModel):
     @property
     def end2end(self) -> bool:
         return self.detect.end2end
+
+    def set_head_attr(self, **kwargs: Any) -> None:
+        """Set supported Detect-head runtime attributes used by Trainer and Validator."""
+        for name, value in kwargs.items():
+            if not hasattr(self.detect, name):
+                LOGGER.warning(f"D1 Detect head has no attribute {name!r}.")
+                continue
+            setattr(self.detect, name, value)
 
     def _reset_training_routing_state(self) -> None:
         if not self.training:
