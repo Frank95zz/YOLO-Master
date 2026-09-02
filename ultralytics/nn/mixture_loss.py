@@ -278,7 +278,7 @@ def _collect_mixture_aux_loss(
             device=device,
             return_diagnostics=True,
             return_tensor_values=True,
-            return_value_scalars=False,
+            return_value_scalars=True,
             include_kinds=("moe", "moa", "mot", "molora", "latent"),
         )
         grouped = diagnostics.pop("_tensor_values_by_kind", {})
@@ -413,12 +413,23 @@ class CompositeCriterion:
             aux_budget=_model_arg(self.model, "mixture_aux_budget", 3.0),
         )
         self.model._last_mixture_aux_loss = aux.detach()
+        reporter = getattr(self.model, "mixture_aux_report_items", None)
+        report_items = reporter() if callable(reporter) else aux.new_empty(0)
+        if not isinstance(report_items, torch.Tensor) or report_items.ndim != 1:
+            raise TypeError("mixture_aux_report_items() must return a one-dimensional Tensor")
+        if report_items.requires_grad:
+            raise ValueError("mixture aux report items must be detached metrics")
+        if not bool(torch.isfinite(report_items).all()):
+            raise FloatingPointError("mixture aux report items contain NaN or Inf")
+        report_items = report_items.to(device=aux.device, dtype=aux.dtype)
         total = native_loss + aux
         if isinstance(native_items, torch.Tensor):
-            items = torch.cat((native_items.reshape(-1), aux.detach().reshape(1)))
+            items = torch.cat((native_items.reshape(-1), report_items, aux.detach().reshape(1)))
         elif isinstance(native_items, (list, tuple)):
-            items = [*native_items, aux.detach()]
+            items = [*native_items, *report_items, aux.detach()]
             items = type(native_items)(items) if isinstance(native_items, tuple) else items
+        elif report_items.numel():
+            raise TypeError("mixture aux reporting requires Tensor, list, or tuple native loss items")
         else:
             items = native_items
         return total, items

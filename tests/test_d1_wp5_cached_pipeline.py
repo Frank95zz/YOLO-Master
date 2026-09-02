@@ -360,6 +360,21 @@ def test_real_wp2_cache_one_batch_train_and_validate(tmp_path) -> None:
     trainer.train()
 
     assert trainer.optimizer_steps == 1
-    assert trainer.loss_items.shape == torch.Size((4,))
-    assert trainer.loss_names == ("box_loss", "cls_loss", "dfl_loss", "mixture_aux_loss")
+    assert trainer.loss_items.shape == torch.Size((7,))
+    assert trainer.loss_names == (
+        "box_loss",
+        "cls_loss",
+        "dfl_loss",
+        "latent_balance_loss",
+        "latent_z_loss",
+        "latent_aux_loss",
+        "mixture_aux_loss",
+    )
     assert trainer.validator.seen == 2
+    csv_header = trainer.csv.read_text(encoding="utf-8").splitlines()[0].split(",")
+    assert {
+        "train/latent_balance_loss",
+        "train/latent_z_loss",
+        "train/latent_aux_loss",
+        "train/mixture_aux_loss",
+    }.issubset(csv_header)

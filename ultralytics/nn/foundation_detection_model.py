@@ -24,6 +24,7 @@ DEFAULT_D1_MODEL_CFG = (
 CHECKPOINT_SCHEMA = "d1-downstream-v1"
 _PYRAMID_NAMES = ("p3", "p4", "p5")
 _REQUIRED_STRIDES = (8, 16, 32)
+D1_AUX_REPORT_NAMES = ("latent_balance_loss", "latent_z_loss", "latent_aux_loss")
 _MIXTURE_KEYS = {
     "balance_loss_coeff",
     "expert_ratio",
@@ -198,6 +199,77 @@ class D1FoundationDetectionModel(BaseModel):
                 continue
             setattr(self.detect, name, value)
 
+    @property
+    def last_latent_aux_metrics(self) -> dict[str, float]:
+        """Return the latest detached WP6 aggregate and per-level metrics."""
+        return dict(getattr(self, "_last_latent_aux_metrics", {}))
+
+    def mixture_aux_report_items(self) -> torch.Tensor:
+        """Validate one D1 aux step and return detached aggregate report items."""
+        applied = getattr(self, "_last_mixture_aux_loss", None)
+        if not isinstance(applied, torch.Tensor) or applied.numel() != 1:
+            raise RuntimeError("CompositeCriterion must set scalar _last_mixture_aux_loss before D1 reporting.")
+        applied = applied.detach().reshape(())
+        if not self.training:
+            zeros = applied.new_zeros(len(D1_AUX_REPORT_NAMES))
+            self._last_latent_aux_metrics = {
+                **{name: 0.0 for name in D1_AUX_REPORT_NAMES},
+                "mixture_aux_loss": 0.0,
+            }
+            return zeros
+
+        diagnostics = getattr(self, "_mixture_aux_diagnostics", None)
+        if not isinstance(diagnostics, dict):
+            raise RuntimeError("D1 training requires CompositeCriterion aux diagnostics.")
+        counts = diagnostics.get("counts_by_kind", {})
+        if counts.get("latent") != len(_PYRAMID_NAMES):
+            raise RuntimeError(
+                f"D1 requires exactly {len(_PYRAMID_NAMES)} latent aux publications per step, got {counts.get('latent')}."
+            )
+        for key in ("stale_skipped", "eval_skipped", "duplicate_skipped"):
+            if diagnostics.get(key, 0) != 0:
+                raise RuntimeError(f"D1 aux collection reported {key}={diagnostics[key]}.")
+        values = diagnostics.get("values_by_kind", {}).get("latent", ())
+        if len(values) != len(_PYRAMID_NAMES):
+            raise RuntimeError(f"D1 requires three recorded latent aux values, got {len(values)}.")
+
+        metrics: dict[str, float] = {}
+        balance_total = 0.0
+        z_total = 0.0
+        snapshot_aux_total = 0.0
+        for name in _PYRAMID_NAMES:
+            snapshot = self.mixtures[name].routing_snapshot()
+            required = ("balance_loss", "z_loss", "aux_loss")
+            if any(key not in snapshot for key in required):
+                raise RuntimeError(f"D1 {name} routing snapshot is missing WP6 aux fields.")
+            level_values = {key: float(snapshot[key]) for key in required}
+            if not all(torch.isfinite(torch.tensor(value)) for value in level_values.values()):
+                raise FloatingPointError(f"D1 {name} routing snapshot contains non-finite aux metrics.")
+            metrics.update({f"{name}_{key}": value for key, value in level_values.items()})
+            balance_total += level_values["balance_loss"]
+            z_total += level_values["z_loss"]
+            snapshot_aux_total += level_values["aux_loss"]
+
+        collected_aux_total = sum(float(value) for value in values)
+        tolerance = max(1e-7, abs(collected_aux_total) * 1e-5)
+        if abs(snapshot_aux_total - collected_aux_total) > tolerance:
+            raise RuntimeError(
+                "D1 latent aux snapshots do not match the three graph-connected values collected by CompositeCriterion."
+            )
+        aggregate = {
+            "latent_balance_loss": balance_total,
+            "latent_z_loss": z_total,
+            "latent_aux_loss": collected_aux_total,
+            "mixture_aux_loss": float(applied),
+        }
+        if not all(torch.isfinite(torch.tensor(value)) for value in aggregate.values()):
+            raise FloatingPointError("D1 aggregate aux metrics contain NaN or Inf.")
+        metrics.update(aggregate)
+        metrics["aux_step"] = float(diagnostics.get("step", -1))
+        metrics["latent_publications"] = float(counts["latent"])
+        self._last_latent_aux_metrics = metrics
+        return applied.new_tensor([aggregate[name] for name in D1_AUX_REPORT_NAMES]).detach()
+
     def _reset_training_routing_state(self) -> None:
         if not self.training:
             return
@@ -287,4 +359,9 @@ class D1FoundationDetectionModel(BaseModel):
         return model
 
 
-__all__ = ["CHECKPOINT_SCHEMA", "DEFAULT_D1_MODEL_CFG", "D1FoundationDetectionModel"]
+__all__ = [
+    "CHECKPOINT_SCHEMA",
+    "D1_AUX_REPORT_NAMES",
+    "DEFAULT_D1_MODEL_CFG",
+    "D1FoundationDetectionModel",
+]

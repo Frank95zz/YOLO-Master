@@ -93,10 +93,15 @@ def test_native_e2e_loss_and_composite_aux_backward() -> None:
 
     assert isinstance(model.criterion, CompositeCriterion)
     assert tuple(loss.shape) == (3,)
-    assert tuple(items.shape) == (4,)
+    assert tuple(items.shape) == (7,)
     assert torch.isfinite(loss).all()
     assert torch.isfinite(items).all()
     assert model._last_mixture_aux_loss > 0
+    assert model._mixture_aux_diagnostics["counts_by_kind"]["latent"] == 3
+    assert items[3].item() == pytest.approx(model.last_latent_aux_metrics["latent_balance_loss"])
+    assert items[4].item() == pytest.approx(model.last_latent_aux_metrics["latent_z_loss"])
+    assert items[5].item() == pytest.approx(model.last_latent_aux_metrics["latent_aux_loss"])
+    assert items[6].item() == pytest.approx(model.last_latent_aux_metrics["mixture_aux_loss"])
     loss.sum().backward()
 
     adapter_weight = model.adapter.branches["p3"]["block4"][0][0].weight

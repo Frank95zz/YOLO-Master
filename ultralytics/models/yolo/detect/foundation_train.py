@@ -13,6 +13,7 @@ from ultralytics.data.d1_cache import D1FeatureCacheDataset, FeatureProvider, mo
 from ultralytics.models.yolo.detect.train import DetectionTrainer
 from ultralytics.models.yolo.detect.foundation_val import D1FoundationDetectionValidator
 from ultralytics.nn.foundation_detection_model import (
+    D1_AUX_REPORT_NAMES,
     DEFAULT_D1_MODEL_CFG,
     D1FoundationDetectionModel,
 )
@@ -139,7 +140,7 @@ class D1FoundationDetectionTrainer(DetectionTrainer):
 
     def get_validator(self):
         """Return the cache-aware D1 detection validator."""
-        self.loss_names = "box_loss", "cls_loss", "dfl_loss"
+        self.loss_names = ("box_loss", "cls_loss", "dfl_loss", *D1_AUX_REPORT_NAMES)
         return D1FoundationDetectionValidator(
             self.test_loader,
             save_dir=self.save_dir,
