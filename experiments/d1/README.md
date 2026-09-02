@@ -23,8 +23,9 @@
 | WP2：可复现特征缓存 | [WP2.md](WP2.md) | 已完成 |
 | WP3：DINOv3 多尺度特征适配器 | [WP3.md](WP3.md) | 已完成 |
 | WP4：缓存特征检测模型 | [WP4.md](WP4.md) | 已完成 |
+| WP5：缓存 Dataset、Trainer 与 Validator | [WP5.md](WP5.md) | 已完成 |
 
-阶段报告记录已经完成的实现、实测结果和复现证据；本文继续维护总体技术方案、WP5-WP8 路线及完整背景。后续阶段沿用 `WPn.md` 的方式补充完成报告。
+阶段报告记录已经完成的实现、实测结果和复现证据；本文继续维护总体技术方案、WP6-WP8 路线及完整背景。后续阶段沿用 `WPn.md` 的方式补充完成报告。
 
 `smoke/d1/` 不再承载正式 P0 实现。数据集、DINOv3 权重、特征缓存和训练 checkpoint 不提交 Git，只提交 manifest、校验值、配置、日志摘要和云盘说明。
 
@@ -65,8 +66,9 @@ P0 暂不包含：
 
 当前缺口：
 
-- 没有从缓存特征开始训练的 D1 Dataset/Trainer/Validator；
-- 没有覆盖缓存 Dataset、完整训练、Validator 和 COCO 评测的端到端集成测试。
+- 尚未构建完整 COCO train2017/val2017 特征缓存；
+- 尚未完成 WP6 latent aux 分项日志与开关证据；
+- 尚未执行 32 图过拟合、正式完整训练和 COCO val2017 精度评测。
 
 ## 4. P0 固定技术方案
 
@@ -245,11 +247,11 @@ Git 证据位于：
 
 ### WP5：缓存 Dataset、Trainer 与 Validator
 
-- [ ] Dataset 根据 `im_file`/sample ID 查询缓存，同时保留 COCO 标签与几何元数据。
-- [ ] Trainer 将缓存特征移动到设备，不再对特征执行 RGB `/255` 处理。
-- [ ] Validator 使用相同缓存并正确恢复预测框坐标。
-- [ ] 保留 online 模式，仅用于验证在线特征与缓存特征一致。
-- [ ] 正式 P0 训练和评测统一使用 cache 模式。
+- [x] Dataset 根据 `im_file`/sample ID 查询缓存，同时保留 COCO 标签与几何元数据。
+- [x] Trainer 将缓存特征移动到设备，不再对特征执行 RGB `/255` 处理。
+- [x] Validator 使用相同缓存并正确恢复预测框坐标。
+- [x] 保留 online 模式，仅用于验证在线特征与缓存特征一致。
+- [x] 正式 P0 训练和评测统一使用 cache 模式。
 
 ### WP6：Latent aux 闭环
 
@@ -282,7 +284,7 @@ Git 证据位于：
 ```text
 experiments/d1/
   README.md                         # 本文档，研发与复现入口
-  WP0.md ... WP4.md                # 各阶段完成报告
+  WP0.md ... WP5.md                # 各阶段完成报告
   manifests/                       # 小型数据/缓存/运行 manifest
   results/                         # CSV/JSON 汇总，不放大 checkpoint
 
@@ -317,7 +319,7 @@ tests/
   test_d1_wp2_cache_cli.py
   test_d1_wp3_foundation_adapter.py
   test_d1_wp4_foundation_detection_model.py
-  test_d1_train_step.py
+  test_d1_wp5_cached_pipeline.py
 ```
 
 文件名是当前建议，实施时可以依据现有模块边界微调，但职责不得混入 `smoke/d1/`。
