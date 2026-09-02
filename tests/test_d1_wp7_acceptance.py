@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
+from scripts.d1 import run_wp7
 from scripts.d1.run_wp7 import (
     PROFILE_NAMES,
     evaluate_training_rows,
@@ -142,6 +144,30 @@ def test_coco8_has_no_accuracy_gate() -> None:
 
     assert failures == []
     assert metrics["final_map50"] == 0.0
+
+
+def test_runtime_identity_uses_reader_root(tmp_path: Path, monkeypatch) -> None:
+    cache_root = tmp_path / "wp2-train100-a"
+    cache_root.mkdir()
+    (cache_root / "index.json").write_text(
+        json.dumps({"contract_sha256": "b" * 64, "content_sha256": "c" * 64}),
+        encoding="utf-8",
+    )
+    weights_dir = tmp_path / "weights"
+    weights_dir.mkdir()
+    (weights_dir / "model.safetensors").write_bytes(b"weights")
+    reader = SimpleNamespace(
+        root=cache_root,
+        contract={"teacher_weights_sha256": "d" * 64},
+    )
+    monkeypatch.setattr(run_wp7, "git_commit", lambda _root: "a" * 40)
+    monkeypatch.setattr(run_wp7, "sha256_file", lambda _path: "d" * 64)
+
+    identity = run_wp7.runtime_identity(tmp_path, reader, weights_dir)
+
+    assert identity["cache_id"] == "wp2-train100-a"
+    assert identity["cache_contract_sha256"] == "b" * 64
+    assert identity["cache_content_sha256"] == "c" * 64
 
 
 def test_report_reuse_requires_exact_runtime_identity() -> None:

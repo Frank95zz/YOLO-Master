@@ -104,7 +104,7 @@ def runtime_identity(repo_root: Path, reader: FeatureCacheReader, weights_dir: P
     return {
         "schema_version": SCHEMA_VERSION,
         "code_commit": git_commit(repo_root),
-        "cache_id": reader.cache_dir.name,
+        "cache_id": reader.root.name,
         "cache_contract_sha256": index["contract_sha256"],
         "cache_content_sha256": index["content_sha256"],
         "teacher_weights_sha256": actual_weight_hash,
