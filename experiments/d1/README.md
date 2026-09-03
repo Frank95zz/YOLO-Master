@@ -26,6 +26,7 @@
 | WP5：缓存 Dataset、Trainer 与 Validator | [WP5.md](WP5.md) | 已完成 |
 | WP6：Latent aux 损失闭环 | [WP6.md](WP6.md) | 已完成 |
 | WP7：最小训练与工程验收 | [WP7.md](WP7.md) | 已完成 |
+| WP8：六卡缓存准备与启动门禁 | [WP8.md](WP8.md) | 门禁未通过，完整缓存未启动 |
 
 阶段报告记录已经完成的实现、实测结果和复现证据；本文继续维护总体技术方案、WP8 路线及完整背景。后续阶段沿用 `WPn.md` 的方式补充完成报告。
 
@@ -285,7 +286,7 @@ Git 证据位于：
 ```text
 experiments/d1/
   README.md                         # 本文档，研发与复现入口
-  WP0.md ... WP7.md                # 各阶段完成报告
+  WP0.md ... WP8.md                # 各阶段完成报告与当前门禁状态
   manifests/                       # 小型数据/缓存/运行 manifest
   results/                         # CSV/JSON 汇总，不放大 checkpoint
 
@@ -293,6 +294,7 @@ scripts/d1/
   prepare_wp0.py                    # WP0 数据、权重与 manifest 准备
   cache_features.py                 # WP2 缓存构建、校验与比较
   run_wp7.py                        # WP7 parity、最小训练和验收汇总
+  run_wp8.py                        # WP8 六卡缓存调度、基准与合并
 
 ultralytics/cfg/experiments/d1/
   p0-dinov3-vits16-coco2017.yaml

@@ -1,0 +1,68 @@
+{
+  "benchmark": {
+    "batch_candidates": [
+      {
+        "aggregate_images_per_second": 368.20686981347313,
+        "batch_size": 8,
+        "end_to_end_images_per_second": 74.5605117905645,
+        "peak_gpu_bytes_per_rank": 346383360,
+        "status": "passed"
+      },
+      {
+        "aggregate_images_per_second": 460.0957745227902,
+        "batch_size": 16,
+        "end_to_end_images_per_second": 121.65664517024115,
+        "peak_gpu_bytes_per_rank": 614523904,
+        "status": "passed"
+      },
+      {
+        "aggregate_images_per_second": 386.38733169027097,
+        "batch_size": 32,
+        "end_to_end_images_per_second": 108.68275061261521,
+        "peak_gpu_bytes_per_rank": 1144103936,
+        "status": "passed"
+      }
+    ],
+    "content_sha256": "ebfd139e8b82da54c1b9261599e4828b143907e0a62975197cb1c9d85ffc9e4a",
+    "final_verification_seconds": 6.666501294821501,
+    "sample_count": 1200,
+    "selected_batch_size": 16,
+    "split": "train2017",
+    "write": {
+      "aggregate_images_per_second": 16.047782496554074,
+      "cache_bytes": 4425498192,
+      "effective_cache_mib_per_second": 56.441173890518584,
+      "end_to_end_images_per_second": 14.497656794288487,
+      "gpu_utilization_mean_percent_by_rank": [9.157894736842104, 9.31578947368421, 9.552631578947368, 8.907894736842104, 9.394736842105264, 9.631578947368421],
+      "gpu_utilization_max_percent_by_rank": [33, 31, 32, 20, 29, 33],
+      "peak_gpu_bytes_per_rank": 613721088,
+      "wall_seconds": 82.77199667692184
+    }
+  },
+  "code_commit": "651ffd8b0ae9ad3aeda15a31c4f5ce5c5f825343",
+  "conclusion": "Gate failed; full COCO cache was not started.",
+  "estimate": {
+    "cache_bytes": 454485196800,
+    "extraction_and_write_seconds": 7682.494452206921,
+    "free_storage_bytes": 1833672114176,
+    "full_sample_count": 123287,
+    "total_seconds": 8367.405239819136,
+    "verification_seconds": 684.9107876122154
+  },
+  "failures": [
+    "aggregate throughput 16.048 images/s is below 30.0",
+    "estimated total time 8367.4s exceeds 7200s"
+  ],
+  "hardware": {
+    "gpu_count": 6,
+    "gpu_model": "NVIDIA A40"
+  },
+  "operation": "benchmark-gate",
+  "schema_version": "d1-wp8-cache-v1",
+  "status": "failed",
+  "thresholds": {
+    "max_estimated_total_seconds": 7200,
+    "min_aggregate_images_per_second": 30.0,
+    "storage_safety_factor": 1.4
+  }
+}
