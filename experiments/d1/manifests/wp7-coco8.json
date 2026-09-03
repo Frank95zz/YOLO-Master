@@ -1,0 +1,101 @@
+{
+  "batch": 4,
+  "checkpoint": {
+    "bytes": 7709344,
+    "downstream_state_key_count": 391,
+    "epoch": -1,
+    "filename": "best.pt",
+    "optimizer_steps": 1,
+    "sha256": "9957c85ee317af4ad62c076987431c5c4e345dea54e8c45ea494b33a03df9889",
+    "strict_reload": true,
+    "teacher_parameter_count": 0
+  },
+  "elapsed_seconds": 7.912943467497826,
+  "epochs": 1,
+  "failures": [],
+  "gate": "coco8",
+  "identity": {
+    "cache_content_sha256": "0102f2e707b369ca8bfb3d996d54fa0d8ba9eba79787501bd5fe6542f90c1a8d",
+    "cache_contract_sha256": "6bfda0e13bde01001c3f3f2d72631a2401fb9a77b146d6fb2794303e379e47a7",
+    "cache_id": "wp2-train100-a",
+    "code_commit": "a0a05135a3da7228aeabb662003ce125ffe774dc",
+    "schema_version": "d1-wp7-v1",
+    "teacher_weights_sha256": "4610ad75edef83e75afdebf162d148dc628045ea6cbb83d67d4708c709c4f91d"
+  },
+  "metrics": {
+    "all_finite": true,
+    "epochs_recorded": 1,
+    "final_detection_loss": 15.61425,
+    "final_map50": 0.0,
+    "final_map50_95": 0.0,
+    "initial_detection_loss": 15.61425
+  },
+  "optimizer": "AdamW",
+  "optimizer_steps": 1,
+  "routing_deltas": {
+    "p3": {
+      "residual_gain": -0.000995635986328125,
+      "residual_gain_max_abs_delta": 0.000995635986328125,
+      "router_max_abs_delta": 0.000499725341796875
+    },
+    "p4": {
+      "residual_gain": -0.00099945068359375,
+      "residual_gain_max_abs_delta": 0.00099945068359375,
+      "router_max_abs_delta": 0.000499725341796875
+    },
+    "p5": {
+      "residual_gain": 0.0009984970092773438,
+      "residual_gain_max_abs_delta": 0.0009984970092773438,
+      "router_max_abs_delta": 0.000499725341796875
+    }
+  },
+  "routing_final": {
+    "p3": {
+      "aux_loss": 0.0019218121888116002,
+      "balance_loss": 0.0,
+      "entropy": 1.3862943649291992,
+      "finite": true,
+      "mean_router_probs": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
+      ],
+      "residual_gain": -0.0009961604373529553,
+      "z_loss": 1.9218120574951172
+    },
+    "p4": {
+      "aux_loss": 0.0019218121888116002,
+      "balance_loss": 0.0,
+      "entropy": 1.3862943649291992,
+      "finite": true,
+      "mean_router_probs": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
+      ],
+      "residual_gain": -0.0009997186716645956,
+      "z_loss": 1.9218120574951172
+    },
+    "p5": {
+      "aux_loss": 0.0019218121888116002,
+      "balance_loss": 0.0,
+      "entropy": 1.3862943649291992,
+      "finite": true,
+      "mean_router_probs": [
+        0.25,
+        0.25,
+        0.25,
+        0.25
+      ],
+      "residual_gain": 0.0009991549886763096,
+      "z_loss": 1.9218120574951172
+    }
+  },
+  "schema_version": "d1-wp7-v1",
+  "status": "passed",
+  "train_sample_count": 4,
+  "val_sample_count": 4,
+  "validator_seen": 4
+}

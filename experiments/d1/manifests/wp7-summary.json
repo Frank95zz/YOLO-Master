@@ -1,0 +1,19 @@
+{
+  "failures": [],
+  "gate": "wp7_summary",
+  "gates": {
+    "coco8": "passed",
+    "overfit32": "passed",
+    "parity": "passed"
+  },
+  "identity": {
+    "cache_content_sha256": "0102f2e707b369ca8bfb3d996d54fa0d8ba9eba79787501bd5fe6542f90c1a8d",
+    "cache_contract_sha256": "6bfda0e13bde01001c3f3f2d72631a2401fb9a77b146d6fb2794303e379e47a7",
+    "cache_id": "wp2-train100-a",
+    "code_commit": "a0a05135a3da7228aeabb662003ce125ffe774dc",
+    "schema_version": "d1-wp7-v1",
+    "teacher_weights_sha256": "4610ad75edef83e75afdebf162d148dc628045ea6cbb83d67d4708c709c4f91d"
+  },
+  "schema_version": "d1-wp7-v1",
+  "status": "passed"
+}

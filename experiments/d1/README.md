@@ -25,8 +25,9 @@
 | WP4：缓存特征检测模型 | [WP4.md](WP4.md) | 已完成 |
 | WP5：缓存 Dataset、Trainer 与 Validator | [WP5.md](WP5.md) | 已完成 |
 | WP6：Latent aux 损失闭环 | [WP6.md](WP6.md) | 已完成 |
+| WP7：最小训练与工程验收 | [WP7.md](WP7.md) | 已完成 |
 
-阶段报告记录已经完成的实现、实测结果和复现证据；本文继续维护总体技术方案、WP7-WP8 路线及完整背景。后续阶段沿用 `WPn.md` 的方式补充完成报告。
+阶段报告记录已经完成的实现、实测结果和复现证据；本文继续维护总体技术方案、WP8 路线及完整背景。后续阶段沿用 `WPn.md` 的方式补充完成报告。
 
 `smoke/d1/` 不再承载正式 P0 实现。数据集、DINOv3 权重、特征缓存和训练 checkpoint 不提交 Git，只提交 manifest、校验值、配置、日志摘要和云盘说明。
 
@@ -68,7 +69,7 @@ P0 暂不包含：
 当前缺口：
 
 - 尚未构建完整 COCO train2017/val2017 特征缓存；
-- 尚未执行 32 图过拟合、正式完整训练和 COCO val2017 精度评测。
+- 尚未执行正式完整训练、COCO val2017 精度评测和成本对照实验。
 
 ## 4. P0 固定技术方案
 
@@ -263,13 +264,13 @@ Git 证据位于：
 
 ### WP7：测试与最小训练
 
-- [ ] 教师多层形状、特殊 token、冻结和确定性测试。
-- [ ] 缓存 manifest、失效条件、续跑和 checksum 测试。
-- [ ] 在线特征与缓存特征的 FP16 容差测试。
-- [ ] Adapter 输出 P3/P4/P5 形状测试。
-- [ ] 单 batch 前向、loss、反向和有限值测试。
-- [ ] 32 图过拟合测试。
-- [ ] COCO8 一 epoch 端到端测试。
+- [x] 教师多层形状、特殊 token、冻结和确定性测试。
+- [x] 缓存 manifest、失效条件、续跑和 checksum 测试。
+- [x] 在线特征与缓存特征的 FP16 容差测试。
+- [x] Adapter 输出 P3/P4/P5 形状测试。
+- [x] 单 batch 前向、loss、反向和有限值测试。
+- [x] 32 图过拟合测试。
+- [x] COCO8 一 epoch 端到端测试。
 
 ### WP8：完整 COCO 2017 正式 P0 运行
 
@@ -284,13 +285,14 @@ Git 证据位于：
 ```text
 experiments/d1/
   README.md                         # 本文档，研发与复现入口
-  WP0.md ... WP6.md                # 各阶段完成报告
+  WP0.md ... WP7.md                # 各阶段完成报告
   manifests/                       # 小型数据/缓存/运行 manifest
   results/                         # CSV/JSON 汇总，不放大 checkpoint
 
 scripts/d1/
   prepare_wp0.py                    # WP0 数据、权重与 manifest 准备
   cache_features.py                 # WP2 缓存构建、校验与比较
+  run_wp7.py                        # WP7 parity、最小训练和验收汇总
 
 ultralytics/cfg/experiments/d1/
   p0-dinov3-vits16-coco2017.yaml
