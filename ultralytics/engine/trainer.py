@@ -641,6 +641,11 @@ class BaseTrainer:
     def _compute_hierarchical_distillation_loss(self, images, layer_indices):
         return self.adapter_controller.compute_hierarchical_distillation_loss(images, layer_indices)
 
+    @staticmethod
+    def _optimizer_step_cursor_before_epoch(epoch: int, num_batches: int) -> int:
+        """Return the global batch index immediately before an epoch starts."""
+        return epoch * num_batches - 1
+
     def _do_train(self):
         """Perform the full training loop including setup, epoch iteration, validation, and final evaluation."""
         if self.world_size > 1:
@@ -649,7 +654,7 @@ class BaseTrainer:
 
         nb = len(self.train_loader)  # number of batches
         nw = max(round(self.args.warmup_epochs * nb), 100) if self.args.warmup_epochs > 0 else -1  # warmup iterations
-        last_opt_step = -1
+        last_opt_step = self._optimizer_step_cursor_before_epoch(self.start_epoch, nb)
         self.epoch_time = None
         self.epoch_time_start = time.time()
         self.train_time_start = time.time()
@@ -820,12 +825,14 @@ class BaseTrainer:
             if validated:
                 self._clear_memory(None if self.device.type == "mps" else 0.5)  # prevent VRAM spike
                 if self._recover_before_validation(epoch):
+                    last_opt_step = self._optimizer_step_cursor_before_epoch(epoch, nb)
                     self._finalize_moe_map_saturation_epoch(recovered=True, validated=True)
                     continue
                 self.metrics, self.fitness = self.validate()
 
             # NaN recovery
             if self._handle_nan_recovery(epoch):
+                last_opt_step = self._optimizer_step_cursor_before_epoch(epoch, nb)
                 self._finalize_moe_map_saturation_epoch(recovered=True, validated=validated)
                 continue
             self._finalize_moe_map_saturation_epoch(recovered=False, validated=validated)
