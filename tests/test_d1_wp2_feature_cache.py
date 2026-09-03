@@ -129,6 +129,40 @@ def test_resume_skips_committed_sample_and_appends_next_shard(tmp_path):
     assert report["shard_count"] == 2
 
 
+def test_rank_shard_prefix_is_unique_and_resumes(tmp_path):
+    writer = FeatureCacheWriter(
+        tmp_path,
+        split="train2017",
+        contract=contract(),
+        target_shard_bytes=60,
+        shard_prefix="train2017-r03",
+    )
+    assert add_sample(writer, 1)
+    writer.close()
+    resumed = FeatureCacheWriter(
+        tmp_path,
+        split="train2017",
+        contract=contract(),
+        target_shard_bytes=60,
+        shard_prefix="train2017-r03",
+    )
+    assert add_sample(resumed, 1) is False
+    assert add_sample(resumed, 2)
+    resumed.close()
+
+    assert [path.name for path in sorted(tmp_path.glob("*.safetensors"))] == [
+        "train2017-r03-00000.safetensors",
+        "train2017-r03-00001.safetensors",
+    ]
+    assert verify_feature_cache(tmp_path)["sample_count"] == 2
+
+
+@pytest.mark.parametrize("prefix", ("rank00", "../train2017-r00", "train2017/r00", ""))
+def test_invalid_shard_prefix_fails_fast(tmp_path, prefix):
+    with pytest.raises(ValueError, match="shard_prefix"):
+        FeatureCacheWriter(tmp_path, split="train2017", contract=contract(), shard_prefix=prefix)
+
+
 def test_missing_index_is_rebuilt_from_committed_shard_headers(tmp_path):
     build_cache(tmp_path)
     expected = verify_feature_cache(tmp_path)["content_sha256"]

@@ -168,12 +168,21 @@ class FeatureCacheWriter:
         split: str,
         contract: Mapping[str, Any],
         target_shard_bytes: int = DEFAULT_TARGET_SHARD_BYTES,
+        shard_prefix: str | None = None,
     ) -> None:
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
         self.split = str(split)
         if not _SPLIT_PATTERN.fullmatch(self.split):
             raise ValueError(f"invalid cache split name {self.split!r}.")
+        self.shard_prefix = self.split if shard_prefix is None else str(shard_prefix)
+        if not _SPLIT_PATTERN.fullmatch(self.shard_prefix) or not (
+            self.shard_prefix == self.split or self.shard_prefix.startswith(f"{self.split}-")
+        ):
+            raise ValueError(
+                f"shard_prefix must equal {self.split!r} or start with {self.split + '-'!r}, "
+                f"got {self.shard_prefix!r}."
+            )
         if type(target_shard_bytes) is not int or target_shard_bytes <= 0:
             raise ValueError("target_shard_bytes must be a positive integer.")
         self.target_shard_bytes = target_shard_bytes
@@ -290,7 +299,7 @@ class FeatureCacheWriter:
             return
         _safe_open, save_file = _safetensors_api()
         while True:
-            shard_name = f"{self.split}-{self._next_shard:05d}.safetensors"
+            shard_name = f"{self.shard_prefix}-{self._next_shard:05d}.safetensors"
             self._next_shard += 1
             shard_path = self.root / shard_name
             if not shard_path.exists():
@@ -378,7 +387,7 @@ class FeatureCacheWriter:
                 "bytes": size,
                 "sha256": shard_sha256 or sha256_file(shard_path),
             }
-            match = re.fullmatch(rf"{re.escape(self.split)}-(\d+)\.safetensors", shard_path.name)
+            match = re.fullmatch(rf"{re.escape(self.shard_prefix)}-(\d+)\.safetensors", shard_path.name)
             if match:
                 self._next_shard = max(self._next_shard, int(match.group(1)) + 1)
 
