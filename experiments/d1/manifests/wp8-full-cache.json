@@ -1,0 +1,32 @@
+{
+  "code_commit": "5b5e4affa056a8e4c10510a037df503b24f53e57",
+  "contract_sha256": "6bfda0e13bde01001c3f3f2d72631a2401fb9a77b146d6fb2794303e379e47a7",
+  "schema_version": "d1-wp8-full-cache-evidence-v1",
+  "status": "passed",
+  "teacher_weights_sha256": "4610ad75edef83e75afdebf162d148dc628045ea6cbb83d67d4708c709c4f91d",
+  "total_cache_bytes": 454672172600,
+  "total_sample_count": 123287,
+  "total_shard_count": 216,
+  "total_tensor_bytes": 454485196800,
+  "total_tensor_count": 369861,
+  "train2017": {
+    "aggregate_images_per_second": 69.95593371457903,
+    "cache_bytes": 436232631192,
+    "content_sha256": "0224bbd302faf62b39e914be11f4d3469f7567791ce48994a9fc0f378e070cbe",
+    "end_to_end_images_per_second": 54.28754926804616,
+    "final_verification_seconds": 1326.904439408332,
+    "sample_count": 118287,
+    "shard_count": 204,
+    "worker_wall_seconds": 2178.8974008746445
+  },
+  "val2017": {
+    "aggregate_images_per_second": 78.85386884676319,
+    "cache_bytes": 18439541408,
+    "content_sha256": "cd5840678d79550482aaf4110b9e68b8c22819f2f6b31e0af40f0e5b7476fa1b",
+    "end_to_end_images_per_second": 62.562221135776404,
+    "final_verification_seconds": 28.584768306463957,
+    "sample_count": 5000,
+    "shard_count": 12,
+    "worker_wall_seconds": 79.920436155051
+  }
+}

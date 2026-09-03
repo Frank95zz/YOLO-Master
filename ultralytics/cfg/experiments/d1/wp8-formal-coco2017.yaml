@@ -1,0 +1,40 @@
+# D1 WP8 formal COCO 2017 training contract. Runtime paths are supplied by the CLI.
+schema_version: d1-wp8-train-v1
+seed: 0
+deterministic: true
+
+hardware:
+  world_size: 6
+  devices: "0,1,2,3,4,5"
+
+train:
+  epochs: 100
+  batch: 48
+  nbs: 48
+  workers: 4
+  amp: true
+  optimizer: AdamW
+  lr0: 0.001
+  lrf: 0.01
+  momentum: 0.9
+  weight_decay: 0.0005
+  warmup_epochs: 3.0
+  cos_lr: true
+  patience: 100
+  save: true
+  save_period: 10
+  val: true
+  plots: false
+  pretrained: false
+  fraction: 1.0
+  cache: false
+  compile: false
+
+acceptance:
+  train_samples: 118287
+  val_samples: 5000
+  require_epochs: 100
+  require_finite_metrics: true
+  require_strict_checkpoint_reload: true
+  require_teacher_parameter_count: 0
+  accuracy_threshold: null
