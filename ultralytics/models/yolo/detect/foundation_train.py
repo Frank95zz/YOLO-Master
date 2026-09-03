@@ -19,7 +19,7 @@ from ultralytics.nn.foundation_detection_model import (
 )
 from ultralytics.nn.tasks import load_checkpoint
 from ultralytics.utils import DEFAULT_CFG, LOCAL_RANK, LOGGER, RANK, colorstr
-from ultralytics.utils.torch_utils import strip_optimizer, torch_distributed_zero_first, unwrap_model
+from ultralytics.utils.torch_utils import TORCH_2_4, strip_optimizer, torch_distributed_zero_first, unwrap_model
 
 
 _DISABLED_AUGMENTATIONS = (
@@ -66,16 +66,54 @@ class D1FoundationDetectionTrainer(DetectionTrainer):
         feature_caches: Mapping[str, str | Path],
         validation_feature_mode: str = "cache",
         online_feature_provider: FeatureProvider | None = None,
+        trusted_feature_cache: bool = False,
+        max_open_feature_shards: int = 0,
+        feature_prefetch_factor: int = 4,
+        amp_init_scale: float | None = None,
+        amp_growth_interval: int = 2_000,
     ) -> None:
         self.feature_caches = _cache_paths(feature_caches)
+        if type(trusted_feature_cache) is not bool:
+            raise TypeError("trusted_feature_cache must be a boolean.")
+        if type(max_open_feature_shards) is not int or max_open_feature_shards < 0:
+            raise ValueError("max_open_feature_shards must be a non-negative integer.")
+        if type(feature_prefetch_factor) is not int or feature_prefetch_factor <= 0:
+            raise ValueError("feature_prefetch_factor must be a positive integer.")
+        if amp_init_scale is not None and (not isinstance(amp_init_scale, (int, float)) or amp_init_scale <= 0):
+            raise ValueError("amp_init_scale must be a positive number or None.")
+        if type(amp_growth_interval) is not int or amp_growth_interval <= 0:
+            raise ValueError("amp_growth_interval must be a positive integer.")
         if validation_feature_mode not in {"cache", "online"}:
             raise ValueError("validation_feature_mode must be 'cache' or 'online'.")
         if validation_feature_mode == "online" and not callable(online_feature_provider):
             raise ValueError("online validation requires an online_feature_provider callable.")
         self.validation_feature_mode = validation_feature_mode
         self.online_feature_provider = online_feature_provider
+        self.trusted_feature_cache = trusted_feature_cache
+        self.max_open_feature_shards = max_open_feature_shards
+        self.feature_prefetch_factor = feature_prefetch_factor
+        self.amp_init_scale = float(amp_init_scale) if amp_init_scale is not None else None
+        self.amp_growth_interval = amp_growth_interval
         super().__init__(cfg=cfg, overrides=overrides, _callbacks=_callbacks)
         self._validate_d1_args()
+
+    def _setup_train(self) -> None:
+        super()._setup_train()
+        if self.amp and self.amp_init_scale is not None:
+            self.scaler = (
+                torch.amp.GradScaler(
+                    "cuda",
+                    enabled=True,
+                    init_scale=self.amp_init_scale,
+                    growth_interval=self.amp_growth_interval,
+                )
+                if TORCH_2_4
+                else torch.cuda.amp.GradScaler(
+                    enabled=True,
+                    init_scale=self.amp_init_scale,
+                    growth_interval=self.amp_growth_interval,
+                )
+            )
 
     def _validate_d1_args(self) -> None:
         if self.args.imgsz != 640:
@@ -136,6 +174,9 @@ class D1FoundationDetectionTrainer(DetectionTrainer):
             data=self.data,
             feature_mode=feature_mode,
             online_feature_provider=self.online_feature_provider if mode == "val" else None,
+            trusted_cache=self.trusted_feature_cache and feature_mode == "cache",
+            max_open_shards=self.max_open_feature_shards,
+            prefetch_factor=self.feature_prefetch_factor,
             imgsz=self.args.imgsz,
             batch_size=batch or self.args.batch,
             hyp=self.args,
@@ -178,6 +219,9 @@ class D1FoundationDetectionTrainer(DetectionTrainer):
             feature_cache=self.feature_caches["val"],
             feature_mode=self.validation_feature_mode,
             online_feature_provider=self.online_feature_provider,
+            trusted_cache=self.trusted_feature_cache,
+            max_open_shards=self.max_open_feature_shards,
+            prefetch_factor=self.feature_prefetch_factor,
         )
 
     def auto_batch(self, max_num_obj: int = 0, dataset_size: int = 0):

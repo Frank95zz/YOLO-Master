@@ -119,6 +119,25 @@ def test_cache_dataset_maps_sample_id_without_loading_rgb(tmp_path, monkeypatch)
     assert torch.equal(sample["cls"], torch.tensor([[0.0]]))
 
 
+
+def test_trusted_cache_checks_each_shard_only_once_per_worker(tmp_path, monkeypatch) -> None:
+    dataset = make_dataset(tmp_path, trusted_cache=True, max_open_shards=2, prefetch_factor=1)
+    original = torch.isfinite
+    calls = 0
+
+    def counted_isfinite(value):
+        nonlocal calls
+        calls += 1
+        return original(value)
+
+    monkeypatch.setattr(torch, "isfinite", counted_isfinite)
+    first = dataset[0]["features"]
+    repeated = dataset[0]["features"]
+
+    assert calls == len(D1_FEATURE_NAMES)
+    assert all(torch.equal(first[name], repeated[name]) for name in D1_FEATURE_NAMES)
+    assert dataset.feature_reader.max_open_shards == 2
+    assert dataset.prefetch_factor == 1
 def test_collate_exposes_virtual_640_shape_without_rgb_tensor(tmp_path) -> None:
     dataset = make_dataset(tmp_path)
     batch = dataset.collate_fn([dataset[0], dataset[1]])

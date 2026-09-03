@@ -250,3 +250,33 @@ def test_failed_shard_save_preserves_part_file(tmp_path, monkeypatch):
 
     assert (tmp_path / ".train2017-00000.safetensors.part").read_bytes() == b"partial"
     assert not list(tmp_path.glob("*.safetensors"))
+
+
+def test_reader_reuses_and_evicts_shard_handles(tmp_path, monkeypatch):
+    build_cache(tmp_path)
+    safe_open, save_file = cache_module._safetensors_api()
+    calls = []
+
+    def counted_safe_open(*args, **kwargs):
+        calls.append(Path(args[0]).name)
+        return safe_open(*args, **kwargs)
+
+    monkeypatch.setattr(cache_module, "_safetensors_api", lambda: (counted_safe_open, save_file))
+    reader = FeatureCacheReader(tmp_path, max_open_shards=1)
+    reader.get("train2017/000000000001")
+    reader.get("train2017/000000000001")
+    reader.get("train2017/000000000002")
+    reader.get("train2017/000000000001")
+    reader.close()
+
+    assert calls == [
+        "train2017-00000.safetensors",
+        "train2017-00001.safetensors",
+        "train2017-00000.safetensors",
+    ]
+
+
+@pytest.mark.parametrize("value", (-1, 1.5, True))
+def test_reader_rejects_invalid_handle_cache_size(tmp_path, value):
+    with pytest.raises(ValueError, match="max_open_shards"):
+        FeatureCacheReader(tmp_path, max_open_shards=value)

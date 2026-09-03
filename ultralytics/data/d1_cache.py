@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from copy import deepcopy
+import os
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -123,6 +124,7 @@ def _validated_features(
     value: Mapping[str, torch.Tensor] | Any,
     *,
     sample_id: str,
+    check_finite: bool = True,
 ) -> dict[str, torch.Tensor]:
     dense = value.dense if hasattr(value, "dense") else value
     if not isinstance(dense, Mapping):
@@ -144,7 +146,7 @@ def _validated_features(
             raise ValueError(f"feature {name!r} for {sample_id!r} must be on CPU before collation.")
         if tensor.requires_grad:
             raise ValueError(f"feature {name!r} for {sample_id!r} must not require gradients.")
-        if not torch.isfinite(tensor).all():
+        if check_finite and not torch.isfinite(tensor).all():
             raise ValueError(f"feature {name!r} for {sample_id!r} contains NaN or Inf.")
         result[name] = tensor
     return result
@@ -161,6 +163,9 @@ class D1FeatureCacheDataset(YOLODataset):
         data: dict[str, Any],
         feature_mode: str = "cache",
         online_feature_provider: FeatureProvider | None = None,
+        trusted_cache: bool = False,
+        max_open_shards: int = 0,
+        prefetch_factor: int = 4,
         imgsz: int = D1_IMAGE_SIZE,
         batch_size: int = 16,
         hyp: Any,
@@ -176,10 +181,18 @@ class D1FeatureCacheDataset(YOLODataset):
             raise ValueError("feature_mode must be 'cache' or 'online'.")
         if feature_mode == "online" and not callable(online_feature_provider):
             raise ValueError("online mode requires an online_feature_provider callable.")
-        self.feature_reader = FeatureCacheReader(cache_dir)
+        if type(trusted_cache) is not bool:
+            raise TypeError("trusted_cache must be a boolean.")
+        if type(prefetch_factor) is not int or prefetch_factor <= 0:
+            raise ValueError("prefetch_factor must be a positive integer.")
+        self.feature_reader = FeatureCacheReader(cache_dir, max_open_shards=max_open_shards)
         _validate_cache_contract(self.feature_reader)
         self.feature_mode = feature_mode
         self.online_feature_provider = online_feature_provider
+        self.trusted_cache = trusted_cache
+        self.prefetch_factor = prefetch_factor
+        self._finite_check_pid = os.getpid()
+        self._finite_checked_shards: set[str] = set()
         super().__init__(
             img_path=img_path,
             imgsz=imgsz,
@@ -218,6 +231,14 @@ class D1FeatureCacheDataset(YOLODataset):
             if record["split"] != expected_tail[0]:
                 raise ValueError(f"cache record {sample_id!r} has inconsistent split {record['split']!r}.")
 
+    def _requires_finite_check(self, sample_id: str) -> tuple[bool, str]:
+        shard = self.feature_reader.records[sample_id]["shard"]
+        pid = os.getpid()
+        if pid != self._finite_check_pid:
+            self._finite_check_pid = pid
+            self._finite_checked_shards = set()
+        return not self.trusted_cache or shard not in self._finite_checked_shards, shard
+
     def build_transforms(self, hyp: Any = None):
         """RGB transforms are intentionally absent because WP2 already fixed preprocessing."""
         return None
@@ -226,9 +247,13 @@ class D1FeatureCacheDataset(YOLODataset):
         sample_id = self.sample_ids[index]
         if self.feature_mode == "cache":
             value = self.feature_reader.get(sample_id)
-        else:
-            value = self.online_feature_provider(self.im_files[index])
-        return _validated_features(value, sample_id=sample_id)
+            check_finite, shard = self._requires_finite_check(sample_id)
+            result = _validated_features(value, sample_id=sample_id, check_finite=check_finite)
+            if self.trusted_cache and check_finite:
+                self._finite_checked_shards.add(shard)
+            return result
+        value = self.online_feature_provider(self.im_files[index])
+        return _validated_features(value, sample_id=sample_id, check_finite=True)
 
     def compare_online_with_cache(
         self,

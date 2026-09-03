@@ -64,6 +64,22 @@ def load_contract(path: Path) -> dict[str, Any]:
     world_size = hardware.get("world_size")
     if world_size != 6 or devices != ("0", "1", "2", "3", "4", "5"):
         raise ValueError("WP8 requires exactly CUDA devices 0,1,2,3,4,5.")
+    cache_io = contract.get("cache_io", {})
+    if cache_io.get("trusted") is not True:
+        raise ValueError("WP8 requires a preflight-verified trusted feature cache.")
+    max_open_shards = cache_io.get("max_open_shards_per_worker")
+    if type(max_open_shards) is not int or max_open_shards <= 0:
+        raise ValueError("WP8 max_open_shards_per_worker must be a positive integer.")
+    prefetch_factor = cache_io.get("prefetch_factor")
+    if type(prefetch_factor) is not int or prefetch_factor <= 0:
+        raise ValueError("WP8 cache prefetch_factor must be a positive integer.")
+    runtime = contract.get("runtime", {})
+    amp_init_scale = runtime.get("amp_init_scale")
+    if not isinstance(amp_init_scale, (int, float)) or amp_init_scale <= 0:
+        raise ValueError("WP8 amp_init_scale must be a positive number.")
+    amp_growth_interval = runtime.get("amp_growth_interval")
+    if type(amp_growth_interval) is not int or amp_growth_interval <= 0:
+        raise ValueError("WP8 amp_growth_interval must be a positive integer.")
     train = contract.get("train", {})
     required = {
         "epochs": 100,
@@ -246,6 +262,8 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
         "global_batch": contract["train"]["batch"],
         "per_gpu_batch": contract["train"]["batch"] // contract["hardware"]["world_size"],
         "world_size": contract["hardware"]["world_size"],
+        "cache_io": dict(contract["cache_io"]),
+        "runtime": dict(contract["runtime"]),
     }
     identity_path = args.run_root / "inputs/identity.json"
     if identity_path.is_file() and load_json(identity_path) != identity:
@@ -350,9 +368,15 @@ def train(args: argparse.Namespace) -> dict[str, Any]:
             raise FileNotFoundError(args.resume)
         overrides["resume"] = str(args.resume.resolve())
     telemetry = EpochTelemetry(args.report_dir)
+    cache_io = contract["cache_io"]
     trainer = D1FoundationDetectionTrainer(
         overrides=overrides,
         feature_caches={"train": args.train_cache, "val": args.val_cache},
+        trusted_feature_cache=cache_io["trusted"],
+        max_open_feature_shards=cache_io["max_open_shards_per_worker"],
+        feature_prefetch_factor=cache_io["prefetch_factor"],
+        amp_init_scale=contract["runtime"]["amp_init_scale"],
+        amp_growth_interval=contract["runtime"]["amp_growth_interval"],
     )
     trainer.add_callback("on_pretrain_routine_end", telemetry.on_pretrain_routine_end)
     trainer.add_callback("on_train_batch_start", telemetry.on_train_batch_start)

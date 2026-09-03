@@ -7,6 +7,15 @@ hardware:
   world_size: 6
   devices: "0,1,2,3,4,5"
 
+cache_io:
+  trusted: true
+  max_open_shards_per_worker: 4
+  prefetch_factor: 1
+
+runtime:
+  amp_init_scale: 16
+  amp_growth_interval: 1000000
+
 train:
   epochs: 100
   batch: 48

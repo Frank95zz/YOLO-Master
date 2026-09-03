@@ -6,7 +6,7 @@ import hashlib
 import json
 import os
 import re
-from collections import Counter
+from collections import Counter, OrderedDict
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -471,8 +471,13 @@ class FeatureCacheWriter:
 class FeatureCacheReader:
     """Read samples from a verified portable feature-cache index."""
 
-    def __init__(self, root: str | Path) -> None:
+    def __init__(self, root: str | Path, *, max_open_shards: int = 0) -> None:
+        if type(max_open_shards) is not int or max_open_shards < 0:
+            raise ValueError("max_open_shards must be a non-negative integer.")
         self.root = Path(root)
+        self.max_open_shards = max_open_shards
+        self._handle_pid = os.getpid()
+        self._open_shards: OrderedDict[tuple[str, str], tuple[Any, Any]] = OrderedDict()
         index_path = self.root / INDEX_FILENAME
         if not index_path.is_file():
             raise FileNotFoundError(index_path)
@@ -500,17 +505,62 @@ class FeatureCacheReader:
         if len(self.records) != self.index.get("sample_count"):
             raise ValueError("feature cache sample count does not match index.")
 
+    def _close_open_shards(self) -> None:
+        while self._open_shards:
+            _key, (context, _handle) = self._open_shards.popitem(last=False)
+            context.__exit__(None, None, None)
+
+    def _reset_after_fork(self) -> None:
+        pid = os.getpid()
+        if pid != self._handle_pid:
+            # Handles opened by a parent process must never be reused by a DataLoader worker.
+            self._open_shards = OrderedDict()
+            self._handle_pid = pid
+
+    def _open_cached_shard(self, path: Path, device: str) -> Any:
+        self._reset_after_fork()
+        key = (str(path), device)
+        cached = self._open_shards.pop(key, None)
+        if cached is not None:
+            self._open_shards[key] = cached
+            return cached[1]
+        safe_open, _save_file = _safetensors_api()
+        context = safe_open(path, framework="pt", device=device)
+        handle = context.__enter__()
+        self._open_shards[key] = (context, handle)
+        while len(self._open_shards) > self.max_open_shards:
+            _old_key, (old_context, _old_handle) = self._open_shards.popitem(last=False)
+            old_context.__exit__(None, None, None)
+        return handle
+
     def get(self, sample_id: str, *, device: str | torch.device = "cpu") -> dict[str, torch.Tensor]:
         record = self.records.get(str(sample_id))
         if record is None:
             raise KeyError(sample_id)
         shard_path = self.root / record["shard"]
-        safe_open, _save_file = _safetensors_api()
+        device_name = str(device)
         features = {}
-        with safe_open(shard_path, framework="pt", device=str(device)) as handle:
+        if self.max_open_shards:
+            handle = self._open_cached_shard(shard_path, device_name)
+            for name in self.contract["feature_names"]:
+                features[name] = handle.get_tensor(record["tensors"][name]["key"])
+            return features
+        safe_open, _save_file = _safetensors_api()
+        with safe_open(shard_path, framework="pt", device=device_name) as handle:
             for name in self.contract["feature_names"]:
                 features[name] = handle.get_tensor(record["tensors"][name]["key"])
         return features
+
+    def close(self) -> None:
+        """Close cached safetensors handles owned by the current process."""
+        if os.getpid() == self._handle_pid:
+            self._close_open_shards()
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
 
 
 def verify_feature_cache(root: str | Path, *, full_tensor_hash: bool = True) -> dict[str, Any]:

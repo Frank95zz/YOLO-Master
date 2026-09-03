@@ -26,6 +26,9 @@ class D1FoundationDetectionValidator(DetectionValidator):
         feature_cache: str | Path,
         feature_mode: str = "cache",
         online_feature_provider: FeatureProvider | None = None,
+        trusted_cache: bool = False,
+        max_open_shards: int = 0,
+        prefetch_factor: int = 4,
     ) -> None:
         self.feature_cache = Path(feature_cache).expanduser()
         if not self.feature_cache.is_dir():
@@ -36,6 +39,15 @@ class D1FoundationDetectionValidator(DetectionValidator):
             raise ValueError("online mode requires an online_feature_provider callable.")
         self.feature_mode = feature_mode
         self.online_feature_provider = online_feature_provider
+        if type(trusted_cache) is not bool:
+            raise TypeError("trusted_cache must be a boolean.")
+        if type(max_open_shards) is not int or max_open_shards < 0:
+            raise ValueError("max_open_shards must be a non-negative integer.")
+        if type(prefetch_factor) is not int or prefetch_factor <= 0:
+            raise ValueError("prefetch_factor must be a positive integer.")
+        self.trusted_cache = trusted_cache
+        self.max_open_shards = max_open_shards
+        self.prefetch_factor = prefetch_factor
         super().__init__(dataloader=dataloader, save_dir=save_dir, args=args, _callbacks=_callbacks)
 
     def __call__(self, trainer=None, model=None):
@@ -57,6 +69,9 @@ class D1FoundationDetectionValidator(DetectionValidator):
             data=self.data,
             feature_mode=self.feature_mode,
             online_feature_provider=self.online_feature_provider,
+            trusted_cache=self.trusted_cache and self.feature_mode == "cache",
+            max_open_shards=self.max_open_shards,
+            prefetch_factor=self.prefetch_factor,
             imgsz=self.args.imgsz,
             batch_size=batch or self.args.batch,
             hyp=self.args,

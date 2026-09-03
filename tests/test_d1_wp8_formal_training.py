@@ -71,6 +71,12 @@ def test_formal_contract_locks_six_gpu_training_and_has_no_host_paths():
 
     assert contract["schema_version"] == SCHEMA_VERSION
     assert contract["hardware"] == {"world_size": 6, "devices": "0,1,2,3,4,5"}
+    assert contract["cache_io"] == {
+        "trusted": True,
+        "max_open_shards_per_worker": 4,
+        "prefetch_factor": 1,
+    }
+    assert contract["runtime"] == {"amp_init_scale": 16, "amp_growth_interval": 1_000_000}
     assert contract["train"]["batch"] == 48
     assert contract["train"]["batch"] // contract["hardware"]["world_size"] == 8
     assert contract["train"]["epochs"] == 100
