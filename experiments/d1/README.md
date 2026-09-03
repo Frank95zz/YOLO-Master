@@ -26,7 +26,7 @@
 | WP5：缓存 Dataset、Trainer 与 Validator | [WP5.md](WP5.md) | 已完成 |
 | WP6：Latent aux 损失闭环 | [WP6.md](WP6.md) | 已完成 |
 | WP7：最小训练与工程验收 | [WP7.md](WP7.md) | 已完成 |
-| WP8：六卡缓存准备与启动门禁 | [WP8.md](WP8.md) | 门禁未通过，完整缓存未启动 |
+| WP8：完整 COCO 正式训练 | [WP8.md](WP8.md) | 缓存与训练准备完成，待审核启动 |
 
 阶段报告记录已经完成的实现、实测结果和复现证据；本文继续维护总体技术方案、WP8 路线及完整背景。后续阶段沿用 `WPn.md` 的方式补充完成报告。
 
@@ -69,8 +69,9 @@ P0 暂不包含：
 
 当前缺口：
 
-- 尚未构建完整 COCO train2017/val2017 特征缓存；
-- 尚未执行正式完整训练、COCO val2017 精度评测和成本对照实验。
+- 已完成并完整校验 COCO train2017/val2017 特征缓存；
+- 尚未执行正式完整训练和 COCO val2017 精度评测；
+- P1 同预算成本对照和第二数据集实验不属于本次 WP8 P0 运行。
 
 ## 4. P0 固定技术方案
 
@@ -275,6 +276,9 @@ Git 证据位于：
 
 ### WP8：完整 COCO 2017 正式 P0 运行
 
+- [x] 完成并校验完整 train2017/val2017 特征缓存。
+- [x] 固定六卡 DDP 配方、运行身份、恢复和汇总入口。
+- [x] 写明启动前实验合同，等待审核确认。
 - [ ] 固定单 seed 训练，不在正式运行中继续调参。
 - [ ] 保存训练配置、日志、checkpoint、metrics JSON 和环境信息。
 - [ ] 输出 COCO mAP50-95、mAP50、训练时长和峰值显存。
@@ -295,9 +299,11 @@ scripts/d1/
   cache_features.py                 # WP2 缓存构建、校验与比较
   run_wp7.py                        # WP7 parity、最小训练和验收汇总
   run_wp8.py                        # WP8 六卡缓存调度、基准与合并
+  run_wp8_train.py                  # WP8 正式训练 preflight、DDP 与汇总
 
 ultralytics/cfg/experiments/d1/
   p0-dinov3-vits16-coco2017.yaml
+  wp8-formal-coco2017.yaml          # 六卡正式训练合同
 
 ultralytics/cfg/models/26/
   yolo26-d1-dinov3-latent-n.yaml   # 下游 Adapter/Latent/Detect 配置
@@ -325,6 +331,9 @@ tests/
   test_d1_wp4_foundation_detection_model.py
   test_d1_wp5_cached_pipeline.py
   test_d1_wp6_latent_aux.py
+  test_d1_wp7_acceptance.py
+  test_d1_wp8_multi_gpu_cache.py
+  test_d1_wp8_formal_training.py
 ```
 
 文件名是当前建议，实施时可以依据现有模块边界微调，但职责不得混入 `smoke/d1/`。
