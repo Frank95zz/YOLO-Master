@@ -229,6 +229,52 @@ nvidia-smi
 
 每个 epoch 结束后，六个 rank 分别保存数据等待时间、训练 step 时间、峰值显存和 Router 状态；rank 0 另存验证覆盖数量与指标。恢复运行会按 rank/epoch 原子覆盖同名报告，不生成逐 batch 大日志。
 
+### 8.1 训练结束后自动释放特征页缓存
+
+正式训练应由 `run_with_cache_cleanup.py` 包装。包装器直接执行参数列表，不经过 shell；训练正常结束、失败，或收到 `SIGINT`/`SIGTERM` 后，都会对显式指定的 `.safetensors` 文件调用 `POSIX_FADV_DONTNEED`。该操作只驱逐可从磁盘重新读取的文件页，不删除或修改缓存，不使用全局 `drop_caches` 或临时内存压力。
+
+```bash
+export D1_CACHE_ROOT=/path/to/d1_feature_cache
+
+python scripts/d1/run_with_cache_cleanup.py \
+  --cache-path "$D1_CACHE_ROOT/coco2017-train2017-d1-cache-v1" \
+  --cache-path "$D1_CACHE_ROOT/coco2017-val2017-d1-cache-v1" \
+  --report "$D1_REPORT_DIR/post-train-cache-release.json" \
+  -- \
+  python -m torch.distributed.run \
+    --nproc_per_node 6 \
+    --master_port 29518 \
+    scripts/d1/run_wp8_train.py \
+    --workspace "$D1_WORKSPACE" \
+    --train-cache "$D1_CACHE_ROOT/coco2017-train2017-d1-cache-v1" \
+    --val-cache "$D1_CACHE_ROOT/coco2017-val2017-d1-cache-v1" \
+    --run-root "$D1_RUN_ROOT" \
+    --report-dir "$D1_REPORT_DIR" \
+    train
+```
+
+后台启动时，`nohup` 应包装最外层的缓存清理脚本，而不是只包装内部 `torchrun`：
+
+```bash
+nohup python scripts/d1/run_with_cache_cleanup.py \
+  --cache-path "$D1_CACHE_ROOT/coco2017-train2017-d1-cache-v1" \
+  --cache-path "$D1_CACHE_ROOT/coco2017-val2017-d1-cache-v1" \
+  --report "$D1_REPORT_DIR/post-train-cache-release.json" \
+  -- \
+  python -m torch.distributed.run \
+    --nproc_per_node 6 \
+    --master_port 29518 \
+    scripts/d1/run_wp8_train.py \
+    --workspace "$D1_WORKSPACE" \
+    --train-cache "$D1_CACHE_ROOT/coco2017-train2017-d1-cache-v1" \
+    --val-cache "$D1_CACHE_ROOT/coco2017-val2017-d1-cache-v1" \
+    --run-root "$D1_RUN_ROOT" \
+    --report-dir "$D1_REPORT_DIR" \
+    train >"$D1_WORKSPACE/logs/wp8-formal-$D1_COMMIT.log" 2>&1 &
+```
+
+若训练进程被 `SIGKILL`、容器重启或节点回收，任何进程内清理逻辑都无法执行。恢复服务器后可不带训练命令单独运行该脚本，只执行缓存驱逐。
+
 ## 9. 评测指标与验收
 
 正式报告必须包含：
