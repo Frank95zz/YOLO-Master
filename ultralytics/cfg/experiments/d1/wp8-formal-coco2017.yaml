@@ -1,11 +1,12 @@
 # D1 WP8 formal COCO 2017 training contract. Runtime paths are supplied by the CLI.
-schema_version: d1-wp8-train-v1
+schema_version: d1-wp8-train-v2
 seed: 0
 deterministic: true
 
 hardware:
   world_size: 6
   devices: "0,1,2,3,4,5"
+  per_gpu_batch: 64
 
 cache_io:
   trusted: true
@@ -15,11 +16,12 @@ cache_io:
 runtime:
   amp_init_scale: 16
   amp_growth_interval: 1000000
+  gradient_accumulation: 1
 
 train:
   epochs: 100
-  batch: 48
-  nbs: 48
+  batch: 384
+  nbs: 384
   workers: 4
   amp: true
   optimizer: AdamW

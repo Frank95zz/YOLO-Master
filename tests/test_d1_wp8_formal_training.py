@@ -70,15 +70,23 @@ def test_formal_contract_locks_six_gpu_training_and_has_no_host_paths():
     contract = load_contract(CONFIG_PATH)
 
     assert contract["schema_version"] == SCHEMA_VERSION
-    assert contract["hardware"] == {"world_size": 6, "devices": "0,1,2,3,4,5"}
+    assert contract["hardware"] == {
+        "world_size": 6,
+        "devices": "0,1,2,3,4,5",
+        "per_gpu_batch": 64,
+    }
     assert contract["cache_io"] == {
         "trusted": True,
         "max_open_shards_per_worker": 4,
         "prefetch_factor": 1,
     }
-    assert contract["runtime"] == {"amp_init_scale": 16, "amp_growth_interval": 1_000_000}
-    assert contract["train"]["batch"] == 48
-    assert contract["train"]["batch"] // contract["hardware"]["world_size"] == 8
+    assert contract["runtime"] == {
+        "amp_init_scale": 16,
+        "amp_growth_interval": 1_000_000,
+        "gradient_accumulation": 1,
+    }
+    assert contract["train"]["batch"] == 384
+    assert contract["train"]["batch"] // contract["hardware"]["world_size"] == 64
     assert contract["train"]["epochs"] == 100
     assert contract["train"]["amp"] is True
     assert contract["acceptance"]["accuracy_threshold"] is None
@@ -93,8 +101,9 @@ def test_training_overrides_preserve_p0_geometry_and_lock_runtime(tmp_path):
     overrides = training_overrides(REPO_ROOT, contract, tmp_path / "data.yaml", tmp_path / "formal")
 
     assert overrides["device"] == "0,1,2,3,4,5"
-    assert overrides["batch"] == 48
-    assert overrides["nbs"] == 48
+    assert overrides["batch"] == 384
+    assert overrides["nbs"] == 384
+    assert overrides["workers"] == 4
     assert overrides["mosaic"] == 0.0
     assert overrides["mixup"] == 0.0
     assert overrides["copy_paste"] == 0.0

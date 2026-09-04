@@ -29,11 +29,14 @@ from ultralytics.utils import YAML
 from ultralytics.utils.torch_utils import unwrap_model
 
 
-SCHEMA_VERSION = "d1-wp8-train-v1"
+SCHEMA_VERSION = "d1-wp8-train-v2"
 SPLIT_COUNTS = {"train2017": 118_287, "val2017": 5_000}
 FEATURE_NAMES = ("block4", "block8", "block12")
 OUTPUT_LAYERS = (4, 8, 12)
 EXPECTED_SHAPE = (384, 40, 40)
+WORLD_SIZE = 6
+PER_GPU_BATCH = 64
+GLOBAL_BATCH = WORLD_SIZE * PER_GPU_BATCH
 
 
 def write_json(path: Path, payload: Any) -> None:
@@ -62,8 +65,11 @@ def load_contract(path: Path) -> dict[str, Any]:
     hardware = contract.get("hardware", {})
     devices = tuple(str(hardware.get("devices", "")).split(","))
     world_size = hardware.get("world_size")
-    if world_size != 6 or devices != ("0", "1", "2", "3", "4", "5"):
+    per_gpu_batch = hardware.get("per_gpu_batch")
+    if world_size != WORLD_SIZE or devices != ("0", "1", "2", "3", "4", "5"):
         raise ValueError("WP8 requires exactly CUDA devices 0,1,2,3,4,5.")
+    if per_gpu_batch != PER_GPU_BATCH:
+        raise ValueError(f"WP8 requires exactly {PER_GPU_BATCH} images per GPU.")
     cache_io = contract.get("cache_io", {})
     if cache_io.get("trusted") is not True:
         raise ValueError("WP8 requires a preflight-verified trusted feature cache.")
@@ -80,24 +86,41 @@ def load_contract(path: Path) -> dict[str, Any]:
     amp_growth_interval = runtime.get("amp_growth_interval")
     if type(amp_growth_interval) is not int or amp_growth_interval <= 0:
         raise ValueError("WP8 amp_growth_interval must be a positive integer.")
+    if runtime.get("gradient_accumulation") != 1:
+        raise ValueError("WP8 requires gradient_accumulation=1.")
     train = contract.get("train", {})
     required = {
         "epochs": 100,
-        "batch": 48,
-        "nbs": 48,
+        "batch": GLOBAL_BATCH,
+        "nbs": GLOBAL_BATCH,
+        "workers": 4,
         "amp": True,
         "optimizer": "AdamW",
+        "lr0": 0.001,
+        "lrf": 0.01,
+        "momentum": 0.9,
+        "weight_decay": 0.0005,
+        "warmup_epochs": 3.0,
+        "cos_lr": True,
+        "patience": 100,
+        "save": True,
+        "save_period": 10,
         "pretrained": False,
         "fraction": 1.0,
         "cache": False,
         "compile": False,
         "val": True,
+        "plots": False,
     }
     mismatches = [name for name, value in required.items() if train.get(name) != value]
     if mismatches:
         raise ValueError("WP8 formal training contract mismatch: " + ", ".join(mismatches))
     if train["batch"] % world_size:
         raise ValueError("WP8 global batch must be divisible by world_size.")
+    if train["batch"] // world_size != per_gpu_batch:
+        raise ValueError("WP8 global and per-GPU batch settings disagree.")
+    if max(round(train["nbs"] / train["batch"]), 1) != runtime["gradient_accumulation"]:
+        raise ValueError("WP8 nbs and batch do not resolve to the registered accumulation.")
     acceptance = contract.get("acceptance", {})
     if acceptance.get("train_samples") != SPLIT_COUNTS["train2017"]:
         raise ValueError("WP8 train sample count is not locked to official COCO 2017.")
@@ -259,11 +282,30 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
         "model_config_sha256": sha256_file(Path(overrides["model"])),
         "train_cache": train_cache,
         "val_cache": val_cache,
+        "seed": contract["seed"],
+        "deterministic": contract["deterministic"],
         "global_batch": contract["train"]["batch"],
         "per_gpu_batch": contract["train"]["batch"] // contract["hardware"]["world_size"],
+        "nbs": contract["train"]["nbs"],
+        "gradient_accumulation": contract["runtime"]["gradient_accumulation"],
         "world_size": contract["hardware"]["world_size"],
+        "devices": contract["hardware"]["devices"],
         "cache_io": dict(contract["cache_io"]),
         "runtime": dict(contract["runtime"]),
+        "optimization": {
+            name: contract["train"][name]
+            for name in (
+                "optimizer",
+                "lr0",
+                "lrf",
+                "momentum",
+                "weight_decay",
+                "warmup_epochs",
+                "cos_lr",
+                "epochs",
+            )
+        },
+        "ddp_policy": {"find_unused_parameters": False, "static_graph": True},
     }
     identity_path = args.run_root / "inputs/identity.json"
     if identity_path.is_file() and load_json(identity_path) != identity:
@@ -359,7 +401,16 @@ def train(args: argparse.Namespace) -> dict[str, Any]:
     if world_size != contract["hardware"]["world_size"] or rank < 0 or local_rank < 0:
         raise RuntimeError("WP8 train must run under torchrun with exactly six processes.")
     preflight = load_json(args.report_dir / "preflight.json")
-    if preflight.get("status") != "passed" or preflight["identity"]["code_commit"] != git_commit(args.repo_root):
+    identity = preflight.get("identity", {})
+    if (
+        preflight.get("status") != "passed"
+        or identity.get("schema_version") != SCHEMA_VERSION
+        or identity.get("code_commit") != git_commit(args.repo_root)
+        or identity.get("config_sha256") != sha256_file(args.config)
+        or identity.get("global_batch") != GLOBAL_BATCH
+        or identity.get("per_gpu_batch") != PER_GPU_BATCH
+        or identity.get("gradient_accumulation") != 1
+    ):
         raise RuntimeError("WP8 preflight is missing, failed, or belongs to another commit.")
     data_yaml = args.run_root / "inputs/coco2017.yaml"
     overrides = training_overrides(args.repo_root, contract, data_yaml, args.run_root)

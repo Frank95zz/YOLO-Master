@@ -20,7 +20,7 @@ epochs = 100
 
 六张 NVIDIA A40 全部服务于同一个 DDP 训练任务，不再拆成三组双卡任务，也不并发运行其他训练或特征抽取作业。WP8 当前只登记一个 seed 0 正式主实验；seed 1/2 重复实验不属于本次启动合同，如后续需要统计方差，必须另建预注册运行身份并串行执行，不能与 seed 0 的结果混写。
 
-当前状态：**方案已确定，代码仍保留旧的六卡 global batch 48 门禁。完成第 11 节的配置和测试改造、通过第 12 节长基准并再次得到用户确认前，不得启动正式训练。**
+当前状态：**方案已经确认，正式配置和训练门禁已在启动提交中升级为六卡 global batch 384，并通过 D1 回归测试。正式任务仍须在干净提交上通过真实缓存 preflight，启动后不得修改训练代码或配置。**
 
 ## 2. WP8 目标与边界
 
@@ -316,9 +316,9 @@ multi_scale = false
 
 每卡 batch 64 的短测峰值显存最高约 7.06 GiB。正式训练包含 EMA、验证和 checkpoint，启动门禁要求每张 A40 始终至少保留 8 GiB 显存余量；任何 rank 峰值超过 40 GiB 或出现 CUDA OOM 都必须失败关闭。
 
-## 11. 正式启动前的代码改造
+## 11. 正式训练代码合同
 
-当前 `wp8-formal-coco2017.yaml` 和 `run_wp8_train.py` 已固定六卡，但仍校验 `batch=48`、`nbs=48`。不得绕过校验直接传命令行覆盖。正式启动前必须完成以下改造并形成独立提交：
+`wp8-formal-coco2017.yaml` 和 `run_wp8_train.py` 必须共同执行以下合同；YAML、代码门禁、identity 和测试必须在同一个干净提交中保持一致，不得通过命令行绕过：
 
 1. 将合同 schema 升级为 `d1-wp8-train-v2`，避免旧 batch 48 identity 被误恢复；
 2. `hardware.world_size=6`、`devices="0,1,2,3,4,5"` 保持不变；
@@ -392,6 +392,11 @@ echo $! >"$D1_WORKSPACE/logs/$D1_BENCH.pid"
 
 长基准完成后必须先报告吞吐、每 rank step time、data wait、GPU 利用率、功耗、显存、主机 RSS/file cache、major fault 和新 ETA，并等待用户明确确认。基准不得自动串联正式训练。
 
+### 12.4 本次启动决策记录
+
+2026-09-05，用户在查看六卡每卡 batch 64 的历史实测、双卡并发实测和单卡 batch 256 实测后，明确选择六卡 global batch 384，并明确要求启动正式训练。该指令视为本次正式运行的最终人工批准。
+
+本次运行复用已经成功的同硬件、同 batch、同 workers、同 AMP 和同本地缓存路径六卡短基准作为启动证据，不再额外重复 308-step 独立长基准。此例外必须如实保留：不能把 308-step 基准写成已经完成。正式训练的第一个完整 epoch 用于验证跨越完整 train2017 缓存后的实际吞吐、data wait、显存和 cgroup 行为；如出现 OOM、非有限 loss、持续 I/O 停滞或 rank 退出，则正式任务失败关闭，不在原运行中调整 batch 或 workers。
 ## 13. 正式 preflight
 
 长基准通过并得到确认后，正式 preflight 必须满足：
@@ -666,7 +671,7 @@ P0 任务书没有规定绝对 mAP 门槛，因此工程验收不使用事后选
 - [`run_wp8.py`](../../scripts/d1/run_wp8.py)：六卡缓存构建、校验和合并；
 - [`benchmark_wp8_training.py`](../../scripts/d1/benchmark_wp8_training.py)：训练吞吐与 batch/worker 基准；
 - [`run_wp8_train.py`](../../scripts/d1/run_wp8_train.py)：正式 preflight、训练、恢复、遥测和汇总；
-- [`wp8-formal-coco2017.yaml`](../../ultralytics/cfg/experiments/d1/wp8-formal-coco2017.yaml)：正式训练合同，启动前需升级到 batch 384；
+- [`wp8-formal-coco2017.yaml`](../../ultralytics/cfg/experiments/d1/wp8-formal-coco2017.yaml)：六卡、每卡 batch 64、global batch 384 的正式训练合同；
 - [`test_d1_wp8_formal_training.py`](../../tests/test_d1_wp8_formal_training.py)：正式合同和恢复测试；
 - [`manifests/wp8-full-cache.json`](manifests/wp8-full-cache.json)：完整缓存 Git 证据。
 
