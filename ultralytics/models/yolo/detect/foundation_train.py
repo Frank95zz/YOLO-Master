@@ -97,6 +97,11 @@ class D1FoundationDetectionTrainer(DetectionTrainer):
         super().__init__(cfg=cfg, overrides=overrides, _callbacks=_callbacks)
         self._validate_d1_args()
 
+    def resolve_ddp_policy(self) -> tuple[bool, bool]:
+        """Use the stable dense D1 graph without per-step unused-parameter traversal."""
+        return False, True
+
+
     def _setup_train(self) -> None:
         super()._setup_train()
         if self.amp and self.amp_init_scale is not None:

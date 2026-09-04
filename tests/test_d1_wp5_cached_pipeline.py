@@ -150,6 +150,11 @@ def test_collate_exposes_virtual_640_shape_without_rgb_tensor(tmp_path) -> None:
     assert batch["sample_id"] == ("train2017/000000000001", "train2017/000000000002")
 
 
+def test_d1_ddp_policy_uses_static_dense_graph():
+    trainer = object.__new__(D1FoundationDetectionTrainer)
+    assert trainer.resolve_ddp_policy() == (False, True)
+
+
 def test_trainer_preprocess_moves_features_without_rgb_division(tmp_path) -> None:
     dataset = make_dataset(tmp_path)
     batch = dataset.collate_fn([dataset[0], dataset[1]])

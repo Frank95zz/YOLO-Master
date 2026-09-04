@@ -325,7 +325,9 @@ def _worker(args: argparse.Namespace) -> dict[str, Any]:
     rank = int(os.environ.get("RANK", "-1"))
     local_rank = int(os.environ.get("LOCAL_RANK", "-1"))
     world_size = int(os.environ.get("WORLD_SIZE", "1"))
-    if rank < 0 or local_rank < 0 or world_size != args.world_size:
+    if args.world_size == 1 and rank == -1 and local_rank == -1:
+        rank = local_rank = 0
+    elif rank < 0 or local_rank < 0 or world_size != args.world_size:
         raise RuntimeError(f"worker must run under torchrun with exactly {args.world_size} processes")
     global_batch = args.per_gpu_batch * world_size
     sample_count = global_batch * args.steps
@@ -482,6 +484,8 @@ def _all(args: argparse.Namespace) -> dict[str, Any]:
             "--amp-growth-interval",
             str(args.amp_growth_interval),
         ]
+        if args.world_size == 1:
+            command = [sys.executable, *command[5:]]
         started = time.time()
         lifecycle = run_candidate(
             command,

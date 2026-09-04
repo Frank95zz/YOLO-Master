@@ -378,6 +378,11 @@ class BaseTrainer:
             self.lf = lambda x: max(1 - x / self.epochs, 0) * (1.0 - self.args.lrf) + self.args.lrf  # linear
         self.scheduler = optim.lr_scheduler.LambdaLR(self.optimizer, lr_lambda=self.lf)
 
+    def resolve_ddp_policy(self) -> tuple[bool, bool]:
+        """Return the routed-model unused-parameter and static-graph DDP policy."""
+        return self.mixture_controller.resolve_ddp_policy(compile_enabled=bool(self.args.compile))
+
+
     def _setup_ddp(self):
         """Initialize and set the DistributedDataParallel parameters for training."""
         index = int(self.args.device.split(",")[LOCAL_RANK])  # world_size > 1 guarantees a multi-device string
@@ -504,9 +509,7 @@ class BaseTrainer:
         if self.world_size > 1:
             # static_graph=True permits params used >1 time per forward (e.g. flow_model in
             # o2m+o2o pose loss branches) under torch.compile.
-            ddp_find_unused_parameters, ddp_static_graph = self.mixture_controller.resolve_ddp_policy(
-                compile_enabled=bool(self.args.compile)
-            )
+            ddp_find_unused_parameters, ddp_static_graph = self.resolve_ddp_policy()
             self.mixture_controller.prepare_ddp(find_unused_parameters=ddp_find_unused_parameters)
             self.model = nn.parallel.DistributedDataParallel(
                 self.model,
