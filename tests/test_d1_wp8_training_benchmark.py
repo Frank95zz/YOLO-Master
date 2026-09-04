@@ -1,4 +1,4 @@
-"""Tests for the WP8 six-GPU training benchmark report logic."""
+"""Tests for the WP8 configurable-GPU training benchmark report logic."""
 
 import pytest
 
@@ -18,6 +18,23 @@ def test_candidate_grid_is_complete_and_stable():
         (256, 8),
         (256, 16),
     )
+
+
+def test_parser_accepts_world_size_seed_and_sample_offset():
+    args = benchmark.parser().parse_args(
+        [
+            "--workspace",
+            "/tmp/work",
+            "--world-size",
+            "2",
+            "--seed",
+            "1",
+            "--sample-offset",
+            "32000",
+            "all",
+        ]
+    )
+    assert (args.world_size, args.seed, args.sample_offset) == (2, 1, 32_000)
 
 
 def test_aggregate_reports_uses_slowest_rank_and_reports_eta():

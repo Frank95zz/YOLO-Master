@@ -331,15 +331,16 @@ def _worker(args: argparse.Namespace) -> dict[str, Any]:
         raise RuntimeError(f"worker must run under torchrun with exactly {args.world_size} processes")
     global_batch = args.per_gpu_batch * world_size
     sample_count = global_batch * args.steps
-    if sample_count > TRAIN_SAMPLES:
-        raise ValueError("benchmark sample count exceeds COCO train2017")
+    if args.sample_offset + sample_count > TRAIN_SAMPLES:
+        raise ValueError("benchmark sample range exceeds COCO train2017")
 
     run_dir = args.workspace / "benchmarks" / "wp8-training" / args.run_id / f"b{args.per_gpu_batch}-w{args.workers}"
     split_file = run_dir / "inputs" / "train.txt"
     data_yaml = run_dir / "inputs" / "coco.yaml"
     if rank == 0:
         manifest = args.repo_root / "experiments/d1/manifests/coco2017-train2017.txt"
-        relative_paths = [line for line in manifest.read_text(encoding="utf-8").splitlines() if line][:sample_count]
+        all_paths = [line for line in manifest.read_text(encoding="utf-8").splitlines() if line]
+        relative_paths = all_paths[args.sample_offset : args.sample_offset + sample_count]
         if len(relative_paths) != sample_count:
             raise ValueError("tracked COCO train manifest is shorter than the requested benchmark")
         absolute_paths = [str(args.data_root / path) for path in relative_paths]
@@ -354,6 +355,7 @@ def _worker(args: argparse.Namespace) -> dict[str, Any]:
         **experiment,
         "data": str(data_yaml),
         "model": str((args.repo_root / experiment["model"]).resolve()),
+        "seed": args.seed,
         "epochs": 1,
         "batch": global_batch,
         "nbs": global_batch,
@@ -398,6 +400,8 @@ def _worker(args: argparse.Namespace) -> dict[str, Any]:
         "status": "passed",
         "rank": rank,
         "local_rank": local_rank,
+        "seed": args.seed,
+        "sample_offset": args.sample_offset,
         "per_gpu_batch": args.per_gpu_batch,
         "workers_per_rank": args.workers,
         "actual_workers_per_rank": trainer.train_loader.num_workers,
@@ -464,6 +468,10 @@ def _all(args: argparse.Namespace) -> dict[str, Any]:
             args.run_id,
             "--world-size",
             str(args.world_size),
+            "--seed",
+            str(args.seed),
+            "--sample-offset",
+            str(args.sample_offset),
             "worker",
             "--per-gpu-batch",
             str(per_gpu_batch),
@@ -532,6 +540,8 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--train-cache", type=Path)
     result.add_argument("--run-id")
     result.add_argument("--world-size", type=int, default=WORLD_SIZE)
+    result.add_argument("--seed", type=int, default=0)
+    result.add_argument("--sample-offset", type=int, default=0)
     subparsers = result.add_subparsers(dest="command", required=True)
     worker = subparsers.add_parser("worker")
     worker.add_argument("--per-gpu-batch", type=int, required=True)
@@ -569,6 +579,8 @@ def main() -> None:
         raise ValueError("world size must be a positive integer")
     if args.world_size > torch.cuda.device_count():
         raise ValueError(f"world size {args.world_size} exceeds {torch.cuda.device_count()} visible CUDA devices")
+    if args.seed < 0 or args.sample_offset < 0:
+        raise ValueError("seed and sample offset must be non-negative")
     args.run_id = args.run_id or f"{git_commit(args.repo_root)[:7]}-{int(time.time())}"
     if args.steps <= args.warmup_steps:
         raise ValueError("steps must be greater than warmup_steps")
