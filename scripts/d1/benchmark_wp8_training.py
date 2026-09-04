@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Benchmark D1 WP8 six-GPU training batch and DataLoader worker settings."""
+"""Benchmark D1 WP8 cached training across configurable GPU and DataLoader settings."""
 
 from __future__ import annotations
 
@@ -165,6 +165,7 @@ def run_candidate(
     """Run one candidate in isolation and always reclaim its complete process tree."""
     before = cgroup_memory_snapshot()
     peak_usage = before["usage_bytes"]
+    peak_rss = before["rss_bytes"]
     reason = None
     returncode = 1
     process: subprocess.Popen | None = None
@@ -182,9 +183,10 @@ def run_candidate(
             while process.poll() is None:
                 snapshot = cgroup_memory_snapshot()
                 peak_usage = max(peak_usage, snapshot["usage_bytes"])
+                peak_rss = max(peak_rss, snapshot["rss_bytes"])
                 limit = snapshot["limit_bytes"]
-                if limit and snapshot["usage_bytes"] >= limit - memory_headroom_bytes:
-                    reason = "memory_headroom_exhausted"
+                if limit and snapshot["rss_bytes"] >= limit - memory_headroom_bytes:
+                    reason = "anonymous_memory_headroom_exhausted"
                     break
                 if time.monotonic() >= deadline:
                     reason = "timeout"
@@ -218,14 +220,23 @@ def run_candidate(
         "cgroup_memory_before": before,
         "cgroup_memory_after": after,
         "cgroup_peak_usage_bytes": peak_usage,
+        "cgroup_peak_rss_bytes": peak_rss,
         "process_group_cleanup": group_cleanup,
         "candidate_process_cleanup": token_cleanup,
     }
 
 
-def aggregate_reports(reports: list[dict[str, Any]], *, per_gpu_batch: int, warmup_steps: int) -> dict[str, Any]:
-    if len(reports) != WORLD_SIZE or {item["rank"] for item in reports} != set(range(WORLD_SIZE)):
-        raise ValueError("benchmark requires exactly one report for each of six ranks")
+def aggregate_reports(
+    reports: list[dict[str, Any]],
+    *,
+    per_gpu_batch: int,
+    warmup_steps: int,
+    world_size: int = WORLD_SIZE,
+) -> dict[str, Any]:
+    if type(world_size) is not int or world_size <= 0:
+        raise ValueError("benchmark world size must be a positive integer")
+    if len(reports) != world_size or {item["rank"] for item in reports} != set(range(world_size)):
+        raise ValueError(f"benchmark requires exactly one report for each of {world_size} ranks")
     if not all(item.get("amp_enabled") is True for item in reports):
         raise ValueError("benchmark requires AMP to remain enabled on every rank")
     measured_batches = {item["measured_batches"] for item in reports}
@@ -235,23 +246,23 @@ def aggregate_reports(reports: list[dict[str, Any]], *, per_gpu_batch: int, warm
     elapsed = max(item["measured_seconds"] for item in reports)
     if elapsed <= 0:
         raise ValueError("benchmark elapsed time must be positive")
-    images = per_gpu_batch * WORLD_SIZE * count
+    images = per_gpu_batch * world_size * count
     throughput = images / elapsed
     formal_images = FORMAL_EPOCHS * (TRAIN_SAMPLES + VAL_SAMPLES)
     training_hours = FORMAL_EPOCHS * TRAIN_SAMPLES / throughput / 3600
     total_hours = formal_images / throughput / 3600
     return {
         "status": "passed",
-        "world_size": WORLD_SIZE,
+        "world_size": world_size,
         "per_gpu_batch": per_gpu_batch,
-        "global_batch": per_gpu_batch * WORLD_SIZE,
+        "global_batch": per_gpu_batch * world_size,
         "workers_per_rank": reports[0]["workers_per_rank"],
         "warmup_steps": warmup_steps,
         "measured_batches": count,
         "measured_images": images,
         "measured_seconds": elapsed,
         "aggregate_images_per_second": throughput,
-        "mean_data_wait_ratio": sum(item["data_wait_ratio"] for item in reports) / WORLD_SIZE,
+        "mean_data_wait_ratio": sum(item["data_wait_ratio"] for item in reports) / world_size,
         "peak_gpu_bytes_by_rank": {str(item["rank"]): item["peak_gpu_bytes"] for item in reports},
         "estimated_train_hours_100_epochs": training_hours,
         "estimated_train_plus_val_hours": total_hours,
@@ -314,9 +325,9 @@ def _worker(args: argparse.Namespace) -> dict[str, Any]:
     rank = int(os.environ.get("RANK", "-1"))
     local_rank = int(os.environ.get("LOCAL_RANK", "-1"))
     world_size = int(os.environ.get("WORLD_SIZE", "1"))
-    if rank < 0 or local_rank < 0 or world_size != WORLD_SIZE:
-        raise RuntimeError("worker must run under torchrun with exactly six processes")
-    global_batch = args.per_gpu_batch * WORLD_SIZE
+    if rank < 0 or local_rank < 0 or world_size != args.world_size:
+        raise RuntimeError(f"worker must run under torchrun with exactly {args.world_size} processes")
+    global_batch = args.per_gpu_batch * world_size
     sample_count = global_batch * args.steps
     if sample_count > TRAIN_SAMPLES:
         raise ValueError("benchmark sample count exceeds COCO train2017")
@@ -358,7 +369,7 @@ def _worker(args: argparse.Namespace) -> dict[str, Any]:
         "fraction": 1.0,
         "cache": False,
         "compile": False,
-        "device": "0,1,2,3,4,5",
+        "device": ",".join(str(index) for index in range(world_size)),
         "project": str(run_dir.parent),
         "name": run_dir.name,
         "exist_ok": True,
@@ -409,11 +420,16 @@ def _worker(args: argparse.Namespace) -> dict[str, Any]:
     if report["total_batches"] != args.steps or report["amp_enabled"] is not True:
         raise RuntimeError("benchmark retried an epoch or disabled AMP")
     if rank == 0:
-        paths = [run_dir / "reports" / f"rank-{value:02d}.json" for value in range(WORLD_SIZE)]
+        paths = [run_dir / "reports" / f"rank-{value:02d}.json" for value in range(world_size)]
         for path in paths:
             _wait_for(path)
         reports = [json.loads(path.read_text(encoding="utf-8")) for path in paths]
-        aggregate = aggregate_reports(reports, per_gpu_batch=args.per_gpu_batch, warmup_steps=args.warmup_steps)
+        aggregate = aggregate_reports(
+            reports,
+            per_gpu_batch=args.per_gpu_batch,
+            warmup_steps=args.warmup_steps,
+            world_size=world_size,
+        )
         aggregate["code_commit"] = git_commit(args.repo_root)
         write_json(run_dir / "aggregate.json", aggregate)
         return aggregate
@@ -432,7 +448,7 @@ def _all(args: argparse.Namespace) -> dict[str, Any]:
             "-m",
             "torch.distributed.run",
             "--standalone",
-            f"--nproc_per_node={WORLD_SIZE}",
+            f"--nproc_per_node={args.world_size}",
             str(Path(__file__).resolve()),
             "--repo-root",
             str(args.repo_root),
@@ -444,6 +460,8 @@ def _all(args: argparse.Namespace) -> dict[str, Any]:
             str(args.train_cache),
             "--run-id",
             args.run_id,
+            "--world-size",
+            str(args.world_size),
             "worker",
             "--per-gpu-batch",
             str(per_gpu_batch),
@@ -479,7 +497,7 @@ def _all(args: argparse.Namespace) -> dict[str, Any]:
             result = {
                 "status": "failed",
                 "per_gpu_batch": per_gpu_batch,
-                "global_batch": per_gpu_batch * WORLD_SIZE,
+                "global_batch": per_gpu_batch * args.world_size,
                 "workers_per_rank": workers,
                 "log": log_path.name,
             }
@@ -509,6 +527,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--data-root", type=Path)
     result.add_argument("--train-cache", type=Path)
     result.add_argument("--run-id")
+    result.add_argument("--world-size", type=int, default=WORLD_SIZE)
     subparsers = result.add_subparsers(dest="command", required=True)
     worker = subparsers.add_parser("worker")
     worker.add_argument("--per-gpu-batch", type=int, required=True)
@@ -542,6 +561,10 @@ def main() -> None:
     args.train_cache = (
         args.train_cache or args.workspace / "feature_cache/coco2017-train2017-d1-cache-v1"
     ).resolve()
+    if type(args.world_size) is not int or args.world_size <= 0:
+        raise ValueError("world size must be a positive integer")
+    if args.world_size > torch.cuda.device_count():
+        raise ValueError(f"world size {args.world_size} exceeds {torch.cuda.device_count()} visible CUDA devices")
     args.run_id = args.run_id or f"{git_commit(args.repo_root)[:7]}-{int(time.time())}"
     if args.steps <= args.warmup_steps:
         raise ValueError("steps must be greater than warmup_steps")

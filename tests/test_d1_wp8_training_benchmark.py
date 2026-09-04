@@ -46,9 +46,39 @@ def test_aggregate_reports_uses_slowest_rank_and_reports_eta():
     assert result["estimated_total_hours_with_15pct_overhead"] > result["estimated_train_plus_val_hours"]
 
 
+def test_aggregate_reports_supports_two_gpu_global_batch_16():
+    reports = [
+        {
+            "rank": rank,
+            "workers_per_rank": 4,
+            "amp_enabled": True,
+            "measured_batches": 100,
+            "measured_seconds": 10.0 + rank,
+            "data_wait_ratio": 0.05,
+            "peak_gpu_bytes": 2_000 + rank,
+        }
+        for rank in range(2)
+    ]
+
+    result = aggregate_reports(
+        reports,
+        per_gpu_batch=8,
+        warmup_steps=10,
+        world_size=2,
+    )
+
+    assert result["world_size"] == 2
+    assert result["per_gpu_batch"] == 8
+    assert result["global_batch"] == 16
+    assert result["measured_images"] == 1_600
+    assert result["aggregate_images_per_second"] == pytest.approx(1_600 / 11.0)
+
+
 def test_aggregate_reports_rejects_missing_rank():
-    with pytest.raises(ValueError, match="six ranks"):
+    with pytest.raises(ValueError, match="6 ranks"):
         aggregate_reports([], per_gpu_batch=64, warmup_steps=2)
+    with pytest.raises(ValueError, match="positive integer"):
+        aggregate_reports([], per_gpu_batch=8, warmup_steps=2, world_size=0)
 
 
 def test_candidate_processes_requires_exact_script_and_token(tmp_path):
