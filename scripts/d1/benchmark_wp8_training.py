@@ -6,9 +6,11 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import signal
 import subprocess
 import sys
 import time
+import uuid
 from itertools import product
 from pathlib import Path
 from typing import Any
@@ -30,6 +32,8 @@ VAL_SAMPLES = 5_000
 FORMAL_EPOCHS = 100
 DEFAULT_BATCHES = (64, 128, 256)
 DEFAULT_WORKERS = (8, 16)
+CGROUP_MEMORY_ROOT = Path("/sys/fs/cgroup/memory")
+PROC_ROOT = Path("/proc")
 
 
 def candidate_grid(
@@ -40,6 +44,183 @@ def candidate_grid(
     if any(type(value) is not int or value <= 0 for value in (*per_gpu_batches, *workers)):
         raise ValueError("batch and worker candidates must be positive integers")
     return tuple(product(per_gpu_batches, workers))
+
+
+def cgroup_memory_snapshot(root: Path = CGROUP_MEMORY_ROOT) -> dict[str, int]:
+    """Return the cgroup-v1 memory counters needed to detect host-memory failures."""
+
+    def read_int(name: str) -> int:
+        path = root / name
+        return int(path.read_text(encoding="utf-8").strip()) if path.is_file() else 0
+
+    stats: dict[str, int] = {}
+    stat_path = root / "memory.stat"
+    if stat_path.is_file():
+        for line in stat_path.read_text(encoding="utf-8").splitlines():
+            name, value = line.split()
+            if name in {"rss", "cache", "total_rss", "total_cache"}:
+                stats[name] = int(value)
+    oom_kills = 0
+    oom_path = root / "memory.oom_control"
+    if oom_path.is_file():
+        for line in oom_path.read_text(encoding="utf-8").splitlines():
+            name, value = line.split()
+            if name == "oom_kill":
+                oom_kills = int(value)
+                break
+    return {
+        "usage_bytes": read_int("memory.usage_in_bytes"),
+        "limit_bytes": read_int("memory.limit_in_bytes"),
+        "fail_count": read_int("memory.failcnt"),
+        "oom_kill_count": oom_kills,
+        "rss_bytes": stats.get("total_rss", stats.get("rss", 0)),
+        "cache_bytes": stats.get("total_cache", stats.get("cache", 0)),
+    }
+
+
+def candidate_processes(candidate_token: str, proc_root: Path = PROC_ROOT) -> tuple[int, ...]:
+    """Find only benchmark descendants carrying the exact per-candidate token."""
+    if not candidate_token:
+        raise ValueError("candidate token must not be empty")
+    if not proc_root.is_dir():
+        return ()
+    matches = []
+    own_pid = os.getpid()
+    for entry in proc_root.iterdir():
+        if not entry.name.isdigit() or int(entry.name) == own_pid:
+            continue
+        try:
+            tokens = [value.decode(errors="replace") for value in (entry / "cmdline").read_bytes().split(b"\0") if value]
+        except (FileNotFoundError, PermissionError, ProcessLookupError):
+            continue
+        if not any(Path(value).name == Path(__file__).name for value in tokens):
+            continue
+        if any(
+            tokens[index] == "--candidate-token" and index + 1 < len(tokens) and tokens[index + 1] == candidate_token
+            for index in range(len(tokens))
+        ):
+            matches.append(int(entry.name))
+    return tuple(sorted(matches))
+
+
+def _signal_processes(pids: tuple[int, ...], sig: signal.Signals) -> None:
+    for pid in pids:
+        try:
+            os.kill(pid, sig)
+        except ProcessLookupError:
+            pass
+
+
+def terminate_candidate_processes(
+    candidate_token: str, *, proc_root: Path = PROC_ROOT, grace_seconds: float = 5.0
+) -> dict[str, Any]:
+    """Terminate reparented DataLoader workers without touching another candidate or run."""
+    matched = candidate_processes(candidate_token, proc_root)
+    _signal_processes(matched, signal.SIGTERM)
+    deadline = time.monotonic() + grace_seconds
+    remaining = candidate_processes(candidate_token, proc_root)
+    while remaining and time.monotonic() < deadline:
+        time.sleep(0.1)
+        remaining = candidate_processes(candidate_token, proc_root)
+    forced = remaining
+    _signal_processes(forced, signal.SIGKILL)
+    if forced:
+        time.sleep(0.2)
+    final = candidate_processes(candidate_token, proc_root)
+    return {
+        "matched_pids": list(matched),
+        "sigkill_pids": list(forced),
+        "remaining_pids": list(final),
+    }
+
+
+def terminate_process_group(process_group: int, *, grace_seconds: float = 5.0) -> dict[str, Any]:
+    """Terminate the isolated torchrun process group, including DataLoader descendants."""
+    try:
+        os.killpg(process_group, signal.SIGTERM)
+    except ProcessLookupError:
+        return {"process_group": process_group, "sigkill": False}
+    deadline = time.monotonic() + grace_seconds
+    while time.monotonic() < deadline:
+        try:
+            os.killpg(process_group, 0)
+        except ProcessLookupError:
+            return {"process_group": process_group, "sigkill": False}
+        time.sleep(0.1)
+    try:
+        os.killpg(process_group, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    return {"process_group": process_group, "sigkill": True}
+
+
+def run_candidate(
+    command: list[str],
+    *,
+    log_path: Path,
+    candidate_token: str,
+    timeout_seconds: float,
+    memory_headroom_bytes: int,
+) -> dict[str, Any]:
+    """Run one candidate in isolation and always reclaim its complete process tree."""
+    before = cgroup_memory_snapshot()
+    peak_usage = before["usage_bytes"]
+    reason = None
+    returncode = 1
+    process: subprocess.Popen | None = None
+    group_cleanup: dict[str, Any] = {}
+    started = time.monotonic()
+    try:
+        with log_path.open("w", encoding="utf-8") as stream:
+            process = subprocess.Popen(
+                command,
+                stdout=stream,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+            deadline = started + timeout_seconds
+            while process.poll() is None:
+                snapshot = cgroup_memory_snapshot()
+                peak_usage = max(peak_usage, snapshot["usage_bytes"])
+                limit = snapshot["limit_bytes"]
+                if limit and snapshot["usage_bytes"] >= limit - memory_headroom_bytes:
+                    reason = "memory_headroom_exhausted"
+                    break
+                if time.monotonic() >= deadline:
+                    reason = "timeout"
+                    break
+                time.sleep(0.25)
+            if reason is None:
+                returncode = int(process.returncode)
+            else:
+                returncode = 124 if reason == "timeout" else 137
+    finally:
+        if process is not None:
+            group_cleanup = terminate_process_group(process.pid)
+            try:
+                process.wait(timeout=2.0)
+            except subprocess.TimeoutExpired:
+                group_cleanup["direct_child_reaped"] = False
+            else:
+                group_cleanup["direct_child_reaped"] = True
+        token_cleanup = terminate_candidate_processes(candidate_token)
+    after = cgroup_memory_snapshot()
+    if after["oom_kill_count"] > before["oom_kill_count"]:
+        reason = "cgroup_oom_kill"
+    elif returncode and reason is None:
+        reason = "subprocess_failed"
+    if token_cleanup["remaining_pids"]:
+        reason = "process_cleanup_failed"
+    return {
+        "returncode": returncode,
+        "failure_reason": reason,
+        "wall_seconds_including_cleanup": time.monotonic() - started,
+        "cgroup_memory_before": before,
+        "cgroup_memory_after": after,
+        "cgroup_peak_usage_bytes": peak_usage,
+        "process_group_cleanup": group_cleanup,
+        "candidate_process_cleanup": token_cleanup,
+    }
 
 
 def aggregate_reports(reports: list[dict[str, Any]], *, per_gpu_batch: int, warmup_steps: int) -> dict[str, Any]:
@@ -245,6 +426,7 @@ def _all(args: argparse.Namespace) -> dict[str, Any]:
     results = []
     for per_gpu_batch, workers in candidate_grid(args.per_gpu_batches, args.worker_candidates):
         log_path = root / f"b{per_gpu_batch}-w{workers}.log"
+        candidate_token = f"{args.run_id}-b{per_gpu_batch}-w{workers}-{uuid.uuid4().hex[:12]}"
         command = [
             sys.executable,
             "-m",
@@ -267,6 +449,8 @@ def _all(args: argparse.Namespace) -> dict[str, Any]:
             str(per_gpu_batch),
             "--workers",
             str(workers),
+            "--candidate-token",
+            candidate_token,
             "--steps",
             str(args.steps),
             "--warmup-steps",
@@ -281,10 +465,15 @@ def _all(args: argparse.Namespace) -> dict[str, Any]:
             str(args.amp_growth_interval),
         ]
         started = time.time()
-        with log_path.open("w", encoding="utf-8") as stream:
-            completed = subprocess.run(command, stdout=stream, stderr=subprocess.STDOUT, check=False)
+        lifecycle = run_candidate(
+            command,
+            log_path=log_path,
+            candidate_token=candidate_token,
+            timeout_seconds=args.candidate_timeout_seconds,
+            memory_headroom_bytes=int(args.memory_headroom_gib * 1024**3),
+        )
         aggregate_path = root / f"b{per_gpu_batch}-w{workers}" / "aggregate.json"
-        if completed.returncode == 0 and aggregate_path.is_file():
+        if lifecycle["returncode"] == 0 and aggregate_path.is_file():
             result = json.loads(aggregate_path.read_text(encoding="utf-8"))
         else:
             result = {
@@ -292,12 +481,14 @@ def _all(args: argparse.Namespace) -> dict[str, Any]:
                 "per_gpu_batch": per_gpu_batch,
                 "global_batch": per_gpu_batch * WORLD_SIZE,
                 "workers_per_rank": workers,
-                "returncode": completed.returncode,
                 "log": log_path.name,
             }
+        result.update(lifecycle)
         result["wall_seconds_including_startup"] = time.time() - started
         results.append(result)
         write_json(root / "progress.json", {"status": "running", "completed": results})
+        if lifecycle["candidate_process_cleanup"]["remaining_pids"]:
+            break
     passed = [item for item in results if item["status"] == "passed"]
     best = max(passed, key=lambda item: item["aggregate_images_per_second"]) if passed else None
     summary = {
@@ -322,6 +513,7 @@ def parser() -> argparse.ArgumentParser:
     worker = subparsers.add_parser("worker")
     worker.add_argument("--per-gpu-batch", type=int, required=True)
     worker.add_argument("--workers", type=int, required=True)
+    worker.add_argument("--candidate-token")
     worker.add_argument("--steps", type=int, default=20)
     worker.add_argument("--warmup-steps", type=int, default=3)
     worker.add_argument("--max-open-shards", type=int, default=4)
@@ -337,6 +529,8 @@ def parser() -> argparse.ArgumentParser:
     all_parser.add_argument("--amp-init-scale", type=float, default=16.0)
     all_parser.add_argument("--amp-growth-interval", type=int, default=1_000_000)
     all_parser.add_argument("--prefetch-factor", type=int, default=1)
+    all_parser.add_argument("--candidate-timeout-seconds", type=float, default=600.0)
+    all_parser.add_argument("--memory-headroom-gib", type=float, default=8.0)
     return result
 
 
@@ -351,6 +545,8 @@ def main() -> None:
     args.run_id = args.run_id or f"{git_commit(args.repo_root)[:7]}-{int(time.time())}"
     if args.steps <= args.warmup_steps:
         raise ValueError("steps must be greater than warmup_steps")
+    if args.command == "all" and (args.candidate_timeout_seconds <= 0 or args.memory_headroom_gib <= 0):
+        raise ValueError("candidate timeout and memory headroom must be positive")
     requested_workers = args.workers if args.command == "worker" else max(args.worker_candidates)
     if args.steps < requested_workers:
         raise ValueError("steps must be at least the requested workers so DataLoader does not cap them")
