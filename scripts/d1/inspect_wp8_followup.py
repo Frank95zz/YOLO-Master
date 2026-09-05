@@ -302,9 +302,57 @@ def scratch_train_eval(args, output):
     return report
 
 
+
+def probe(args, output):
+    """Inspect cached downstream computation independently of online batch invariance."""
+    from ultralytics.cfg import get_cfg
+    from ultralytics.data.d1_cache import D1FeatureCacheDataset
+
+    device = torch.device(args.device)
+    if device.type != "cuda" or not torch.cuda.is_available():
+        raise RuntimeError("Real-input probe requires CUDA")
+    torch.cuda.set_device(device)
+    reader = FeatureCacheReader(args.train_cache)
+    try:
+        if reader.contract != cache_contract(ROOT):
+            raise ValueError("Cache contract differs from WP0")
+        selected = select_records(reader, "train2017")
+        paths = [str((args.data_root / r["image_path"]).resolve()) for r in selected]
+        for record, path in zip(selected[:2], paths[:2]):
+            if sha256_file(path) != record["image_sha256"]:
+                raise ValueError("Selected image checksum mismatch")
+            for name, value in reader.get(record["sample_id"]).items():
+                if sha256_tensor(value) != record["tensors"][name]["sha256"]:
+                    raise ValueError("Selected tensor checksum mismatch")
+        content = reader.index["content_sha256"]
+    finally:
+        reader.close()
+    listing = output / "selected-train.txt"
+    listing.write_text("\n".join(paths) + "\n", encoding="utf-8")
+    coco = YAML.load(ROOT / "ultralytics/cfg/datasets/coco.yaml")
+    dataset = D1FeatureCacheDataset(img_path=str(listing), cache_dir=args.train_cache,
+                                   data={"names": coco["names"], "nc": 80, "channels": 3},
+                                   imgsz=640, batch_size=2, hyp=get_cfg(), max_open_shards=2)
+    try:
+        batch = dataset.collate_fn([dataset[0], dataset[1]])
+        batch["features"] = batch["features"].to(device, dtype=torch.float16)
+        batch["img"] = batch["features"]
+        for key in ("batch_idx", "cls", "bboxes"):
+            batch[key] = batch[key].to(device)
+        _, configs = variants()
+        probes = {name: resident_probe(config, batch, device) for name, config in configs.items()}
+    finally:
+        dataset.feature_reader.close()
+    report = {"status": "passed", "identity": identity(), "probes": probes, "optimizer_steps": 0,
+              "cache_content_sha256": content, "training_authorized": False,
+              "scope": "Downstream-only component check; does not pass the online parity gate"}
+    write_json(output / "probe.json", report)
+    return report
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("prepare", "check", "scratch-train-eval"))
+    parser.add_argument("command", choices=("prepare", "check", "probe", "scratch-train-eval"))
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--data-root", type=Path)
     parser.add_argument("--train-cache", type=Path)
@@ -316,6 +364,7 @@ def main():
     args = parser.parse_args()
     required = {
         "prepare": (), "check": ("data_root", "train_cache", "val_cache", "weights_dir"),
+        "probe": ("data_root", "train_cache"),
         "scratch-train-eval": ("data_root", "checkpoint", "p0_report"),
     }
     if any(getattr(args, key) is None for key in required[args.command]):
@@ -326,6 +375,8 @@ def main():
             report = prepare(output)
         elif args.command == "check":
             report = check(args, output)
+        elif args.command == "probe":
+            report = probe(args, output)
         else:
             report = scratch_train_eval(args, output)
         print(json.dumps({"status": report["status"], "output": str(output)}, sort_keys=True))
