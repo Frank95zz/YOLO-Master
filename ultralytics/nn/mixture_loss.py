@@ -372,6 +372,19 @@ def _model_arg(model: nn.Module, name: str, default: float) -> float:
     return default if value is None else float(value)
 
 
+def _add_aux_once(native_loss: torch.Tensor, aux: torch.Tensor) -> torch.Tensor:
+    """Preserve native shape while contributing one scalar aux to the trainer's sum.
+
+    Native batch scaling and the trainer's DDP multiplier are unchanged. Aux is
+    not multiplied by batch size here; its gain remains a model-level coefficient.
+    """
+    if native_loss.numel() == 0:
+        raise ValueError("native criterion loss must not be empty")
+    if aux.numel() != 1:
+        raise ValueError("model-level auxiliary loss must be scalar")
+    return native_loss + aux.reshape(()) / native_loss.numel()
+
+
 class CompositeCriterion:
     """Add one model-level routed auxiliary term after the native criterion."""
 
@@ -422,7 +435,7 @@ class CompositeCriterion:
         if not bool(torch.isfinite(report_items).all()):
             raise FloatingPointError("mixture aux report items contain NaN or Inf")
         report_items = report_items.to(device=aux.device, dtype=aux.dtype)
-        total = native_loss + aux
+        total = _add_aux_once(native_loss, aux)
         if isinstance(native_items, torch.Tensor):
             items = torch.cat((native_items.reshape(-1), report_items, aux.detach().reshape(1)))
         elif isinstance(native_items, (list, tuple)):
@@ -459,7 +472,7 @@ def compose_native_result(model: nn.Module, native_loss: torch.Tensor, native_it
         aux_budget=_model_arg(model, "mixture_aux_budget", 3.0),
     )
     model._last_mixture_aux_loss = aux.detach()
-    return native_loss + aux, torch.cat((native_items.reshape(-1), aux.detach().reshape(1)))
+    return _add_aux_once(native_loss, aux), torch.cat((native_items.reshape(-1), aux.detach().reshape(1)))
 
 
 __all__ = [

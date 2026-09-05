@@ -1198,3 +1198,69 @@ CPU/CUDA RNG，避免重试导致 BatchNorm 多累积或随机数偏移。每批
 `amp_same_batch_retries` 写入各 rank 的测速及 epoch 证据。
 新增测试覆盖 BatchNorm/RNG 恢复、一次参数更新与有界失败，相关回归 **90 passed**。
 原先“非有限梯度立即退出”改为“有限次数同批重算仍失败才退出”；不放宽最终有限值验收。
+
+
+## 25. P1 结果后的受限修复与消融准备（2026-09-05）
+
+### 25.1 本次授权边界
+
+用户已允许修复、配置准备、小规模检查和已有 checkpoint 评测，但明确禁止重新开始大规模实验。
+不运行任何新的 epoch 训练，不生成完整缓存，不覆盖旧模型配置、checkpoint、CSV 或诊断报告。
+本节的 A/B/C 配置不是已完成实验，也没有取得新的检测精度结论。
+
+现有第 30 epoch 官方 COCO 验证集结果：冻结方案 AP=11.6156、AP50=23.0556；
+scratch AP=24.0808、AP50=36.2924。CSV 累计耗时分别为 31182.8 / 4906.91 秒，
+同为六卡，均包含逐 epoch 验证，不含缓存抽取。原冻结结果保留为带 aux 偏差的 as-run 参照。
+
+### 25.2 aux 修复合同
+
+共享的 `CompositeCriterion` 和 `compose_native_result` 使用相同加法：
+
+```text
+loss_vector = native_loss + aux / native_loss.numel()
+loss_vector.sum() = native_loss.sum() + aux
+```
+
+保留原生损失形状及 detached 日志，不再因三分量广播把 aux 计入三次。标量原生损失行为不变。
+本次不修改 EMA 归一化、aux budget、原生检测损失本地 batch 缩放或 Trainer 的 DDP 乘数。
+aux 仍是模型级标量，不额外乘本地 batch；这不是 batch 不变性保证。
+后续对照继续锁定本地 batch=64、world_size=6。若另行改变 aux batch 归一化，必须单独建实验。
+该修复影响共享 routed loss 的向量输出路径；旧训练不能直接按原身份恢复到修复后的目标函数。
+
+### 25.3 独立 A/B/C 配置
+
+配置矩阵：`ultralytics/cfg/experiments/d1/wp8-followup.yaml`。
+历史 `yolo26-d1-dinov3-latent-n.yaml` 不修改。受限工具生成各组独立模型 YAML 到外部工作区。
+
+| 组别 | 主特征融合 | 应用的 latent aux gain | 目的 |
+|---|---|---:|---|
+| A | router_only | 0.1 | 仅修复重复计入，建立修正版参照 |
+| B | weighted_sum，三层各 1/3 | 0.1 | 检查 block8/block12 空间内容直接进入检测的影响 |
+| C | 与 B 相同 | 0.0 | 检查施加辅助约束的影响 |
+
+三组均为 3,542,567 个可训练参数；不修改 Teacher、缓存、检测头或九分支结构。
+C 仍计算和记录原始 aux 诊断，但不将其施加到总损失，不能把它当成省去 aux 计算的性能优化。
+原 router_only 的主内容来自 block4，其余层经全局池化后控制专家权重。
+weighted_sum 使用现有公开接口，不改模块默认行为。均匀专家权重实验暂不实现。
+
+### 25.4 受限工具与检查
+
+`python -m scripts.d1.inspect_wp8_followup` 仅支持以下命令，不提供 train/all 或 epoch 参数：
+
+- `prepare`：解析 A/B/C、核对参数量、生成独立配置及来源摘要。
+- `check`：在完整 train/val 中各均匀抽取 8 图，验证源图片和选中 tensor SHA256，
+  比较正式 Teacher 在线 FP16 特征，使用原 `rtol=atol=1e-3`；不重校验全部 423.5 GiB。
+- `check` 同时对 A/B/C 各执行 batch=2、2 次预热加 5 次计时的驻 GPU forward/backward。
+  不创建 optimizer，不更新参数，不保存训练 checkpoint。记录各阶段 forward GPU 时间和梯度。
+  这是局部算子诊断，不是冷盘 I/O、DDP 或正式吞吐基准，不能据此推算完整训练时间。
+- `scratch-train-eval`：对原 scratch checkpoint 评测与冻结诊断严格相同的 5,000 张训练图，
+  校验列表摘要，使用 train annotations；不是完整训练集 AP，也不是独立验证集结果。
+
+输出目录必须是仓库外的新目录，拒绝覆盖已有目录。数据、权重、缓存路径由参数传入。
+报告绑定代码 commit、dirty 状态和源码 SHA256；通过检查不代表授权启动训练。
+
+### 25.5 后续正式实验仍待授权
+
+先审查真实输入检查和训练集诊断结果，再决定 A/B/C 的短训练窗口。
+必要的持续 I/O 与六卡 DDP 性能定位尚未执行；它们必须另行规划并遵守超过 3 分钟后台挂载的约定。
+不得仅根据短时热缓存速度宣称达到课题 GPU-hours 降低 50% 的目标。
