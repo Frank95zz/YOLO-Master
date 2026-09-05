@@ -1264,3 +1264,81 @@ weighted_sum 使用现有公开接口，不改模块默认行为。均匀专家�
 先审查真实输入检查和训练集诊断结果，再决定 A/B/C 的短训练窗口。
 必要的持续 I/O 与六卡 DDP 性能定位尚未执行；它们必须另行规划并遵守超过 3 分钟后台挂载的约定。
 不得仅根据短时热缓存速度宣称达到课题 GPU-hours 降低 50% 的目标。
+
+
+### 25.6 已完成检查与新发现
+
+- 修复与初始工具提交：`1f0698a`；独立零更新 probe 提交：`19ecf4b`。
+- 共享损失、Foundation、LatentMixture、D1 WP0-WP8 与配置回归：246 passed、5 skipped；
+  新增独立 probe 后定向回归：29 passed。未安装 Ruff/codespell，未声称这些 lint 检查通过。
+- A/B/C 真实 FP16 缓存 forward/backward 均有限，optimizer_steps=0，参数逐项检查未变化。
+  B/C 九条 Adapter 分支均有有限非零梯度。
+  A 的 block8/block12 分支在本次 residual_gain=0、零初始化 Router 的冷启动状态下梯度为零，
+  不能据此声称它们在原 30 轮训练全程都没有梯度。
+- 单卡驻 GPU batch=2、5 次计时的全前向/反向均值：A 65.30 ms、B 68.65 ms、C 66.21 ms。
+  这是局部算子检查，不足以决定正式吞吐、workers 或六卡 ETA。
+
+**缓存 batch 依赖性必须保留披露：**
+train/val 各均匀抽取 8 图，图片及选中 tensor SHA256 全部匹配。
+单图在线提取时 14/16 图三层逐元素一致；最后两个样本超出原 rtol=atol=1e-3。
+首轮严格检查保持 failed，没有放宽容差，也没有重新生成缓存。
+按原六卡 index%6 分区、batch16 对应末批复现：
+
+| 样本 | rank | 末批实际大小 | 原上下文复现 |
+|---|---:|---:|---|
+| train2017/000000581929 | 2 | 3 | block4/8/12 全部逐元素一致，最大误差 0 |
+| val2017/000000581781 | 1 | 2 | block4/8/12 全部逐元素一致，最大误差 0 |
+
+证据支持两张图存在 FP16 batch 上下文依赖，而非已检测到的缓存文件损坏。
+这不证明全部缓存都已重新验证，也不满足“任意 batch 单图结果一致”的承诺。
+独立 `probe` 只检查已缓存下游计算，不会将该失败改写为通过，且永远不授权训练。
+后续完整在线对齐应明确原抽取分区、batch 大小及尾批规则；若要求 batch 不变的特征，
+需另外评估数值合同和重建成本，本次不执行。
+
+### 25.7 补充训练集诊断
+
+原 scratch 第 30 epoch checkpoint 严格重载，对与冻结诊断相同的 5,000 张训练图评测。
+列表 SHA256=`0c8c27127b5feef0f3a82133b5cf235ee24d78aca97963faff4345e65952e6e9`。
+
+| 官方指标（百分制） | 冻结原方案 | Scratch epoch30 |
+|---|---:|---:|
+| train5000 AP | 15.78 | 43.02 |
+| train5000 AP50 | 28.33 | 58.98 |
+| val2017 AP（原已完成评测） | 11.62 | 24.08 |
+
+该结果进一步支持原冻结方案存在拟合、空间内容适配或优化限制；不能单凭此表确立因果。
+Scratch 本身也存在训练/验证差距，不能据此声称已达到充分训练或最优泛化。
+本次只是已有 checkpoint 的评测，没有增加训练轮次，评测约 74.48 秒。
+
+### 25.8 复现与证据
+
+先在服务器中设置环境变量：`PYTHON` 为项目 Python，`WORK_ROOT` 为外部工作区，
+`DATA_ROOT` 为 COCO 根目录，`TRAIN_CACHE`/`VAL_CACHE` 为完整缓存目录，
+`TEACHER_DIR` 为本地 ViT-S/16 权重目录。在仓库根目录执行，输出目录必须尚不存在：
+
+```bash
+"$PYTHON" -m scripts.d1.inspect_wp8_followup prepare \
+  --output-dir "$WORK_ROOT/manifests/followup-prepare-new"
+
+"$PYTHON" -m scripts.d1.inspect_wp8_followup check \
+  --data-root "$DATA_ROOT" --train-cache "$TRAIN_CACHE" --val-cache "$VAL_CACHE" \
+  --weights-dir "$TEACHER_DIR" --output-dir "$WORK_ROOT/manifests/followup-check-new"
+
+"$PYTHON" -m scripts.d1.inspect_wp8_followup probe \
+  --data-root "$DATA_ROOT" --train-cache "$TRAIN_CACHE" \
+  --output-dir "$WORK_ROOT/manifests/followup-probe-new"
+
+"$PYTHON" -m scripts.d1.inspect_wp8_followup scratch-train-eval \
+  --data-root "$DATA_ROOT" \
+  --checkpoint "$WORK_ROOT/runs/wp8-p1-coco30-scratch-b384-s0-44c53e6/weights/last.pt" \
+  --p0-report "$WORK_ROOT/manifests/wp8-diagnosis-epoch030-e36864d/train2017/report.json" \
+  --output-dir "$WORK_ROOT/manifests/followup-scratch-train5000-new"
+```
+
+当前单图 `check` 会在上述尾批差异处失败，这是保留的已知约束，不能改日志冒充通过。
+
+Git 小型汇总：[wp8-followup-preparation.json](manifests/wp8-followup-preparation.json)。
+原始证据分别保存在外部工作区 `manifests/` 下：
+`wp8-followup-1f0698a-preparation`、`wp8-followup-1f0698a-checks`、
+`wp8-followup-19ecf4b-probe`、`wp8-followup-19ecf4b-scratch-train5000`。
+对应日志在 `logs/`；完整预测 JSON 不进入 Git。旧冻结及 scratch 的 checkpoint、CSV 未修改。
