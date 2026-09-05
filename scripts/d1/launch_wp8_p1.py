@@ -108,6 +108,7 @@ def probe_worker(args):
         "actual_workers": trainer.train_loader.num_workers, "per_gpu_batch": trainer.train_loader.batch_size,
         "prefetch_factor": trainer.train_loader.prefetch_factor, "amp": bool(trainer.amp),
         "final_amp_scale": float(trainer.scaler.get_scale()), "steps": timing.batch_index,
+        "amp_same_batch_retries": int(getattr(trainer, "amp_retry_count", 0)),
         "successful_steps": int(trainer.optimizer_steps), "measured_steps": timing.measured_batches,
         "measured_seconds": timing.step_seconds + timing.wait_seconds,
         "data_wait_seconds": timing.wait_seconds, "validation_checkpoint_seconds": telemetry.validation_seconds,

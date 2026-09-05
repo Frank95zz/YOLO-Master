@@ -1181,3 +1181,20 @@ python -m scripts.d1.launch_wp8_p1 all \
 训练。匿名内存逼近容器上限或出现 OOM 时失败关闭，不用文件缓存高占用本身判为训练失败。
 正式启动前已通过原有 fadvise 工具释放约 79.9 GiB 不用于 scratch 的特征文件缓存页；
 未删除缓存、权重或数据集文件，也未进行大块匿名内存压力分配。
+
+### 24.13 首次六卡门禁失败与 AMP 同批重试
+
+提交 `24bb1e8` 的首次 `probe-w4` 在反向传播时发现非有限梯度，门禁正确停止，
+正式训练尚未开始，日志与失败状态保留在该 run ID 下。实际 AMP 初始 scale 为 16；
+没有 CUDA OOM，不能把该失败归因于 batch 64 放不下显存。
+
+后续修复只作用于 ScratchTrainer 的数值恢复：保留初始 scale=16 和 growth_interval=1000000，
+保留 global batch、学习率、调度与数据顺序。若某个 rank 溢出，则所有 rank 将 scale 同步减半，
+在不更新参数的前提下重算同一批；恢复该批前的模型 buffers（包括 BatchNorm 运行统计）和
+CPU/CUDA RNG，避免重试导致 BatchNorm 多累积或随机数偏移。每批最多回退 8 次，仍失败就退出。
+
+每个接受的 batch 仍必须恰好完成一次有限梯度的 optimizer 更新，不通过跳过 batch 或减少
+样本达到“通过”。scale 回退属于数值执行记录，不是学习率衰减；实际最终 scale 和累计
+`amp_same_batch_retries` 写入各 rank 的测速及 epoch 证据。
+新增测试覆盖 BatchNorm/RNG 恢复、一次参数更新与有界失败，相关回归 **90 passed**。
+原先“非有限梯度立即退出”改为“有限次数同批重算仍失败才退出”；不放宽最终有限值验收。

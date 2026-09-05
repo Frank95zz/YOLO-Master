@@ -272,3 +272,84 @@ def test_launch_requires_fresh_rendezvous(tmp_path):
     with pytest.raises(RuntimeError, match="standalone"):
         p1.claim_run(tmp_path / "run", {}, "none", 0)
     assert not (tmp_path / "run").exists()
+
+class FakeScale:
+    def __init__(self):
+        self.value = 16.0
+
+    def get_scale(self):
+        return self.value
+
+    def update(self, new_scale=None):
+        self.value = self.value / 2 if new_scale is None else new_scale
+
+    def scale(self, loss):
+        return loss
+
+
+class RetryModel(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.bn = torch.nn.BatchNorm2d(1)
+        self.weight = torch.nn.Parameter(torch.ones(()))
+
+    def forward(self, batch):
+        loss = (self.bn(batch["img"]) * self.weight).square().mean() * torch.rand(())
+        return loss.unsqueeze(0), loss.detach().unsqueeze(0)
+
+
+def retry_trainer(monkeypatch, always_fail=False):
+    monkeypatch.setenv("RANK", "-1")
+    trainer = p1.ScratchTrainer.__new__(p1.ScratchTrainer)
+    trainer.device = torch.device("cpu")
+    trainer.amp = True
+    trainer.args = SimpleNamespace(multi_scale=0)
+    trainer.model = RetryModel().train()
+    trainer.scaler = FakeScale()
+    trainer.optimizer = torch.optim.SGD(trainer.model.parameters(), lr=0.01)
+    trainer.optimizer_steps = 0
+    trainer.attempts = 0
+
+    def parent_step(self):
+        self.attempts += 1
+        if self.attempts == 1 or always_fail:
+            self.model.zero_grad()
+            self.scaler.update()
+            return False
+        assert all(torch.isfinite(p.grad).all() for p in self.model.parameters() if p.grad is not None)
+        self.optimizer.step()
+        self.optimizer.zero_grad()
+        self.optimizer_steps += 1
+        return True
+
+    monkeypatch.setattr(p1.DetectionTrainer, "optimizer_step", parent_step)
+    batch = trainer.preprocess_batch({"img": torch.randint(0, 256, (2, 1, 8, 8), dtype=torch.uint8)})
+    loss, trainer.loss_items = trainer.model(batch)
+    trainer.loss = loss.sum()
+    trainer.loss.backward()
+    return trainer
+
+
+def test_amp_retry_preserves_batchnorm_rng_and_exactly_one_update(monkeypatch):
+    trainer = retry_trainer(monkeypatch)
+    buffers = {name: value.clone() for name, value in trainer.model.named_buffers()}
+    rng = torch.get_rng_state()
+    assert trainer.optimizer_step()
+    assert trainer.optimizer_steps == 1
+    assert trainer.amp_retry_count == 1
+    assert trainer.scaler.get_scale() == 8
+    assert trainer.model.bn.num_batches_tracked.item() == 1
+    for name, value in trainer.model.named_buffers():
+        torch.testing.assert_close(value, buffers[name])
+    assert torch.equal(torch.get_rng_state(), rng)
+    assert trainer._amp_retry_state is None
+    assert trainer._amp_retry_batch is None
+
+
+def test_amp_retry_is_bounded_and_never_updates_on_failure(monkeypatch):
+    trainer = retry_trainer(monkeypatch, always_fail=True)
+    with pytest.raises(FloatingPointError, match="bounded AMP"):
+        trainer.optimizer_step()
+    assert trainer.optimizer_steps == 0
+    assert trainer.attempts == 9
+    assert trainer.amp_retry_count == 8

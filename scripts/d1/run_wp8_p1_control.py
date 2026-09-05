@@ -207,6 +207,54 @@ class ScratchTrainer(DetectionTrainer):
         if not self.resume:
             self.scaler = torch.amp.GradScaler("cuda", init_scale=16, growth_interval=1000000)
 
+    def preprocess_batch(self, batch):
+        """Snapshot forward state so AMP backoff can retry without skipping data."""
+        batch = super().preprocess_batch(batch)
+        if getattr(self, "amp", False):
+            model = unwrap_model(self.model)
+            self._amp_retry_batch = batch
+            self._amp_retry_state = {
+                "buffers": {name: value.clone() for name, value in model.named_buffers()},
+                "cpu_rng": torch.get_rng_state(),
+                "cuda_rng": torch.cuda.get_rng_state(self.device) if self.device.type == "cuda" else None,
+            }
+        return batch
+
+    def optimizer_step(self):
+        """Retry the same batch at a lower AMP scale, preserving exactly one optimizer update."""
+        for attempt in range(9):
+            scale = float(self.scaler.get_scale())
+            self._gradient_nonfinite = False
+            if super().optimizer_step():
+                self._amp_retry_state = None
+                self._amp_retry_batch = None
+                return True
+            if not self.amp or attempt == 8 or not math.isfinite(scale) or scale <= 0:
+                raise FloatingPointError("Scratch gradients remain non-finite after bounded AMP backoff")
+            # A rank with finite local gradients still backs off when another rank overflows.
+            self.scaler.update(new_scale=scale / 2)
+            state = self._amp_retry_state
+            model = unwrap_model(self.model)
+            buffers = dict(model.named_buffers())
+            with torch.no_grad():
+                for name, value in state["buffers"].items():
+                    buffers[name].copy_(value)
+            torch.set_rng_state(state["cpu_rng"])
+            if state["cuda_rng"] is not None:
+                torch.cuda.set_rng_state(state["cuda_rng"], self.device)
+            self.amp_retry_count = getattr(self, "amp_retry_count", 0) + 1
+            if int(os.environ.get("RANK", "-1")) in (-1, 0):
+                print(f"AMP backoff: retry same batch, scale={scale / 2:g}, attempt={attempt + 1}", flush=True)
+            with torch.autocast(self.device.type, dtype=torch.float16, enabled=self.amp):
+                loss, self.loss_items = self.model(self._amp_retry_batch)
+                self.loss = loss.sum()
+                if int(os.environ.get("RANK", "-1")) != -1:
+                    self.loss = self.loss * self.world_size
+            if not torch.isfinite(self.loss).all():
+                raise FloatingPointError("Non-finite scratch forward loss during AMP retry")
+            self.scaler.scale(self.loss).backward()
+        raise AssertionError("Unreachable AMP retry state")
+
     def final_eval(self):
         """Keep best/last unstripped for recovery; official evaluation is a separate gate."""
         # Every epoch, including epoch 30, has already run full validation.
@@ -282,6 +330,7 @@ class TrainingTelemetry:
             "successful_optimizer_steps": int(trainer.optimizer_steps), "metrics": values,
             "lr": [group["lr"] for group in trainer.optimizer.param_groups],
             "amp_scale": trainer.scaler.get_scale(),
+            "amp_same_batch_retries": int(getattr(trainer, "amp_retry_count", 0)),
             "next_epoch_o2m": float(criterion.o2m), "next_epoch_o2o": float(criterion.o2o),
             "peak_allocated_bytes": torch.cuda.max_memory_allocated(trainer.device),
         })
