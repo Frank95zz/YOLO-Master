@@ -1,0 +1,77 @@
+# D1 P1-COCO-30: a 30-epoch window of the same 100-epoch schedule as P0.
+# Runtime paths and workers (4 or 8, pending benchmark) are supplied through the runner.
+schema_version: d1-wp8-p1-scratch-v1
+model: ultralytics/cfg/models/26/yolo26-d1-scratch-matched-n.yaml
+window_epochs: 30
+reference:
+  run_id: wp8-p0-b384-s0-e36864d
+  code_commit: e36864dbea38e60bd7e5f0202bff7d1c5fb62f6f
+  checkpoint_sha256: 8391dbbb9794bff91184fb2e1ae34b8ecf3c92c761ef7f248d8e3806d79e096d
+  trainable_parameters: 3542567
+  scratch_parameters: 3510624
+  maximum_parameter_delta: 0.01
+  comparison: preliminary-as-run
+hardware:
+  world_size: 6
+  devices: "0,1,2,3,4,5"
+  per_gpu_batch: 64
+runtime:
+  worker_candidates: [4, 8]
+  prefetch_factor: 1
+  amp_init_scale: 16
+  amp_growth_interval: 1000000
+  gradient_accumulation: 1
+train:
+  task: detect
+  epochs: 100
+  imgsz: 640
+  batch: 384
+  nbs: 384
+  seed: 0
+  deterministic: true
+  amp: true
+  optimizer: AdamW
+  lr0: 0.001
+  lrf: 0.01
+  momentum: 0.9
+  weight_decay: 0.0005
+  warmup_epochs: 3.0
+  warmup_momentum: 0.8
+  warmup_bias_lr: 0.1
+  cos_lr: true
+  patience: 100
+  save: true
+  save_period: 10
+  val: true
+  plots: false
+  pretrained: false
+  resume: false
+  freeze: null
+  fraction: 1.0
+  cache: false
+  compile: false
+  foundation_enabled: false
+  rect: false
+  multi_scale: 0.0
+  close_mosaic: 0
+  hsv_h: 0.0
+  hsv_s: 0.0
+  hsv_v: 0.0
+  degrees: 0.0
+  translate: 0.0
+  scale: 0.0
+  shear: 0.0
+  perspective: 0.0
+  flipud: 0.0
+  fliplr: 0.0
+  bgr: 0.0
+  mosaic: 0.0
+  mixup: 0.0
+  cutmix: 0.0
+  copy_paste: 0.0
+  erasing: 0.0
+  box: 7.5
+  cls: 0.5
+  dfl: 1.5
+  cls_pw: 0.0
+  max_det: 300

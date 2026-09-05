@@ -1,10 +1,17 @@
-# D1 WP8：六卡全量 COCO 2017 正式训练方案（待审核）
+# D1 WP8：COCO 2017 正式训练、诊断与 P1 对照方案
 
 ## 1. 当前状态与最终资源决策
 
-WP8 的完整 COCO 2017 特征缓存、缓存校验、训练组件、最小闭环和正式训练入口已经具备。正式 100 epochs 训练和最终 COCO val2017 评测尚未启动。
+WP8 的完整 COCO 2017 特征缓存、缓存校验、训练组件、最小闭环和正式训练入口已经具备。P0 正式
+运行 `wp8-p0-b384-s0-e36864d` 已完成 30 epochs，随后为排查精度增长缓慢问题安全停止，并已对
+`best.pt` 完成独立的完整 COCO val2017 内部评测和官方 COCO 评测。
 
-本文件固定 WP8 的正式资源方案为：
+该 P0 运行没有完成原计划的 100 epochs，并包含第 8.1 节记录的辅助损失广播偏差，因此只能作为
+如实保留的阶段性 P0 结果，不能表述为修复后最终结果。当前不自动恢复该运行。下一步先实施第 24
+节的课题目标 P1 同参数量从零训练对照，以判断低精度主要来自训练配方还是冻结特征路径；对照训练
+仍需单独获得用户启动确认。
+
+第 3～23 节保留原始 P0 正式合同、启动决策和 as-run 记录。该运行的资源合同为：
 
 ```text
 单个正式任务
@@ -16,11 +23,14 @@ workers = 每 rank 4，共 24
 梯度累积 = 1
 seed = 0
 epochs = 100
+实际完成 epochs = 30
 ```
 
 六张 NVIDIA A40 全部服务于同一个 DDP 训练任务，不再拆成三组双卡任务，也不并发运行其他训练或特征抽取作业。WP8 当前只登记一个 seed 0 正式主实验；seed 1/2 重复实验不属于本次启动合同，如后续需要统计方差，必须另建预注册运行身份并串行执行，不能与 seed 0 的结果混写。
 
-当前状态：**方案已经确认，正式配置和训练门禁已在启动提交中升级为六卡 global batch 384，并通过 D1 回归测试。正式任务仍须在干净提交上通过真实缓存 preflight，启动后不得修改训练代码或配置。**
+当前状态：**P0 在绑定提交 `e36864dbea38e60bd7e5f0202bff7d1c5fb62f6f` 上完成 30 epochs 后
+安全停止，checkpoint 和独立诊断均已完成；下一项待执行工作是第 24 节的 P1-COCO-30 对照准备，
+不是恢复原 P0 任务。**
 
 ## 2. WP8 目标与边界
 
@@ -37,14 +47,16 @@ WP8 必须回答：
 
 WP8 不负责：
 
-- P1 的同参数量从零训练检测器；
-- 第二数据集实验和“GPU 时降低至少 50%”的最终对照结论；
+- P1 在第二数据集上的正式复现；
+- 基于单次 COCO 预实验直接宣称“GPU 时降低至少 50%”的最终结论；
 - P2 的 DINOv3/SigLIP2 Teacher 对比；
 - balance、z-loss、latent aux 系数的大规模扫描；
 - 根据中途精度临时更换学习率、batch、增强或训练轮数；
 - 部署、导出、蒸馏后推理速度或实时推理优化。
 
-P1 基线以后必须复用本文件锁定的 COCO split、640 输入、global batch 384、优化器、训练轮数、增强和评测口径，才能进行公平成本与精度比较。
+第 24 节新增 P1 的第一组 COCO 诊断性对照。该基线必须复用本文件锁定的 COCO split、640 输入、
+global batch 384、优化器、已完成的 30 epochs、增强和评测口径，才能与当前 P0 checkpoint
+比较。只有完成修正后的 P0 正式实验和至少第二个数据集，才能形成任务书意义上的 P1 最终结论。
 
 ## 3. 为什么选择六卡每卡 batch 64
 
@@ -277,6 +289,43 @@ multi_scale = false
 - 三个尺度 Router 与 residual gain 相对初始化的参数变化。
 
 正式运行期间不调整上述系数。P2 的系数扫描属于后续实验。
+
+### 8.1 运行中确认的辅助损失广播偏差
+
+当前正式运行绑定代码提交 `e36864dbea38e60bd7e5f0202bff7d1c5fb62f6f`。运行进行至第 29 个 epoch
+时复核损失执行链，确认 `CompositeCriterion` 的“只加入一次模型级 routed aux”设计意图与 D1
+实际反向传播公式存在偏差。
+
+`E2ELoss` 返回形状为 `(3,)` 的检测损失向量：
+
+```text
+native_loss = [L_box, L_cls, L_reg]
+```
+
+`mixture_aux_loss` 是标量。当前实现执行 `total = native_loss + aux`，PyTorch 会把标量广播到
+三个分量；Trainer 随后执行 `loss.sum()`。因此：
+
+```text
+设计意图：L_total = L_box + L_cls + L_reg + 1 * L_mixture
+当前实现：L_total = L_box + L_cls + L_reg + 3 * L_mixture
+```
+
+`results.csv` 只记录一份 `train/mixture_aux_loss`，不能直接反映三次计入。还需注意，原生检测
+loss 的反向传播向量已经乘以每 rank 的本地 batch，而 CSV 中的 box/class/regression 是 detached
+显示项；因此不能把 CSV 四列直接相加后解释为辅助损失占比。
+
+截至已完成的 epoch 28，`train/mixture_aux_loss=0.01215`，对应进入 `loss.sum()` 的辅助标量总量
+为 `0.03645`。所有检测与 aux 指标仍有限，未观察到该偏差导致数值爆炸，但它违反“辅助项只加入
+一次”的严格实验合同。本运行保持 as-run 状态，不在中途热修改代码；最终报告必须披露该偏差，
+不得把本运行表述为修正后正式结果。
+
+后续修复与验证要求：
+
+1. 对向量原生损失使用 `native_loss + aux / native_loss.numel()`，或先将原生损失求和后再加入一次
+   `aux`；
+2. 新增向量 criterion 测试，断言 `total.sum() == native_loss.sum() + aux`；
+3. 单独明确 aux 是否应随本地 batch 缩放，避免每卡 batch 改变时有效正则强度隐式变化；
+4. 修复后使用新的代码提交、preflight 和 run identity 重新执行正式实验，不能覆盖当前曲线。
 
 ## 9. 训练工作量与时间预算
 
@@ -692,4 +741,443 @@ P0 任务书没有规定绝对 mAP 门槛，因此工程验收不使用事后选
 9. 接受正式运行中不调参，只允许同 identity checkpoint 恢复；
 10. 接受 P0 不设事后绝对 mAP 门槛，最终精度如实报告。
 
-只有第 11 节代码改造和测试完成、第 12～13 节门禁通过、长基准结果完成汇报，并再次收到明确启动确认后，才能运行正式 100 epochs 训练。
+上述清单是 P0 原始启动门禁，现作为历史合同保留。P0 已按第 12.4 节例外启动并完成 30 epochs，
+目前处于安全停止状态；在第 8.1 节问题修复前不得把它按原身份恢复为修正后正式实验。
+
+## 24. 课题目标 P1：同参数量从零训练检测器对照
+
+### 24.1 名称与实验问题
+
+本节的“P1”指任务书中的课题目标等级 P1，不是检测金字塔中的 P1/P2/P3 层。
+
+第一阶段只执行 `P1-COCO-30` 诊断性对照，回答：
+
+1. 在相同 COCO split、输入尺寸、数据暴露量、optimizer step 和随机种子下，一个与 D1 下游模型
+   可训练参数量相差不超过 1% 的 RGB 检测器从零训练 30 epochs 后能达到什么精度；
+2. 当前冻结 DINOv3 特征方案相对于从零训练方案保留了多少精度；
+3. 两者的训练墙钟时间、GPU-hours、峰值显存、吞吐和存储成本有何差异；
+4. 当前 P0 的低精度更接近冻结特征信息瓶颈，还是同训练配方下普遍优化不足。
+
+这是一组单数据集、单 seed、30 epochs 的先导实验，不用于直接宣称 P1 已完成，也不用于事后修改
+P0 或 scratch 配方。
+
+### 24.2 当前冻结方案的固定参照
+
+对照只允许引用以下 checkpoint，不得从中途 checkpoint 事后挑选更有利结果：
+
+| 项目 | P0 阶段性参照 |
+| --- | --- |
+| run ID | `wp8-p0-b384-s0-e36864d` |
+| code commit | `e36864dbea38e60bd7e5f0202bff7d1c5fb62f6f` |
+| checkpoint | 第 30 epoch 的 `best.pt`，与 `last.pt` 内容一致 |
+| checkpoint SHA256 | `8391dbbb9794bff91184fb2e1ae34b8ecf3c92c761ef7f248d8e3806d79e096d` |
+| 可训练参数 | 3,542,567 |
+| 冻结 Teacher | DINOv3 ViT-S/16，约 21.6M 参数，不进入 optimizer/checkpoint |
+| 完成 epochs | 30 |
+| 理论 optimizer steps | 309/epoch，共 9,270 |
+| `results.csv` 累计训练时间 | 31,182.8 秒，约 8.66 小时 |
+| 六卡原始 GPU-hours | 约 51.97，不含缓存准备 |
+
+独立完整 val2017 评测固定为：
+
+| 指标 | 数值 |
+| --- | ---: |
+| Ultralytics Precision | 0.33974 |
+| Ultralytics Recall | 0.25353 |
+| Ultralytics mAP50 | 0.22301 |
+| Ultralytics mAP50-95 | 0.11082 |
+| COCO 官方 AP50 | 0.230556 |
+| COCO 官方 AP50-95 | 0.116156 |
+| COCO 官方 AP-small | 0.052458 |
+| COCO 官方 AP-medium | 0.123415 |
+| COCO 官方 AP-large | 0.161929 |
+
+上述累计训练时间是框架 `results.csv` 的 as-run 时间，正式对照表还应优先使用 supervisor
+起止时间和 GPU 遥测交叉验证。P0 含第 8.1 节的 aux 三次计入偏差，数值影响初步判断很小，但它
+使本次比较只能标记为 preliminary/as-run。
+
+### 24.3 同参数量 scratch 模型
+
+从零训练基线派生自标准
+[`yolo26.yaml`](../../ultralytics/cfg/models/26/yolo26.yaml)，不使用
+`yolo26-master-n.yaml`、预训练权重、DINOv3、特征缓存、LatentMixture 或 Teacher。
+
+预注册模型配置为：
+
+```yaml
+nc: 80
+end2end: true
+reg_max: 1
+scales:
+  n: [0.75, 0.26, 1024]
+```
+
+远端构造探针得到该模型有 3,510,624 个可训练参数，与 D1 下游模型相差 31,943 个，即
+`-0.902%`，满足预先规定的 `abs(delta) <= 1%`。参数量比较按全部
+`requires_grad=True` 参数进行，不通过注册但不参与前向的无用参数凑数。
+
+现成模型不作为主对照的原因：
+
+| 候选 | 可训练参数 | 相对 D1 |
+| --- | ---: | ---: |
+| 标准 YOLO26n | 2,572,280 | -27.41% |
+| 预注册 matched YOLO26 | 3,510,624 | **-0.90%** |
+| YOLO26-P6n | 4,063,872 | +14.72% |
+| YOLO26-Master-n | 5,115,336 | +44.40% |
+
+已新增的模型文件为
+`ultralytics/cfg/models/26/yolo26-d1-scratch-matched-n.yaml`。实现后必须重新构造模型、
+记录精确参数量和模型 YAML SHA256；如果实际参数差超过 1%，preflight 必须失败，不得启动训练。
+
+### 24.4 公平性合同
+
+除模型输入和架构外，两边固定：
+
+| 项目 | 冻结 DINOv3 P0 | scratch P1 |
+| --- | --- | --- |
+| 数据 | COCO 2017 train2017/val2017 | 完全相同 |
+| train/val 数量 | 118,287 / 5,000 | 完全相同 |
+| 输入尺寸 | 640×640 | 640×640 |
+| seed | 0 | 0 |
+| epochs | 已完成 30 | 固定 30 |
+| global batch / nbs | 384 / 384 | 384 / 384 |
+| GPU | 6×A40 | 同一台服务器的 6×A40 |
+| optimizer | AdamW | AdamW |
+| lr0 / lrf | 0.001 / 0.01 | 0.001 / 0.01 |
+| scheduler | 100 epoch cosine 计划的前 30 epoch | 同样保留 100 epoch 调度跨度 |
+| warmup | 3 epochs | 3 epochs |
+| weight decay | 0.0005 | 0.0005 |
+| AMP | 开启 | 开启 |
+| 数据增强 | 全部关闭 | 全部关闭 |
+| 每轮验证 | 完整 val2017 | 完整 val2017 |
+| checkpoint 选择 | 前 30 epochs 的 best 和 epoch30 | 同口径 |
+| 官方评测 | COCO evaluator | 同一 evaluator 和参数 |
+
+scratch 使用标准 RGB LetterBox 和 `[0,1]` 输入，不使用 DINO 的 ImageNet normalization。
+这是模型输入协议的必要差异，不是额外数据增强。两边均不允许 mosaic、mixup、copy-paste、翻转、
+仿射、颜色扰动、多尺度或额外训练数据。
+
+**调度纠正（2026-09-05）：** 框架实际传入 `epochs=100`，通过回调在第 30 epoch 的完整验证、
+checkpoint 保存完成后停止，不能传入 `epochs=30`。除了 cosine 学习率，`E2ELoss` 的
+one-to-many / one-to-one 权重衰减也读取 `args.epochs`，因此两项均须保留 100 epoch 跨度。
+第 30 epoch（零基 29）的普通参数组学习率约为 `0.000808389`。scratch 没有 Router 或 Expert
+参数组，不复制 P0 特有的 Router / Expert 学习率倍率；这里只匹配普通参数组的基础优化合同。
+warmup bias LR 为 `0.1`，warmup momentum 为 `0.8`，均已核对 P0 实际 `args.yaml`。
+scratch 使用原始 RGB 图像直接 LetterBox，不走默认加载器的预先缩放，也不使用矩形验证；
+图像与检测框共同变换，反投影使用实际 gain/padding。
+
+相同 epochs 和 global batch 对应相同的理论数据暴露量：
+
+```text
+118,287 × 30 = 3,548,610 原始样本暴露
+ceil(118,287 / 384) = 309 optimizer steps/epoch
+309 × 30 = 9,270 optimizer steps
+```
+
+DDP sampler 为对齐 rank 产生的少量补齐样本必须在两边以相同规则处理，并报告实际 seen 数。
+
+### 24.5 scratch 固定训练配置
+
+已新增
+`ultralytics/cfg/experiments/d1/wp8-p1-scratch-coco2017.yaml`，固定：
+
+```text
+schema                  d1-wp8-p1-scratch-v1
+model                   yolo26-d1-scratch-matched-n.yaml
+pretrained              false
+resume                  false（首次运行）
+world_size              6
+per_gpu_batch           64
+global_batch / nbs      384 / 384
+gradient_accumulation   1
+train.epochs            100（学习率与 E2E loss 调度跨度）
+window_epochs           30（第 30 epoch 保存后停止）
+workers                 由启动前 4/8 短基准锁定
+AMP                     true
+optimizer               AdamW
+lr0 / lrf               0.001 / 0.01
+warmup                   3 epochs
+cosine scheduler        true
+patience                100，不允许提前停止
+save_period             10
+validation              每 epoch 完整 val2017
+compile                 false
+dataset RAM cache       false
+augmentation            全关闭
+```
+
+tracked YAML 不写服务器绝对路径。COCO 根目录、run root、report root 和设备通过运行参数注入。
+scratch 只从随机初始化开始；出现任何非空 pretrained checkpoint、自动 optimizer 选择或参数冻结
+都必须失败关闭。
+
+### 24.6 实施与启动门禁
+
+当前已新增配置、准备/受门禁约束的训练入口及离线测试；六卡 benchmark、独立官方 evaluate
+与自动 summarize 尚待后续实现和实测，不属于本次已完成项：
+
+- `scripts/d1/run_wp8_p1_control.py`：当前支持 prepare 和 train；train 默认不获批准；
+- `tests/test_d1_wp8_p1_control.py`：参数匹配、无预训练、配置合同、预处理、identity、训练门禁与严格重载；
+- 模型 YAML 与训练合同 YAML；
+- 外部工作区中的日志、checkpoint、官方预测 JSON 和完整遥测；
+- Git 中脱敏后的 P1 摘要，正式结果完成后再更新本节。
+
+执行顺序固定：
+
+1. 构造 scratch 模型并断言参数差不超过 1%，检查 Detect 为 P3/P4/P5、`nc=80`、
+   `reg_max=1`、`end2end=true`；
+2. 验证没有载入预训练权重、没有 DINO/Teacher/LatentMixture 参数和特征缓存依赖；
+3. 将 COCO 图片放在本地只读存储或使用已经校验的本地副本，列表 SHA256 必须与 WP0 一致；
+4. 六卡分别以每卡 batch 64 做 20 个 warmup 后的短基准，workers/rank 只比较 4 和 8；
+5. 在不 OOM 且数据等待稳定的组合中选择吞吐更高者，并把选择写入 immutable identity；
+6. 执行一个 batch 的 loss、backward、optimizer step、AMP、checkpoint 严格重载和完整
+   val dataloader smoke；
+7. 生成 preflight，记录代码/config/model/data 摘要、参数量、GPU、batch、worker 和 seed；
+8. 向用户报告基准吞吐、显存和 30 epochs ETA，等待明确启动确认；
+9. 获得确认后通过 supervisor 后台启动，只检查六个 rank 正常、GPU 已进入训练且首个 loss 有限；
+10. 任务预计超过 3 分钟，正常挂起后退出会话，不持续轮询。
+
+短基准只允许选择 I/O worker 数，不能据此改变 batch、模型、学习率或 epoch。若每卡 batch 64
+OOM，则停止并报告；只有通过新的预注册方案使用梯度累积保持 global batch 384，不能在原 identity
+中临时降 batch。
+
+### 24.7 运行身份与目录
+
+运行标识：
+
+```text
+wp8-p1-coco30-scratch-b384-s0-<commit>
+```
+
+外部目录：
+
+```text
+/data/yingxi/yolo-master-d1/
+  runs/<run-id>/
+    weights/best.pt
+    weights/last.pt
+    results.csv
+  manifests/<run-id>/
+    preflight.json
+    benchmark.json
+    identity.json
+    official-coco-best.json
+    official-coco-epoch30.json
+    summary.json
+  logs/
+    <run-id>.log
+    <run-id>.pid
+    <run-id>.status
+    <run-id>-gpu.csv
+```
+
+checkpoint、预测明细和日志不进入 Git。Git 只提交配置、代码、测试和脱敏摘要。
+
+### 24.8 精度评测与解释规则
+
+scratch 完成后对 `best.pt` 和 epoch30 checkpoint 分别严格重载，完整评测 5,000 张
+val2017。主表同时报告：
+
+- Precision、Recall、Ultralytics mAP50 和 mAP50-95；
+- COCO 官方 AP、AP50、AP75、AP-small、AP-medium、AP-large；
+- 最佳 epoch、epoch30 指标和两者差值；
+- 训练集固定 5,000 图诊断指标，但不得把它表述为完整 train AP；
+- checkpoint SHA256、预测数和实际评测图片数。
+
+主要比较采用“同窗口 best 对 best”；同时提供“epoch30 对 epoch30”，避免不同收敛速度被
+checkpoint 选择掩盖。预注册计算：
+
+```text
+AP 保留率(%) = AP_P0_frozen / AP_P1_scratch × 100
+AP50 保留率(%) = AP50_P0_frozen / AP50_P1_scratch × 100
+绝对 AP 差 = AP_P0_frozen - AP_P1_scratch
+```
+
+解释规则：
+
+- scratch train/val AP 都明显高于 P0：优先判断当前冻结特征/Adapter/融合结构是瓶颈；
+- 两者 train/val AP 都低：优先判断 global batch、学习率、更新数或无增强配方导致共同欠拟合；
+- scratch train AP 高而 val AP 低：优先判断从零训练泛化不足；
+- P0 的 AP-small 差距远大于 AP-medium/large：进一步支持 stride-8 信息不足假设；
+- 单 seed 的小差异不作显著性结论，不根据结果反向改变本次实验定义。
+
+### 24.9 训练成本与显存口径
+
+必须分别报告以下三种成本，不能只选择对冻结方案最有利的一种：
+
+1. **重复训练成本**：只计下游 30 epochs 训练和逐 epoch 验证；
+2. **首次端到端成本**：冻结方案额外计入 DINOv3 train/val 特征抽取与最终校验；
+3. **摊销成本**：缓存被 `N` 次实验复用时，按 `cache_cost/N` 计入每次冻结实验。
+
+当前完整缓存证据为 123,287 样本、约 423.5 GiB。首次准备实测：
+
+```text
+train cache worker wall = 2,178.90 s
+train final verification = 1,326.90 s
+val cache worker wall = 79.92 s
+val final verification = 28.58 s
+总墙钟近似 = 3,614.30 s，约 1.00 h
+```
+
+GPU-hours 只对实际使用 GPU 的抽取和训练阶段求和；纯 CPU/NVMe 校验不伪计为 GPU-hours。
+成本公式为：
+
+```text
+训练 GPU 时降低率 = 1 - GPUh_P0_train / GPUh_scratch_train
+首次 GPU 时降低率 = 1 - (GPUh_cache_extract + GPUh_P0_train) / GPUh_scratch_train
+N 次摊销降低率 = 1 - (GPUh_cache_extract/N + GPUh_P0_train) / GPUh_scratch_train
+墙钟降低率使用相同公式替换为 wall time
+```
+
+同时记录：
+
+- 每个 rank 的峰值 allocated/reserved 显存和 `nvidia-smi` 峰值；
+- aggregate images/s、step time、data wait、验证时间和 checkpoint 时间；
+- 六卡利用率、功耗采样和总 GPU-hours；
+- 主机匿名内存、file cache、major fault；
+- 冻结方案额外 423.5 GiB 缓存空间，scratch 不产生该特征缓存。
+
+如果降低率为负数，必须如实报告为成本增加。任务书的“GPU 时降低至少 50%”使用 GPU-hours，
+不能用磁盘读取吞吐或单步延迟替代。
+
+### 24.10 验收、结论边界与后续正式 P1
+
+`P1-COCO-30` 工程通过要求：
+
+1. scratch 参数量与 P0 下游模型差不超过 1%；
+2. 确认随机初始化、无预训练、无 Teacher 和无特征缓存输入；
+3. 完成连续 30 epochs 和理论 9,270 optimizer steps；
+4. loss、梯度、AMP scale 和指标全部有限；
+5. 完整 val2017 评测覆盖 5,000 张图片；
+6. `best.pt` 和 epoch30 checkpoint 可严格重载；
+7. 六卡无 OOM、NCCL 或未处理 DataLoader 异常；
+8. 参数、精度、墙钟、GPU-hours、显存和吞吐证据完整；
+9. 使用第 24.8～24.9 节公式生成自动摘要，不手工改写数字；
+10. Git 只提交脱敏的小型证据。
+
+无论 scratch 精度高低，工程完成都不等同于 P1 科学验收完成。任务书层面的 P1 还需要：
+
+1. 修复第 8.1 节 aux 合同后，以新 identity 完成可作为正式结论的冻结 P0；
+2. 在同一最终代码基线上完成正式 matched scratch 对照；
+3. 至少增加一个第二数据集，建议使用课题指定的 VisDrone；
+4. 至少在一个数据集明确给出精度保留比例，并验证 GPU-hours 是否降低至少 50%；
+5. 对关键结论增加重复 seed 或置信区间，避免单 seed 偶然性。
+
+本节新增后只批准方案准备和短基准，不构成正式训练启动许可。完成实现、测试与短基准后，必须先
+向用户报告实际 ETA，再等待明确的“开始 P1 对照训练”指令。
+
+### 24.11 scratch 准备落实记录（2026-09-05）
+
+本次仅准备代码与离线验收，不启动正式训练，不运行六卡 benchmark，不读取大特征缓存。
+COCO 复制已在本轮期间完成：245,525 个文件、41,458,555,664 bytes 全部完成 SHA256 比对，
+原件保留，正式目标目录已发布。train2017 的 118,287 张图片和 117,266 份标签、val2017 的
+5,000 张图片和 4,952 份标签已与 WP0 manifest 对齐；少于图片数的标签文件是原数据中无检测
+标注的图片，不应据此错误补造标注。
+外部 `manifests/wp8-p1-scratch-preparation/preparation.json` 当前为
+`data_ready_runtime_pending`，运行列表与 data YAML 已生成，`formal_training_approved=false`。
+该记录绑定当前工作区摘要，当前尚未提交；正式实验需先锁定干净 commit 再生成新的运行记录。
+
+| 文件 | 本次落实内容 |
+| --- | --- |
+| [模型 YAML](../../ultralytics/cfg/models/26/yolo26-d1-scratch-matched-n.yaml) | 标准 YOLO26 的参数匹配版本，随机初始化，无 Teacher/LatentMixture |
+| [实验合同](../../ultralytics/cfg/experiments/d1/wp8-p1-scratch-coco2017.yaml) | 六卡、每卡 64、global batch/nbs=384；30 epoch 窗口与 100 epoch 调度分离 |
+| [准备与训练入口](../../scripts/d1/run_wp8_p1_control.py) | 模型/数据检查、固定几何 RGB dataset、ScratchTrainer、有限值遥测、启动门禁 |
+| [离线测试](../../tests/test_d1_wp8_p1_control.py) | 参数量、真实三尺度、标签/图像几何、调度、CPU loss/backward、checkpoint 与失败关闭 |
+
+CPU 实测模型参数为 **3,510,624**，与 D1 的 3,542,567 相差 **-0.90169%**。
+对 `[1,3,640,640]` 输入，送入 Detect 的特征为：
+
+| 层 | 特征尺寸 | 来源 |
+| --- | --- | --- |
+| P3 | `[1,72,80,80]` | 原生 stride-8 特征经过 neck 融合 |
+| P4 | `[1,136,40,40]` | 原生 stride-16 特征经过 neck 融合 |
+| P5 | `[1,272,20,20]` | 原生 stride-32 特征经过 neck 融合 |
+
+离线测试已验证：使用标准三项检测损失和 E2ELoss，不引入 latent aux；损失和梯度有限；
+随机初始化参数可以更新；checkpoint 可以严格重载。CPU backward 使用 2 张合成 96×96 输入，
+不能冒充真实 COCO、640 输入、每卡 batch 64 的六卡实测。
+
+准备命令（在仓库根目录、D1 Python 环境中；下列变量由实际环境设置）：
+
+```bash
+# WORKSPACE 是外部实验工作区，DATA_ROOT 是复制后的 COCO 根目录。
+# COPY_RECEIPT 指向复制任务的 .status.json。模型检查不需要读取数据集。
+REPORT_DIR="$WORKSPACE/manifests/wp8-p1-scratch-preparation"
+RUN_ROOT="$WORKSPACE/runs/wp8-p1-coco30-scratch-b384-s0-$(git rev-parse --short HEAD)"
+python -m scripts.d1.run_wp8_p1_control prepare --model-only \
+  --output-dir "$REPORT_DIR" --run-root "$RUN_ROOT"
+
+# 仅在复制状态为 COMPLETED 后执行；4 是待基准核定的候选值。
+python -m scripts.d1.run_wp8_p1_control prepare \
+  --output-dir "$REPORT_DIR" --run-root "$RUN_ROOT" \
+  --data-root "$DATA_ROOT" --copy-receipt "$COPY_RECEIPT" --workers 4
+```
+
+`preparation.json` 的 `model_ready_runtime_pending` 或 `data_ready_runtime_pending`
+均不表示获准训练。正式启动必须具备干净代码 commit、相同文件摘要、对应 preparation 摘要、
+六卡 worker 基准、真实 batch backward、checkpoint 严格重载、评测就绪记录和用户明确批准。
+`--approved` 不能跳过这些门禁。本次不生成虚假的通过记录。
+
+训练入口保留未剥离 optimizer 的 best/last checkpoint，在第 30 epoch 完整验证和保存后停止。
+当前不开放自动 resume；已有 run 会被拒绝，异常恢复须另行审核并验证 optimizer/scaler/E2E
+调度状态，不能用重新随机初始化覆盖已有实验。
+
+待办顺序：复制完成检查 → 六卡 workers 4/8 基准与真实 batch 验收 → 独立官方评测入口就绪 →
+锁定 worker、实测 ETA 和运行身份 → 用户确认 → 正式启动。任何预计超过 3 分钟的任务均后台
+运行并保存 PID、状态和日志，确认正常启动一次后退出会话，不持续轮询。
+
+本次相关回归：`70 passed`（包含 45 项 scratch 测试及 WP8 正式配置、诊断、
+默认配置和 Master 模型回归）。服务器缺少 `ruff`、`codespell`，对应工具检查未能运行，
+不能记为通过；另执行语法检查和 `git diff --check`。
+
+### 24.12 启动授权与后台流水线（2026-09-05）
+
+用户已明确授权“准备好可以正式启动训练”。该授权允许真实门禁通过后自动进入正式 scratch 训练，
+不允许跳过门禁、修改 global batch 384、加载测速权重或恢复原 P0 任务。
+第 24.11 节保留为上一阶段记录；以下为本次新增的实际执行路径。
+
+新增 [launch_wp8_p1.py](../../scripts/d1/launch_wp8_p1.py)，提供 `all / worker / evaluate`，
+并增加 [启动测试](../../tests/test_d1_wp8_p1_launch.py)。底层仍调用第 24.11 节的
+ScratchTrainer，不修改共享训练引擎。当前相关离线回归为 **88 passed**；`py_compile` 与
+命令行入口检查通过。ruff/codespell 仍缺失，不将缺失工具计为通过。
+
+后台 `all` 的顺序与硬门禁：
+
+1. 检查干净代码版本、已校验 COCO 副本、六张 A40 和官方评测依赖。
+2. 使用原程序接口临时停止已有 GPU keeper；退出时恢复原来的 10% 保活配置。
+3. 对 workers/rank=4、8 分别运行六卡真实 COCO 前缀训练：每卡 64，40 个 batch，前 20 个预热，
+   后 20 个计时；每个 rank 必须完成 40 次成功参数更新，loss/梯度/参数变化有限，AMP 保持开启。
+4. 前缀共 15,360 张训练图；每个候选均完整验证 5,000 张 val2017，并严格重载 best/last。
+   为匹配正式实验，测速 warmup 的有效长度保持 `3×309=927` 个 batch，而不是按前缀缩短。
+5. 两个候选必须通过，按慢速 rank 对应的 aggregate images/s 选择 worker 数；不同候选使用
+   同一排序前缀且从随机初始化开始，测速 checkpoint 不用于正式训练。
+6. 用选定候选的 checkpoint 独立运行全部 val2017 官方评测，验证预测 JSON、类别映射、
+   图像数量与评测接口。空预测也须输出有效零精度结果，不能被当作接口失败或虚假成功。
+7. 生成 benchmark 和 runtime-gate，绑定代码、preparation、checkpoint 与评测摘要。
+8. 重新随机初始化正式模型，六卡 global batch 384，100 epoch 调度跨度内执行前 30 epoch。
+9. 完成后独立评测正式 best/last，并生成 preliminary/as-run 对照摘要。P0 的 aux 广播偏差
+   继续明确保留，不将本轮单 seed COCO 对照表述为完整 P1 已完成。
+
+ETA 使用实测平均 batch 时间 × 309 batch/epoch，再加完整验证与 checkpoint 实测耗时，
+乘以 30 epochs，并提供 15%～35% 余量区间。它仍是本地热数据前缀估计，完整训练实际数据分布、
+I/O 与验证成本可能不同；最终两次独立官方评测另计。测速、门禁和正式训练计时分开记录。
+
+运行方式（变量含义同第 24.11 节）：
+
+```bash
+RUN_ID="wp8-p1-coco30-scratch-b384-s0-$(git rev-parse --short HEAD)"
+python -m scripts.d1.launch_wp8_p1 all \
+  --workspace "$WORKSPACE" --data-root "$DATA_ROOT" --copy-receipt "$COPY_RECEIPT" \
+  --run-id "$RUN_ID" --approved
+```
+
+实际服务器启动使用后台 nohup，并显式传入既有 keeper 脚本。状态写入
+`logs/<run-id>.status` 和 `manifests/<run-id>/status.json`；阶段日志为
+`logs/<run-id>-probe-w4.log`、`-probe-w8.log`、`-probe-evaluate.log`、`-train.log`、
+`-evaluate-best.log`、`-evaluate-last.log`。总日志及各阶段 PID 同目录保存。
+`PROBE-W4 / PROBE-W8 / PROBE-EVALUATE` 不是正式训练，只有 `TRAIN` 表示正式训练已启动；
+`COMPLETED` 表示训练及最后两次评测完成，`FAILED / STOPPED` 表示流水线不再继续。
+
+任何阶段失败或收到停止信号，只终止本流水线创建的独立进程组并恢复 keeper，不扫描杀死其他
+训练。匿名内存逼近容器上限或出现 OOM 时失败关闭，不用文件缓存高占用本身判为训练失败。
+正式启动前已通过原有 fadvise 工具释放约 79.9 GiB 不用于 scratch 的特征文件缓存页；
+未删除缓存、权重或数据集文件，也未进行大块匿名内存压力分配。
