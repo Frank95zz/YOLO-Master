@@ -67,6 +67,32 @@ def test_initial_loading_keeps_variant_metadata():
         load_initial_tensors(b, state)
 
 
+@pytest.mark.parametrize("variant", list("ABC"))
+def test_resume_registers_aux_buffer_before_strict_load(monkeypatch, variant):
+    from scripts.d1.p1p2_runtime import E1FrozenTrainer
+    from ultralytics.models.yolo.detect import D1FoundationDetectionTrainer
+
+    checkpoint = experiment.construct_model(variant)
+    checkpoint._mixture_loss_ema_buf.fill_(2.5)
+
+    def parent_get_model(self, cfg=None, weights=None, verbose=True):
+        assert weights is None
+        model = experiment.construct_model(variant)
+        del model._mixture_loss_ema_buf
+        return model
+
+    monkeypatch.setattr(D1FoundationDetectionTrainer, "get_model", parent_get_model)
+    trainer = object.__new__(E1FrozenTrainer)
+    trainer.e1 = {"seed": 0}
+    trainer.resume = True
+    restored = trainer.get_model(weights=checkpoint, verbose=False)
+    assert torch.equal(restored._mixture_loss_ema_buf, checkpoint._mixture_loss_ema_buf)
+    assert all(
+        module.value_fusion_mode == ("router_only" if variant == "A" else "weighted_sum")
+        for module in restored.mixtures.values()
+    )
+
+
 def matrix(tmp_path):
     return {
         "workspace": str(tmp_path),

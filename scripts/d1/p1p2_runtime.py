@@ -114,9 +114,15 @@ class E1Policy:
     def get_model(self, cfg=None, weights=None, verbose=True):
         with torch.random.fork_rng(devices=[]):
             torch.manual_seed(self.e1["seed"])
-            model = super().get_model(cfg=cfg, weights=weights, verbose=verbose)
+            model = super().get_model(
+                cfg=cfg,
+                weights=None if isinstance(weights, D1FoundationDetectionModel) else weights,
+                verbose=verbose,
+            )
         if isinstance(model, D1FoundationDetectionModel):
             initialize_mixture_loss_ema_buffer(model)
+            if weights is not None:
+                model.load_state_dict(weights.state_dict(), strict=True)
         if not self.resume:
             state = torch.load(self.e1["initial_state"], map_location="cpu", weights_only=True)
             load_initial_tensors(model, state)
