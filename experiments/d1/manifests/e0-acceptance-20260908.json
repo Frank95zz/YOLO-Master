@@ -1,0 +1,602 @@
+{
+  "dataset": {
+    "content_sha256": "aeddb4358a6734c417c3086dd28ac96553a8690afd854771b700dc6defaa8867",
+    "data_receipt_sha256": "44153a724d4f1906f5ae74a85f850043c60673520fd38cc75f434cafb9a032fd",
+    "elapsed_seconds": 442.87042760849,
+    "empty_label_counts": {
+      "train2017": 1021,
+      "val2017": 48
+    },
+    "files_sha256": "52799564b067d2ccf9ffada9c626afb9a1451b1523e082e0c7cb1d4ae57b5ce2",
+    "full_npy_files_verified": 123287,
+    "name": "COCO2017",
+    "source_preserved": true,
+    "storage_class": "nvme",
+    "train": 118287,
+    "val": 5000
+  },
+  "identity": {
+    "commit": "49cd0941e86f82e78473b387bbb1f4bb34f6b4b8",
+    "contract_sha256": "619bc71e155f3fe291179189edc656f6a8399b50f7bf911f123fc7b5e18d0322",
+    "source_sha256": "178141213efb2b52e224b562f1016a0c97526b8d86d0592675a91ff393847edd"
+  },
+  "limitations": [
+    "COCO seed0 engineering gates only; E1 screening pending",
+    "Uniform initial routing can have zero balance gradients",
+    "Mechanism gradients use independent FP32 copies, not an additional training optimizer step"
+  ],
+  "mechanism_probes": {
+    "reports/E0-A/mechanism/rank-0-epoch-001.json": {
+      "cases": {
+        "active": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008432412054389715,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 21.79349464517145
+        },
+        "aux_zero": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 21.79349464517145
+        },
+        "balance_only": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 21.79349464517145
+        },
+        "z_only": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008432412054389715,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 21.79349464517145
+        }
+      },
+      "sha256": "15c9a646853c742a351a06a49c81294303b27661e3f3253a0c60b27770cf6bfe"
+    },
+    "reports/E0-A/mechanism/rank-1-epoch-001.json": {
+      "cases": {
+        "active": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008539192960597575,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 38.5854242454061
+        },
+        "aux_zero": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 38.5854242454061
+        },
+        "balance_only": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 38.5854242454061
+        },
+        "z_only": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008539192960597575,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 38.5854242454061
+        }
+      },
+      "sha256": "18d0535eb1902b5a1a84a6b0f8cdc2cf72f0f177c0227d11d073f4b2e9ed4c49"
+    },
+    "reports/E0-A/mechanism/rank-2-epoch-001.json": {
+      "cases": {
+        "active": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008476358198095113,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 26.05826733025242
+        },
+        "aux_zero": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 26.05826733025242
+        },
+        "balance_only": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 26.05826733025242
+        },
+        "z_only": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008476358198095113,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 26.05826733025242
+        }
+      },
+      "sha256": "c279c4b6751b3da0b49f9cd521f5d82337577266e4c404fe9f565b33df6027d5"
+    },
+    "reports/E0-A/mechanism/rank-3-epoch-001.json": {
+      "cases": {
+        "active": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.00848032021895051,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 23.80524241621606
+        },
+        "aux_zero": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 23.80524241621606
+        },
+        "balance_only": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 23.80524241621606
+        },
+        "z_only": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.00848032021895051,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 23.80524241621606
+        }
+      },
+      "sha256": "a0f4e7ae49c40dae8266ceaf5db7ba710af76de8ec5f20ce853e873d1ff31d6a"
+    },
+    "reports/E0-A/mechanism/rank-4-epoch-001.json": {
+      "cases": {
+        "active": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008512002998031676,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 28.59155475454463
+        },
+        "aux_zero": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 28.59155475454463
+        },
+        "balance_only": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 28.59155475454463
+        },
+        "z_only": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008512002998031676,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 28.59155475454463
+        }
+      },
+      "sha256": "56022f8d1ca829a8c760e31bededc70fae80c601e95a490b27983d779dc3fdb6"
+    },
+    "reports/E0-A/mechanism/rank-5-epoch-001.json": {
+      "cases": {
+        "active": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008439655124675483,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 27.583102475520718
+        },
+        "aux_zero": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 27.583102475520718
+        },
+        "balance_only": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 27.583102475520718
+        },
+        "z_only": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008439655124675483,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 27.583102475520718
+        }
+      },
+      "sha256": "50bf4ef230e2c248df2b72eab5ac0b3194e7dc4f5514341ebcf817f7d5a1f1a2"
+    },
+    "reports/E0-B/mechanism/rank-0-epoch-001.json": {
+      "cases": {
+        "active": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008432412054389715,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 47.59268955140578
+        },
+        "aux_zero": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 47.59268955140578
+        },
+        "balance_only": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 47.59268955140578
+        },
+        "z_only": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008432412054389715,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 47.59268955140578
+        }
+      },
+      "sha256": "f61482c4a20afa146d1c4bdf471e90cbceeb5bd776ac90622a6c7bfb5f4c28b6"
+    },
+    "reports/E0-B/mechanism/rank-1-epoch-001.json": {
+      "cases": {
+        "active": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008539192960597575,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 80.23061188942302
+        },
+        "aux_zero": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 80.23061188942302
+        },
+        "balance_only": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 80.23061188942302
+        },
+        "z_only": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008539192960597575,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 80.23061188942302
+        }
+      },
+      "sha256": "e9025e66348a7136c10414e38a5277fea0df340a7fbab0e944b65c1104cd799a"
+    },
+    "reports/E0-B/mechanism/rank-2-epoch-001.json": {
+      "cases": {
+        "active": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008476358198095113,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 88.31136203235292
+        },
+        "aux_zero": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 88.31136203235292
+        },
+        "balance_only": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 88.31136203235292
+        },
+        "z_only": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008476358198095113,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 88.31136203235292
+        }
+      },
+      "sha256": "1f36babb2bee25a72e158004315f825d25b057ca7e851803088986de33b1ea12"
+    },
+    "reports/E0-B/mechanism/rank-3-epoch-001.json": {
+      "cases": {
+        "active": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.00848032021895051,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 32.86556149958051
+        },
+        "aux_zero": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 32.86556149958051
+        },
+        "balance_only": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 32.86556149958051
+        },
+        "z_only": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.00848032021895051,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 32.86556149958051
+        }
+      },
+      "sha256": "9eda87a0e056491dfa744982bd3485c31a48f82a0fa610e356ebac2cfdb8004f"
+    },
+    "reports/E0-B/mechanism/rank-4-epoch-001.json": {
+      "cases": {
+        "active": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008512002998031676,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 50.25128714644234
+        },
+        "aux_zero": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 50.25128714644234
+        },
+        "balance_only": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 50.25128714644234
+        },
+        "z_only": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008512002998031676,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 50.25128714644234
+        }
+      },
+      "sha256": "6385f74cb107df84f100d52b40cd7cadb5139e0bde96d73c146b63a0da4d61dc"
+    },
+    "reports/E0-B/mechanism/rank-5-epoch-001.json": {
+      "cases": {
+        "active": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008439655124675483,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 50.37894083843457
+        },
+        "aux_zero": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 50.37894083843457
+        },
+        "balance_only": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 50.37894083843457
+        },
+        "z_only": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008439655124675483,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 50.37894083843457
+        }
+      },
+      "sha256": "16519027f68b1a232b4ad7f0f83a493950e1a90e64e52ddcb71b2080599ae6c8"
+    },
+    "reports/E0-C/mechanism/rank-0-epoch-001.json": {
+      "cases": {
+        "active": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 47.59268955140578
+        },
+        "aux_zero": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 47.59268955140578
+        },
+        "balance_only": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 47.59268955140578
+        },
+        "z_only": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008432412054389715,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 47.59268955140578
+        }
+      },
+      "sha256": "61c1013593022b481fc27631aaa09f5a86737ae9dd7ad3290719837b94319cca"
+    },
+    "reports/E0-C/mechanism/rank-1-epoch-001.json": {
+      "cases": {
+        "active": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 80.23061188942302
+        },
+        "aux_zero": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 80.23061188942302
+        },
+        "balance_only": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 80.23061188942302
+        },
+        "z_only": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008539192960597575,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 80.23061188942302
+        }
+      },
+      "sha256": "b53f9e57e91c110186346809d292285eba366418c0882f3ea23c277d9f2fc7f0"
+    },
+    "reports/E0-C/mechanism/rank-2-epoch-001.json": {
+      "cases": {
+        "active": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 88.31136203235292
+        },
+        "aux_zero": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 88.31136203235292
+        },
+        "balance_only": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 88.31136203235292
+        },
+        "z_only": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008476358198095113,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 88.31136203235292
+        }
+      },
+      "sha256": "67cb519025e7b5dd0d92cc5f7b1608bc8923e0fe09bb8781208d8fff43b42131"
+    },
+    "reports/E0-C/mechanism/rank-3-epoch-001.json": {
+      "cases": {
+        "active": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 32.86556149958051
+        },
+        "aux_zero": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 32.86556149958051
+        },
+        "balance_only": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 32.86556149958051
+        },
+        "z_only": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.00848032021895051,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 32.86556149958051
+        }
+      },
+      "sha256": "bd8bb11414ee331b6e562ac831501f0e3470d79eb7cdbe2bdeb8fcfe61cd748f"
+    },
+    "reports/E0-C/mechanism/rank-4-epoch-001.json": {
+      "cases": {
+        "active": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 50.25128714644234
+        },
+        "aux_zero": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 50.25128714644234
+        },
+        "balance_only": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 50.25128714644234
+        },
+        "z_only": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008512002998031676,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 50.25128714644234
+        }
+      },
+      "sha256": "766ab657f19e9a52559ac61857a5f1d280a417e015baaf638431dcfa81d1ee97"
+    },
+    "reports/E0-C/mechanism/rank-5-epoch-001.json": {
+      "cases": {
+        "active": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 50.37894083843457
+        },
+        "aux_zero": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 50.37894083843457
+        },
+        "balance_only": {
+          "applied_aux": 0.0,
+          "aux_gradient_norm_sum": 0.0,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 50.37894083843457
+        },
+        "z_only": {
+          "applied_aux": 0.00582028366625309,
+          "aux_gradient_norm_sum": 0.008439655124675483,
+          "aux_requires_grad": true,
+          "detection_gradient_norm_sum": 50.37894083843457
+        }
+      },
+      "sha256": "2e04d5b4cc526d36db34a47bdcd7a4ab6422840739c74750bf8306148ea34ec3"
+    }
+  },
+  "raw_evidence_sha256": "3ec4a823ac607b924d53813cca25b135c41974f684669c131a16283ea29b458d",
+  "regression": {
+    "log_sha256": "afe035b754353398c2084004488f08ca17c239f72051e051b5423a2151d2c087",
+    "new_tests": 27,
+    "passed": 589,
+    "skipped": 6
+  },
+  "resume": {
+    "epochs": 2,
+    "last_sha256": "a81bbf3e83a7a48d97395128a627b25378f2c6f0ae3fd2b8e342bb822e0d9015",
+    "optimizer_steps": 2,
+    "resume_sha256": "083cc5e24d0cd702920deb407782298238b600da1931a7933777eb914427abc7",
+    "status": "completed"
+  },
+  "schema_version": "d1-e0-acceptance-v1",
+  "status": "passed",
+  "variants": {
+    "A": {
+      "checkpoint_epoch": 1,
+      "checkpoint_sha256": "cf9e2288fc6598c12692aa42e66c853662babe382d99d7df49906aaf454eb501",
+      "report_sha256": "63ce5eb77bcaecd3607fd7d51bf663deca923115f841e7cc87114ca38a9d4abb",
+      "seen": 32,
+      "strict_reload": true,
+      "teacher_parameters": 0
+    },
+    "B": {
+      "checkpoint_epoch": 1,
+      "checkpoint_sha256": "db0dad8550837dd8298b3b87653ce2cca9296a4da981e0e3afa2fc426a16b46b",
+      "report_sha256": "41fe54ee8c7c50f6c7beb35e5745dee39146f9c6eb967e71eff47f89b443759f",
+      "seen": 32,
+      "strict_reload": true,
+      "teacher_parameters": 0
+    },
+    "C": {
+      "checkpoint_epoch": 1,
+      "checkpoint_sha256": "5f57420d948be2a0da7394e26b30766edc987aeb7f572c9051da99d179759a57",
+      "report_sha256": "867ad3b780a8ab6ae2e4bd2a2e5f78fe3d19b1f8918d19859c7596c04c0caf88",
+      "seen": 32,
+      "strict_reload": true,
+      "teacher_parameters": 0
+    },
+    "S": {
+      "checkpoint_epoch": 1,
+      "checkpoint_sha256": "f56455d8a521f8abd90df3023bb13092b10eb232c46dfdf7303f7c0edfa57e6a",
+      "report_sha256": "74f5de779bd13d31fbe7e3ab6b4b3f2db40155dbe82979414e6103f61b8c20a3",
+      "seen": 32,
+      "strict_reload": true,
+      "teacher_parameters": 0
+    }
+  }
+}

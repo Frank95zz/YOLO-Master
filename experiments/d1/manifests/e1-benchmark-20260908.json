@@ -1,0 +1,64 @@
+{
+  "check_interval_minutes": 150,
+  "check_interval_seconds": 8955.184848725796,
+  "epoch_job_seconds": {
+    "A": 275.7552921138704,
+    "B": 189.15784606337547,
+    "C": 185.94103463739157,
+    "S": 193.9666097536683
+  },
+  "epoch_measurements": {
+    "A": {
+      "amp_retries": 0,
+      "epoch_report_sha256": "38a535d63ce7a0943b7c838eafb2a3610301e56271a8ea795ebb27cf2c4beb99",
+      "epoch_wall_seconds": 152.79169763997197,
+      "job_wall_seconds": 275.7552921138704,
+      "optimizer_steps_per_epoch": 309,
+      "peak_allocated_bytes": 7824000512,
+      "startup_teardown_seconds": 122.96359447389841,
+      "validation_images": 5000
+    },
+    "B": {
+      "amp_retries": 0,
+      "epoch_report_sha256": "39d1521633c77eb3a1355a8d6abb43131263aa2b2e1953a29ffcdc063000080d",
+      "epoch_wall_seconds": 153.16250298172235,
+      "job_wall_seconds": 189.15784606337547,
+      "optimizer_steps_per_epoch": 309,
+      "peak_allocated_bytes": 7818137600,
+      "startup_teardown_seconds": 35.99534308165312,
+      "validation_images": 5000
+    },
+    "C": {
+      "amp_retries": 0,
+      "epoch_report_sha256": "ef6895ee90416b7dca77102eceea6160295dcb8323c49955103565c4c8394652",
+      "epoch_wall_seconds": 150.47986166924238,
+      "job_wall_seconds": 185.94103463739157,
+      "optimizer_steps_per_epoch": 309,
+      "peak_allocated_bytes": 7818137600,
+      "startup_teardown_seconds": 35.461172968149185,
+      "validation_images": 5000
+    },
+    "S": {
+      "amp_retries": 3,
+      "epoch_report_sha256": "7232644ff3aa29042bf4f0fd5b0df27c982a8c78f75fb471bbd7f3a365206798",
+      "epoch_wall_seconds": 169.19692979753017,
+      "job_wall_seconds": 193.9666097536683,
+      "optimizer_steps_per_epoch": 309,
+      "peak_allocated_bytes": 13940409856,
+      "startup_teardown_seconds": 24.769679956138134,
+      "validation_images": 5000
+    }
+  },
+  "estimated_E1_seconds": 35820.73939490318,
+  "estimated_at_unix": 1788806816.7580488,
+  "estimation_method": "sum(50 * epoch_wall + max(0, job_wall - epoch_wall)) + 48 * 90",
+  "identity": {
+    "commit": "49cd0941e86f82e78473b387bbb1f4bb34f6b4b8",
+    "contract_sha256": "619bc71e155f3fe291179189edc656f6a8399b50f7bf911f123fc7b5e18d0322",
+    "source_sha256": "178141213efb2b52e224b562f1016a0c97526b8d86d0592675a91ff393847edd"
+  },
+  "limitations": "Single warmup epoch; evaluation allowance 90 seconds each, not an accuracy or convergence prediction. Startup counted once per run.",
+  "raw_benchmark_sha256": "1a232832aef0b3fd056c15a56c5ba1a4f5690e8a10497afca15e1cffecbb74ef",
+  "raw_estimated_E1_seconds": 46561.03912841529,
+  "status": "passed"
+}

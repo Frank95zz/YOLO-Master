@@ -1,0 +1,18 @@
+{
+  "cuda": "12.4",
+  "cudnn": 90100,
+  "gpu": [
+    "0, NVIDIA A40, 46068 MiB, 550.54.15",
+    "1, NVIDIA A40, 46068 MiB, 550.54.15",
+    "2, NVIDIA A40, 46068 MiB, 550.54.15",
+    "3, NVIDIA A40, 46068 MiB, 550.54.15",
+    "4, NVIDIA A40, 46068 MiB, 550.54.15",
+    "5, NVIDIA A40, 46068 MiB, 550.54.15"
+  ],
+  "numpy": "2.4.6",
+  "os": "Linux-5.4.0-216-generic-x86_64-with-glibc2.35",
+  "python": "3.11.15",
+  "torch": "2.6.0+cu124",
+  "transformers": "5.15.1",
+  "ultralytics": "8.4.101"
+}

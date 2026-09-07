@@ -1,0 +1,22 @@
+{
+  "compile": {
+    "exit_code": 0,
+    "output": ""
+  },
+  "diff": {
+    "exit_code": 0,
+    "output": ""
+  },
+  "format": {
+    "exit_code": 0,
+    "output": "5 files already formatted\n"
+  },
+  "ruff": {
+    "exit_code": 0,
+    "output": "All checks passed!\n"
+  },
+  "spelling": {
+    "exit_code": 0,
+    "output": ""
+  }
+}
