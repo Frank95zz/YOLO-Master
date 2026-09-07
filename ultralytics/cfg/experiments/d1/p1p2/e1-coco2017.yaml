@@ -1,0 +1,34 @@
+# E1 is the first half of the unchanged full COCO schedule.
+schema_version: d1-p1p2-e1-v1
+dataset: coco2017
+nc: 80
+seed: 0
+imgsz: 640
+schedule_epochs: 100
+screen_fraction: 0.5
+screen_epochs: 50
+world_size: 6
+per_gpu_batch: 64
+global_batch: 384
+workers: 4
+prefetch_factor: 1
+save_period: 5
+official_eval_period: 5
+amp_init_scale: 16
+amp_growth_interval: 1000000
+optimizer: AdamW
+lr0: 0.001
+lrf: 0.01
+weight_decay: 0.0005
+warmup_epochs: 3.0
+mixture_aux_budget: 3.0
+balance_loss_coeff: 0.01
+router_z_loss_coeff: 0.001
+max_parameter_delta: 0.01
+selection_tie_ap: 0.005
+pause_retention: 0.8
+variants:
+  A: {value_fusion_mode: router_only, latent_aux_gain: 0.1}
+  B: {value_fusion_mode: weighted_sum, latent_aux_gain: 0.1}
+  C: {value_fusion_mode: weighted_sum, latent_aux_gain: 0.0}
+  S: {value_fusion_mode: none, latent_aux_gain: 0.0}
