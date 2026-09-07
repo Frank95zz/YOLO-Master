@@ -90,6 +90,7 @@ E2 的工程准备可先于 E1 的全部训练结束，但不能并行占用正�
 - COCO 使用官方 train2017 118,287 张、val2017 5,000 张，80 类。
 - VisDrone 使用官方 train 6,471 张、val 548 张，10 类；test-dev 1,610 张不参与筛选。
 - 不引入 COCO-mini，不二次随机划分完整 COCO；32 图仅用于工程测试。
+- 后续 RGB 训练和独立评测统一使用本地 NVMe 上的图片、标签及标注副本；Frozen 的特征缓存也使用本地 NVMe，不将存储差异混入模型对照。
 - 输入固定 640×640；复用原 LetterBox、RGB 和 DINO 归一化合同，不启用二次缩放/裁剪。
 - 关闭颜色、翻转、几何、mosaic、mixup、copy-paste、cutmix、erasing 和多尺度训练。
 - Frozen 从头初始化下游；Scratch 全网随机初始化；不加载旧训练 checkpoint 或预训练检测器。
@@ -105,6 +106,7 @@ E2 的工程准备可先于 E1 的全部训练结束，但不能并行占用正�
 | 完整训练上限 | 100 epochs | 300 epochs | 本方案选择，不声称来自官方最优配方 |
 | 筛选窗口 | 前 30/100 epochs | 前 60/300 epochs | 保留完整调度的前缀，不压缩余弦周期 |
 | GPU | 6×A40 | 6×A40 | 每个运行独占同一组卡，组间串行 |
+| 数据存储 | RGB 与特征缓存均为本地 NVMe | 同左 | 训练/验证路径均需校验；原始数据保留，不回退到慢盘 |
 | 每卡/global batch | 64 / 384 | 16 / 96 | VisDrone 较小，避免每轮仅约 17 次更新 |
 | nbs / 累积 | 384 / 1 | 96 / 1 | 每个有效 batch 更新一次，包括 warmup |
 | workers / prefetch | 每 rank 4 / 1 | 每 rank 4 / 1 | Frozen/Scratch 相同；性能偏离先做共同基准 |
@@ -177,6 +179,7 @@ E0 完成门槛：
 6. 新 runner 发现任何 aux nonfinite 隔离、静默跳更新或数据缺失时标记无效运行并安全停止。
 7. 原 D1/Foundation/LatentMixture/CompositeCriterion/checkpoint 回归、相关真实缓存测试和 diff 检查通过。
 8. 新训练代码先提交并推送，在干净代码 commit 上生成实际 run manifest。
+9. RGB 副本复制校验完成；预检确认图片、标签、标注和列表展开后的实际路径均在指定 NVMe 文件系统上，拒绝指回慢盘/NFS 的软链接、旧绝对路径和静默回退；补充相应拒绝规则测试。
 
 ## 6. E1 完整 COCO 的空间融合筛选
 
@@ -428,6 +431,20 @@ AP_target(dataset) = 0.90 * mean(AP_last of the three E4 Scratch runs)
 缓存放显式指定的本地 NVMe 根目录，COCO 原缓存不移动、不重写。
 本轮不默认访问 NFS，不删除数据原件、旧 checkpoint、原日志或其他用户目录。
 
+**RGB 数据集也必须先复制到 NVMe，再开始后续训练。** 以运行参数 `NVME_ROOT` 指定已核实的本地 NVMe 根目录：
+
+- COCO 副本使用 `${NVME_ROOT}/datasets/coco`，包含 train2017/val2017 图片、检测标签、所需官方标注和数据列表。
+- VisDrone 使用 `${NVME_ROOT}/datasets/VisDrone`。已在目标 NVMe 上且校验通过的内容直接复用；原始标注和转换后的标签分别保存。test-dev 仍只在 E7 评测。
+- 复制前核对挂载、实际剩余容量和源目录；已有目标先核验，不覆盖内容不一致的同名数据，不删除源件或调用破坏性同步。
+- 复制支持断点续传与临时文件；完成后核对文件数量、相对路径、字节数及逐文件 SHA256。小型复制收据包含源/目标内容摘要，完整清单放外部工作区。
+- 在新工作区生成指向 NVMe 副本的运行时数据配置和列表，不改写历史运行配置，不自动下载数据，也不重新随机划分。
+- 不以目录名称含 `localssd` 代替挂载验证；解析真实路径与列表中的绝对路径，确认训练、验证和独立评测确实读取 NVMe 副本。预检未通过就停止启动。
+- 迁移只改变存储位置，不解码重编码 JPEG、不调整尺寸、标签或样本顺序，不自动启用另一种图片缓存格式。
+
+2026-09-08 实测 COCO train2017 的 118,287 张 JPEG 共 19,314,466,396 bytes，约 **17.99 GiB**；
+该值不包含 val2017、标签、官方标注与临时文件。正式复制前统计完整待复制清单，将其实际空间需求加到下面的特征缓存预算中。
+只记录执行约定不等于副本已经完成；本次文档变更没有启动数据复制或训练。
+
 | 增量内容 | 不含文件头的 FP16 张量估算 |
 | --- | ---: |
 | VisDrone train+val，ViT-S | 24.10 GiB |
@@ -459,6 +476,9 @@ AP_target(dataset) = 0.90 * mean(AP_last of the three E4 Scratch runs)
 如 Scratch 参照也需重跑，另约 1.40 小时；均不包含在上述 30.75 小时内。
 所有基准保留加载、读取、GPU 前向/反向、optimizer、验证各阶段时间；
 至少覆盖完整 epoch 和真实盘读取，区分冷/热文件页缓存，不用驻留小 batch 微基准外推正式总时长。
+Scratch 与 Frozen 都在同一 NVMe 存储条件下记录实际磁盘读量、吞吐、DataLoader 等待和 CPU 预处理时间；
+复制、校验及预读造成的文件页缓存状态单列，不全局清缓存来制造冷启动条件。
+JPEG 解码与特征读取本来就是两条方法的不同成本，不宣称换成同类存储后两者的数据处理开销完全相同。
 ETA 包括标准评测与最终校验，按新实测计算；不并行跑多个对照争抢磁盘后比较速度。
 
 ## 13. 配置、证据与后台任务约定
@@ -475,6 +495,7 @@ model_config_sha256, initial_state_sha256, seed,
 world_size, per_gpu_batch, global_batch, workers, prefetch, sampler,
 optimizer, effective_weight_decay, scheduler, warmup_updates, amp/scaler,
 evaluation_toolkit_commit, evaluation_protocol_sha256,
+storage_class, dataset_copy_receipt_sha256, storage_preflight, page_cache_state,
 timing_by_phase, metrics, artifact_checksums, status, limitations
 ```
 
