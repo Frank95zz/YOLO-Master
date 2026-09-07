@@ -86,6 +86,110 @@ def clean_child_env() -> dict:
     return env
 
 
+def separated_gradients(native, auxiliary, parameters):
+    """Verify additive diagnostic gradients without populating parameter.grad."""
+    parameters = tuple(parameters)
+    detection = torch.autograd.grad(native, parameters, retain_graph=True, allow_unused=True)
+    aux = torch.autograd.grad(auxiliary, parameters, retain_graph=True, allow_unused=True)
+    total = torch.autograd.grad(native + auxiliary, parameters, allow_unused=True)
+    rows = []
+    for parameter, first, second, combined in zip(parameters, detection, aux, total):
+        zero = torch.zeros_like(parameter)
+        first, second, combined = (zero if value is None else value for value in (first, second, combined))
+        if not all(torch.isfinite(value).all() for value in (first, second, combined)):
+            raise FloatingPointError("Non-finite mechanism gradient")
+        if not torch.allclose(first + second, combined, rtol=2e-4, atol=2e-5):
+            raise ValueError("Diagnostic decomposition changed the total gradient")
+        rows.append(
+            {
+                "detection": float(first.float().norm()),
+                "aux": float(second.float().norm()),
+                "total": float(combined.float().norm()),
+            }
+        )
+    return rows
+
+
+def mechanism_evidence(source, batch):
+    """Probe an independent model; never update the trained model or its aux EMA."""
+    from ultralytics.nn.mixture_loss import _collect_mixture_aux_loss
+
+    model = D1FoundationDetectionModel(source.config_dict(), verbose=False)
+    initialize_mixture_loss_ema_buffer(model)
+    model.load_state_dict(source.state_dict(), strict=True)
+    model.args = deepcopy(source.args)
+    model.to(next(source.parameters()).device).train()
+    selected = [
+        (name, parameter)
+        for name, parameter in model.named_parameters()
+        if parameter.requires_grad and any(key in name for key in ("branches.", "router", "residual_gain"))
+    ]
+    amplitudes = {}
+
+    def magnitude(value):
+        return {
+            "rms": float(value.detach().float().square().mean().sqrt()),
+            "abs_max": float(value.detach().abs().max()),
+        }
+
+    def adapter_hook(module, inputs, outputs):
+        amplitudes["candidates"] = {
+            scale: [magnitude(tensor) for tensor in values] for scale, values in outputs.items()
+        }
+
+    hooks = [model.adapter.register_forward_hook(adapter_hook)]
+    for scale, mixture in model.mixtures.items():
+
+        def mixture_hook(module, inputs, output, scale=scale):
+            amplitudes.setdefault("fused", {})[scale] = magnitude(output)
+
+        hooks.append(mixture.register_forward_hook(mixture_hook))
+    initial = detached_state(model)
+    result = {}
+    try:
+        for case, balance, z_loss, gain in (
+            ("active", 0.01, 0.001, float(source.args.latent_aux_gain)),
+            ("aux_zero", 0.01, 0.001, 0.0),
+            ("balance_only", 0.01, 0.0, 0.1),
+            ("z_only", 0.0, 0.001, 0.1),
+        ):
+            model.load_state_dict(initial, strict=True)
+            for mixture in model.mixtures.values():
+                mixture.balance_loss_coeff, mixture.router_z_loss_coeff = balance, z_loss
+            criterion = model.init_criterion().native_criterion
+            source_criterion = getattr(source.criterion, "native_criterion", source.criterion)
+            for name in ("updates", "o2m", "o2o"):
+                if hasattr(source_criterion, name):
+                    setattr(criterion, name, getattr(source_criterion, name))
+            predictions = model.predict(batch["features"])
+            native, _ = criterion(predictions, batch)
+            auxiliary = _collect_mixture_aux_loss(
+                model,
+                native.device,
+                moe_gain=0.0,
+                mot_gain=0.0,
+                moa_gain=0.0,
+                latent_gain=gain,
+                aux_budget=3.0,
+            )
+            gradients = separated_gradients(native.sum(), auxiliary, (parameter for _, parameter in selected))
+            if case == "aux_zero" and any(row["aux"] != 0.0 for row in gradients):
+                raise ValueError("Disabled aux has a nonzero gradient")
+            result[case] = {
+                "native_loss": float(native.detach().sum()),
+                "applied_aux": float(auxiliary.detach()),
+                "aux_requires_grad": auxiliary.requires_grad,
+                "gradients": dict(zip((name for name, _ in selected), gradients)),
+                "amplitudes": deepcopy(amplitudes),
+            }
+        if any(parameter.grad is not None for parameter in model.parameters()):
+            raise ValueError("Diagnostics unexpectedly populated .grad")
+    finally:
+        for hook in hooks:
+            hook.remove()
+    return result
+
+
 class E1Policy:
     """Require finite updates, preserve exact resume state, and stop at a window boundary."""
 
@@ -247,6 +351,29 @@ class E1Policy:
         )
 
     def e1_on_train_epoch_start(self, trainer):
+        model = unwrap_model(self.model)
+        if (
+            isinstance(model, D1FoundationDetectionModel)
+            and self.e1["profile"] != "benchmark"
+            and (self.epoch == 0 or (self.e1["profile"] == "E1" and self.epoch in (24, 49)))
+        ):
+            saved_rng = rng_state(self.device)
+            try:
+                dataset = self.train_loader.dataset
+                batch = dataset.collate_fn([dataset[(2 * self.e1_rank + i) % len(dataset)] for i in range(2)])
+                batch = self.preprocess_batch(batch)
+                report = mechanism_evidence(model, batch)
+                write_json(
+                    self.e1_output / "mechanism" / f"rank-{self.e1_rank}-epoch-{self.epoch + 1:03d}.json",
+                    {
+                        "epoch": self.epoch + 1,
+                        "scope": "Independent FP32 copy on two real samples per rank",
+                        "cases": report,
+                    },
+                )
+            finally:
+                restore_rng(saved_rng, self.device)
+                self.e1_retry_batch = self.e1_retry_buffers = self.e1_retry_rng = None
         self.e1_epoch_started = time.monotonic()
         self.e1_epoch_batches = 0
         self.e1_previous_end = None

@@ -99,6 +99,18 @@ def load_contract(path=CONFIG):
     return value
 
 
+def verify_source_identity(recorded, current):
+    """Permit clean documentation-only descendants, never a source/configuration change."""
+    if any(recorded[key] != current[key] for key in ("source_sha256", "contract_sha256")):
+        raise ValueError("Source identity changed since preparation")
+    if recorded["commit"] != current["commit"]:
+        result = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", recorded["commit"], current["commit"]], cwd=ROOT, check=False
+        )
+        if result.returncode != 0:
+            raise ValueError("Current checkout is not a descendant of the recorded code commit")
+
+
 def model_config(variant):
     if variant not in VARIANTS:
         raise ValueError("Unknown E1 variant")
@@ -199,8 +211,8 @@ def load_matrix(workspace, *, check_code=True):
     matrix = read_json(workspace / "matrix.json")
     if matrix["contract"] != load_contract():
         raise ValueError("Matrix contract changed")
-    if check_code and matrix["identity"] != identity():
-        raise ValueError("Source identity changed since preparation")
+    if check_code:
+        verify_source_identity(matrix["identity"], identity())
     if matrix["data_receipt_sha256"] != sha256_file(workspace / "data/receipt.json"):
         raise ValueError("Data verification identity changed")
     receipt = read_json(workspace / "data/receipt.json")
@@ -553,7 +565,8 @@ class Pipeline:
                 },
             )
             return
-        if read_json(self.workspace / "E0-engineering.json")["status"] != "passed":
+        engineering = read_json(self.workspace / "E0-engineering.json")
+        if engineering["status"] != "passed" or engineering["identity"] != matrix["identity"]:
             raise ValueError("Complete E0 before benchmarking or E1")
         if self.args.command == "benchmark":
             seconds = {}

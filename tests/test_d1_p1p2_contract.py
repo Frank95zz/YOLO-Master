@@ -144,3 +144,51 @@ def test_evaluator_does_not_inherit_ddp(monkeypatch):
 def test_wrong_variant_rejected():
     with pytest.raises(ValueError):
         experiment.model_config("D")
+
+
+@pytest.mark.parametrize("gain", [0.0, 0.1])
+def test_gradient_diagnostics_preserve_additive_gradient(gain):
+    from scripts.d1.p1p2_runtime import separated_gradients
+
+    first = torch.nn.Parameter(torch.tensor([2.0, 3.0]))
+    second = torch.nn.Parameter(torch.tensor([5.0]))
+    rows = separated_gradients(first.square().sum(), gain * (first.sum() + second.square().sum()), (first, second))
+    assert all(parameter.grad is None for parameter in (first, second))
+    assert rows[0]["detection"] > 0 and rows[1]["detection"] == 0
+    assert (rows[1]["aux"] > 0) == (gain > 0)
+
+
+def test_mechanism_probe_does_not_modify_training_model():
+    from scripts.d1.p1p2_runtime import mechanism_evidence
+
+    model = experiment.construct_model("B").train()
+    before = detached_state(model)
+    batch = {
+        "features": {name: torch.randn(2, 384, 4, 4) for name in model.source_names},
+        "batch_idx": torch.tensor([0.0, 1.0]),
+        "cls": torch.tensor([[0.0], [1.0]]),
+        "bboxes": torch.tensor([[0.5, 0.5, 0.3, 0.3], [0.4, 0.4, 0.2, 0.2]]),
+    }
+    result = mechanism_evidence(model, batch)
+    assert set(result) == {"active", "aux_zero", "balance_only", "z_only"}
+    assert all(row["aux_requires_grad"] for row in result.values())
+    assert set(result["active"]["amplitudes"]["fused"]) == {"p3", "p4", "p5"}
+    assert all(parameter.grad is None for parameter in model.parameters())
+    for key, value in model.state_dict().items():
+        assert torch.equal(before[key], value) if isinstance(value, torch.Tensor) else before[key] == value
+
+
+def test_source_identity_accepts_only_unchanged_descendants(monkeypatch):
+    from types import SimpleNamespace
+
+    recorded = {"commit": "a", "source_sha256": "s", "contract_sha256": "c"}
+    experiment.verify_source_identity(recorded, recorded)
+    monkeypatch.setattr(experiment.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(returncode=0))
+    experiment.verify_source_identity(recorded, {**recorded, "commit": "doc"})
+    with pytest.raises(ValueError):
+        experiment.verify_source_identity(recorded, {**recorded, "source_sha256": "changed"})
+    with pytest.raises(ValueError):
+        experiment.verify_source_identity(recorded, {**recorded, "contract_sha256": "changed"})
+    monkeypatch.setattr(experiment.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(returncode=1))
+    with pytest.raises(ValueError):
+        experiment.verify_source_identity(recorded, {**recorded, "commit": "unrelated"})
