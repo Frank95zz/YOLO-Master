@@ -1,0 +1,282 @@
+{
+  "boundaries": [
+    "No new full training or full evaluation was run for this publication.",
+    "Historical source snapshots and evaluation evidence were preserved; formatting cleanup means published sources are not byte-identical to historical snapshots.",
+    "Data, teacher weights, feature caches, checkpoints, full predictions, logs and source archives are external, not Git artifacts.",
+    "NPY conversion is source-retiring incremental migration, restricted to disjoint directories on the root filesystem under /root; not a copy-only converter.",
+    "No Issue or upstream PR is created by this delivery."
+  ],
+  "branch": "feat/topic-d1-fengyanqi",
+  "checks": {
+    "codespell-check-final": {
+      "command": [
+        "python",
+        "-m",
+        "codespell_lib",
+        "scripts/d1/benchmark_cache_layout.py",
+        "scripts/d1/benchmark_cache_layout_gpu.py",
+        "scripts/d1/convert_cache_to_npy.py",
+        "scripts/d1/diagnose_wp8.py",
+        "scripts/d1/launch_wp8_npy.py",
+        "scripts/d1/run_wp8_train.py",
+        "tests/test_d1_cache_layout_benchmark.py",
+        "tests/test_d1_cache_layout_gpu.py",
+        "tests/test_d1_final_eval.py",
+        "tests/test_d1_npy_migration.py",
+        "tests/test_d1_npy_training.py",
+        "ultralytics/data/d1_cache.py",
+        "ultralytics/models/yolo/detect/foundation_train.py",
+        "ultralytics/nn/foundation/npy_cache.py"
+      ],
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "help-benchmark_cache_layout": {
+      "command": [
+        "python",
+        "-m",
+        "scripts.d1.benchmark_cache_layout",
+        "--help"
+      ],
+      "exit_code": 0,
+      "log_sha256": "79c458520d51badc44a62110f98aadf610511983607c146c1a212ad1c5e486d5"
+    },
+    "help-benchmark_cache_layout_gpu": {
+      "command": [
+        "python",
+        "-m",
+        "scripts.d1.benchmark_cache_layout_gpu",
+        "--help"
+      ],
+      "exit_code": 0,
+      "log_sha256": "d217494a7d8b8ce01565111cbe1f4a0158579a8ca27d5d693817a0c11a685649"
+    },
+    "help-convert_cache_to_npy": {
+      "command": [
+        "python",
+        "-m",
+        "scripts.d1.convert_cache_to_npy",
+        "--help"
+      ],
+      "exit_code": 0,
+      "log_sha256": "8ef396951b4abab85781b5185a34f18d8b065bab8797535506936d9f730c4a42"
+    },
+    "help-diagnose_wp8": {
+      "command": [
+        "python",
+        "-m",
+        "scripts.d1.diagnose_wp8",
+        "--help"
+      ],
+      "exit_code": 0,
+      "log_sha256": "0cd4763c71317b2d02aa5d5f90f6c0254e2cb9c0bbe43436e3d022559ec69fb0"
+    },
+    "help-launch_wp8_npy": {
+      "command": [
+        "python",
+        "-m",
+        "scripts.d1.launch_wp8_npy",
+        "--help"
+      ],
+      "exit_code": 0,
+      "log_sha256": "8bead6c85bd952ae801fba8866eae918d0d279349647d18f5afa64dac7f89212"
+    },
+    "help-run_wp8_train": {
+      "command": [
+        "python",
+        "-m",
+        "scripts.d1.run_wp8_train",
+        "--help"
+      ],
+      "exit_code": 0,
+      "log_sha256": "313ad050085bd0817c19561a923b89a463c02314ea11048be14f3f60de0ba478"
+    },
+    "real-npy-final": {
+      "cache_environment_variable": "D1_NPY_CACHE",
+      "command": [
+        "python",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_d1_npy_training.py::test_real_npy_model_backward_and_checkpoint"
+      ],
+      "exit_code": 0,
+      "gpu": "NVIDIA A40",
+      "log_sha256": "65cf311868b9c2a1f104e6519ecff711e0151797f64638016dd97c211ccab515",
+      "overlaps_optional_regression_test": true,
+      "passed": 1,
+      "seconds": 5.61
+    },
+    "regression-final": {
+      "command": [
+        "python",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_d1_cache_cleanup_runner.py",
+        "tests/test_d1_cache_layout_benchmark.py",
+        "tests/test_d1_cache_layout_gpu.py",
+        "tests/test_d1_final_eval.py",
+        "tests/test_d1_npy_migration.py",
+        "tests/test_d1_npy_training.py",
+        "tests/test_d1_wp0_contract.py",
+        "tests/test_d1_wp1_dinov3.py",
+        "tests/test_d1_wp2_cache_cli.py",
+        "tests/test_d1_wp2_feature_cache.py",
+        "tests/test_d1_wp3_foundation_adapter.py",
+        "tests/test_d1_wp4_foundation_detection_model.py",
+        "tests/test_d1_wp5_cached_pipeline.py",
+        "tests/test_d1_wp6_latent_aux.py",
+        "tests/test_d1_wp7_acceptance.py",
+        "tests/test_d1_wp8_diagnostics.py",
+        "tests/test_d1_wp8_followup.py",
+        "tests/test_d1_wp8_formal_training.py",
+        "tests/test_d1_wp8_multi_gpu_cache.py",
+        "tests/test_d1_wp8_p1_control.py",
+        "tests/test_d1_wp8_p1_launch.py",
+        "tests/test_d1_wp8_training_benchmark.py",
+        "tests/test_foundation_checkpoint.py",
+        "tests/test_foundation_config.py",
+        "tests/test_foundation_dinov3.py",
+        "tests/test_foundation_distill_model.py",
+        "tests/test_foundation_f08_effect_gate.py",
+        "tests/test_foundation_f09_foreground_effect_gate.py",
+        "tests/test_foundation_f15_benchmark.py",
+        "tests/test_foundation_f15_effect_matrix.py",
+        "tests/test_foundation_f15_real_effect_gate.py",
+        "tests/test_foundation_f15_release_audit.py",
+        "tests/test_foundation_losses.py",
+        "tests/test_foundation_metrics_logging.py",
+        "tests/test_foundation_mixture_interaction.py",
+        "tests/test_foundation_multirouter.py",
+        "tests/test_foundation_multitask.py",
+        "tests/test_foundation_projectors.py",
+        "tests/test_foundation_recipe_integrity.py",
+        "tests/test_foundation_routing_contract.py",
+        "tests/test_foundation_semantic.py",
+        "tests/test_foundation_siglip2.py",
+        "tests/test_foundation_taps.py",
+        "tests/test_foundation_teacher_protocol.py",
+        "tests/test_foundation_weight_schedule.py",
+        "tests/test_latent_mixture.py",
+        "tests/test_mixture_loss_composition.py"
+      ],
+      "cuda_visible_devices": "",
+      "exit_code": 0,
+      "log_sha256": "56ee3d40164f02dd45e8e3431d98c786282591719448c242c887c0a6eda24f36",
+      "passed": 560,
+      "seconds": 26.2,
+      "skipped": 8,
+      "test_file_count": 47
+    },
+    "ruff-check-final": {
+      "command": [
+        "python",
+        "-m",
+        "ruff",
+        "check",
+        "scripts/d1/benchmark_cache_layout.py",
+        "scripts/d1/benchmark_cache_layout_gpu.py",
+        "scripts/d1/convert_cache_to_npy.py",
+        "scripts/d1/diagnose_wp8.py",
+        "scripts/d1/launch_wp8_npy.py",
+        "scripts/d1/run_wp8_train.py",
+        "tests/test_d1_cache_layout_benchmark.py",
+        "tests/test_d1_cache_layout_gpu.py",
+        "tests/test_d1_final_eval.py",
+        "tests/test_d1_npy_migration.py",
+        "tests/test_d1_npy_training.py",
+        "ultralytics/data/d1_cache.py",
+        "ultralytics/models/yolo/detect/foundation_train.py",
+        "ultralytics/nn/foundation/npy_cache.py"
+      ],
+      "exit_code": 0,
+      "log_sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    "ruff-format-check-final": {
+      "command": [
+        "python",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "scripts/d1/benchmark_cache_layout.py",
+        "scripts/d1/benchmark_cache_layout_gpu.py",
+        "scripts/d1/convert_cache_to_npy.py",
+        "scripts/d1/diagnose_wp8.py",
+        "scripts/d1/launch_wp8_npy.py",
+        "scripts/d1/run_wp8_train.py",
+        "tests/test_d1_cache_layout_benchmark.py",
+        "tests/test_d1_cache_layout_gpu.py",
+        "tests/test_d1_final_eval.py",
+        "tests/test_d1_npy_migration.py",
+        "tests/test_d1_npy_training.py",
+        "ultralytics/data/d1_cache.py",
+        "ultralytics/models/yolo/detect/foundation_train.py",
+        "ultralytics/nn/foundation/npy_cache.py"
+      ],
+      "exit_code": 0,
+      "log_sha256": "2afb1c293434bc55d84b35d54454a0bf9aa84e41cda426817a5c6693d432e37a"
+    }
+  },
+  "code_commit": "e4297e742f472c443ce55914e31144afcc67705d",
+  "git_diff_check": "passed",
+  "historical_runs": {
+    "final_evaluation": {
+      "evidence_file": "final-evaluation-20260907.json",
+      "evidence_sha256": "63a9cffe455f2ee3372755e4e2f34476348f9f064d6b89eef85856700399d52f",
+      "source_fingerprint": "5b7f9e60feabca7bee1e3aa3af580a4566233538298cb1d66f05baec9a9ea1ec",
+      "source_snapshot_sha256": "3b5054dd92368aae0d498627e306edf5a190e67c97e7a4e0a8963d92b6c55d36"
+    },
+    "training": {
+      "base_commit": "776cd0fe1641071eac00402fbbcbc75060847dd7",
+      "run_id": "wp8-p0-nvme-npy-b384-s0-20260906T130709Z",
+      "source_fingerprint": "6d55d3fe29fc92bfc5d35783b691b2189dac2bbcb64881948d2aae5cf516b364",
+      "source_snapshot_sha256": "3b3bac0c7ded161cf34c2f015d8850fec119c4ba43905eae575654e066b0404f"
+    }
+  },
+  "lint_tools": {
+    "codespell": "2.4.3",
+    "isolated_install": true,
+    "ruff": "0.16.6",
+    "scope": "14 pending Python files; no whole-repository lint-pass claim"
+  },
+  "published_python_files_sha256": {
+    "scripts/d1/benchmark_cache_layout.py": "5e3509c4d1f6e1f4ccfefd7df3b6d97ffa00d763b4cf90db8b70cd895d8a3453",
+    "scripts/d1/benchmark_cache_layout_gpu.py": "62c27155d2787a6965d6b2f4be3bfa8cab9656561eb1f3afcd86490d5bfb274f",
+    "scripts/d1/convert_cache_to_npy.py": "09706df1f50d306b9a220e8489aff3819062d5049953daadcfd26712e8aac415",
+    "scripts/d1/diagnose_wp8.py": "d6811329bbd6f0106d5e56ecebc80e18ff8ae00c280a3b298fc227819ec2380e",
+    "scripts/d1/launch_wp8_npy.py": "ed02313776a1654e0597e89b20638ff59d11541c49150f50902182f09c8cea8c",
+    "scripts/d1/run_wp8_train.py": "d0027907d4c462552fc7701183cc695511ca1f9a2bde682dbd328aee2493989b",
+    "tests/test_d1_cache_layout_benchmark.py": "1c50017400bbb75778a8dd469bca0c74367544b689ffc8dcb95046ad0df6eae8",
+    "tests/test_d1_cache_layout_gpu.py": "776994ddbd1e12509d733e7f6fa5d1a4789d4c5b8dfbf0d23174e3f288e80a8d",
+    "tests/test_d1_final_eval.py": "8193022b50d04a3c38ebe82ce733c47bee4ccb41d47c87327a4a2edceddd779d",
+    "tests/test_d1_npy_migration.py": "a12732438f3ead29fd922fce89d694f0834390eb3373a7581d1c1d2ad0317d31",
+    "tests/test_d1_npy_training.py": "4ab9fdb41c68d57a62e04838093284653d4091fa65618479943b2559a3609bf4",
+    "ultralytics/data/d1_cache.py": "b1a68bf4ad2c828a8841b298487e7326997bc3602b6af5217fdfafce227addf4",
+    "ultralytics/models/yolo/detect/foundation_train.py": "5005dae6184bb473519c355bcf776b611350d77f58ac104bb8bc030e710a7766",
+    "ultralytics/nn/foundation/npy_cache.py": "1ac852277a3b2b6285c6c276d2e840eecf6cbf93a0dc6c715e9b66f54e182850"
+  },
+  "py_compile": {
+    "file_count": 14,
+    "status": "passed"
+  },
+  "record_date": "2026-09-07",
+  "repository": "https://github.com/Frank95zz/YOLO-Master",
+  "runtime": {
+    "packages": {
+      "faster-coco-eval": "1.8.0",
+      "numpy": "2.4.6",
+      "pytest": "9.1.1",
+      "safetensors": "0.8.0",
+      "torch": "2.6.0+cu124",
+      "transformers": "5.15.1",
+      "ultralytics": "8.4.101"
+    },
+    "python": "3.11.15",
+    "runtime_source_fingerprint": "a765716962ad61df10c4108bf22e41cba3309ce559fe9af50c7190371a7b1caf"
+  },
+  "schema_version": "d1-publication-v1",
+  "status": "verified_for_publication",
+  "validation_identity": "Tests ran on identical Python sources immediately before the code commit; all 14 file hashes were checked against committed blobs."
+}

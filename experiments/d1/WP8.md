@@ -1342,3 +1342,230 @@ Git 小型汇总：[wp8-followup-preparation.json](manifests/wp8-followup-prepar
 `wp8-followup-1f0698a-preparation`、`wp8-followup-1f0698a-checks`、
 `wp8-followup-19ecf4b-probe`、`wp8-followup-19ecf4b-scratch-train5000`。
 对应日志在 `logs/`；完整预测 JSON 不进入 Git。旧冻结及 scratch 的 checkpoint、CSV 未修改。
+
+## 26. NPY 缓存下的修复重跑（2026-09-06）
+
+用户已授权修复后重新启动冻结 DINOv3 实验。本节更新此前“后续训练待授权”的状态，
+不修改旧实验结果，也不恢复官方 EsMoE 的训练。
+
+### 26.1 实验边界与修复
+
+- 从第 1 轮随机初始化下游模型，不接旧冻结实验的第 30 轮 checkpoint。
+- 保持原 Adapter、router_only LatentMixture、Detect 结构，3,542,567 个可训练参数。
+  本次不引入 weighted_sum 或其他融合改动，拟合能力问题仍需用新结果判断。
+- 使用当前代码中 scalar-once-v1 修复，辅助损失只计入一次；保留 AMP 溢出重试修复。
+  旧结果含辅助损失广播偏差，因此新旧差异不能全部归因于存储格式。
+- 正式 Dataset、Trainer 和启动前校验接入 d1-npy-cache-v1。每图一个未压缩 FP16 数组，
+  形状为 [3,384,40,40]，顺序固定为 block4、block8、block12。
+- 使用虚拟 img 别名，避免 DataLoader 对同一份 features 重复分配锁页内存。
+  不修改标签、样本顺序、特征值、RGB 归一化或损失的 batch 缩放方式。
+- 修复 D1 恢复训练时重新初始化 AMP scaler 的问题，已恢复的 scaler 状态不再被覆盖。
+  新实验也拒绝加载另一实验身份的 checkpoint。
+
+### 26.2 数据与校验
+
+使用完整 COCO train2017=118,287、val2017=5,000，无二次划分。
+数据、NPY、日志、checkpoint 均使用本地盘，不默认访问 NFS。
+缓存转换已验证源分片 SHA256、逐层 SHA256 和独立写后回读。
+训练前再次检查全部转换收据、原始 metadata 对应关系、样本集合、文件数量和大小；
+每个 split 均匀抽取最多 32 个样本，检查 NPY 与逐层 SHA256 以及有限值。
+这不是重新逐字节扫描全部 423 GiB，也不改变第 25 节披露的 FP16 尾批上下文依赖。
+
+NPY 读取器使用 allow_pickle=False，拒绝错序、重复 ID、路径越界、格式错误和不完整证据。
+旧 safetensors 读取接口保留兼容，转换和训练不再需要已移除的本地源分片。
+
+### 26.3 锁定配方
+
+沿用 wp8-formal-coco2017.yaml：6 张 A40，每卡 batch64、全局 batch384、nbs384，
+每 rank workers4、prefetch1、AMP、初始 scale16、growth_interval=1,000,000。
+AdamW，lr0=0.001，lrf=0.01，weight_decay=0.0005，warmup=3 epochs，
+余弦衰减，总计划 100 epochs，seed0，无增强。
+第 30 轮作为人工复核点，不改变 100-epoch 学习率调度，也不自动停止。
+每轮保存 last/best，每 10 轮额外保存；每轮验证完整 5,000 图。
+
+### 26.4 启动与状态
+
+在仓库根目录设置 PYTHON、WORK_ROOT、DATA_ROOT、NPY_ROOT、RUN_ID；
+WORK_ROOT 必须为本地外部工作区，NPY_ROOT 是同时包含 train2017/val2017 的目录，
+RUN_ID 必须全新。无需下载或实例化 Teacher。
+
+```bash
+nohup "$PYTHON" -m scripts.d1.launch_wp8_npy \
+  --workspace "$WORK_ROOT" --data-root "$DATA_ROOT" \
+  --cache-root "$NPY_ROOT" --run-id "$RUN_ID" --approved \
+  > "$WORK_ROOT/logs/$RUN_ID.log" 2>&1 < /dev/null &
+```
+
+有 GPU keeper 时通过 --keeper-script 指定已安装脚本：启动器校验 PID 所属进程后停止，
+退出时恢复。不会结束其他训练任务。校验失败不会开始训练。
+训练退出后自动尝试释放本任务 NPY 文件页缓存，不施加大内存压力，不删除 NPY 文件，
+不承诺将容器内存降到特定数字。
+
+状态、逐 rank 进度和训练日志位于 WORK_ROOT/manifests/RUN_ID：
+status.json、progress-rank-00.json 至 progress-rank-05.json、training.log。
+训练输出位于 WORK_ROOT/runs/RUN_ID：results.csv、weights/last.pt、weights/best.pt。
+启动器保存代码 commit、实际源码指纹和 runtime-sources.tar.gz，包含未提交的运行时修复，
+避免仅记录旧 HEAD 却遗漏工作区代码变更。训练和恢复均检查源码指纹。
+超过 3 分钟的任务后台运行；确认启动后退出交互会话，不持续轮询。
+
+完成首轮后再根据完整训练与验证耗时更新 ETA；不能用 2,048 图热缓存吞吐直接推算总时长。
+本节不预先宣称精度改善、100 轮完成或达到 GPU-hours 降低 50% 的课题目标。
+
+### 26.5 启动前验证记录
+
+- D1 WP0-WP8、Foundation、LatentMixture、checkpoint 与 NPY 离线回归：
+  467 passed、6 skipped，28.02 秒。
+- 辅助损失组合、NPY 读取、启动门禁及源码指纹定向回归：
+  45 passed、1 skipped，1.32 秒；此项与上一组有重复测试，不直接相加。
+- 本地真实 NPY 在 A40 上完成 FP16 autocast 前向、有限 loss/backward、非零梯度、
+  Teacher 参数隔离与 state dict 严格重载：1 passed，6.17 秒。
+- py_compile 与 git diff --check 通过；服务器未安装 Ruff、codespell，未声称其检查通过。
+- 原始验证日志放在本地外部工作区 logs/d1-npy-restart-validation-20260906，
+  不将特征张量、完整训练产物或数据集提交到 Git。
+
+### 26.6 已启动实验
+
+- Run ID：wp8-p0-npy-b384-s0-20260906T102539Z。
+- 启动：2026-09-06 10:25:39 UTC（北京时间 18:25:39），后台主管 PID=6719。
+- 启动确认：6 个 rank 均完成 optimizer_steps=1，检测及辅助 loss 全部有限，
+  AMP scale=16；日志已进入后续 batch。首批采样 GPU 利用率为 77%-87%，
+  这是启动时快照，不代表完整训练平均值。
+- 主管状态：WORK_ROOT/manifests/该 Run ID/status.json；实时日志为同目录 training.log。
+- 输出：WORK_ROOT/runs/该 Run ID。首轮尚未完成时 results.csv 可能尚不存在。
+- 运行代码为 HEAD=776cd0f 加本次工作区修复，源码指纹
+  6d55d3fe29fc92bfc5d35783b691b2189dac2bbcb64881948d2aae5cf516b364。
+  runtime-sources.tar.gz 保存实际运行源码；本轮没有提交或推送 GitHub。
+- 此处只确认正常启动，不代表 100 epochs 完成或精度问题已经解决。
+
+## 27. 完整训练与最终 COCO 评测结果（2026-09-07）
+
+### 27.1 训练完成情况
+
+NVMe 实验 `wp8-p0-nvme-npy-b384-s0-20260906T130709Z` 已完成 100 epochs，
+100 行 CSV、600 份 rank/epoch 遥测、30,900 次更新；CSV 累计 14,210 秒。
+训练后已对 best.pt、last.pt 分别完成全部 5,000 张 val2017 图片的独立评测，结果见 27.3。
+
+### 27.2 评测配置与验证
+
+本次只对现有 best.pt、last.pt 各评测一次完整 COCO val2017；
+单卡、batch=128、workers=8、imgsz=640，使用 NVMe NPY，不加载 Teacher，不执行 optimizer 更新。
+复用 scripts/d1/diagnose_wp8.py 的 val 入口，保存内置指标和 faster-coco-eval 的独立 COCO 指标，
+检查严格重载、Teacher 参数隔离、5,000 图片完整性和权重 SHA256。
+
+外部证据目录为 WORK_ROOT/manifests/d1-final-eval-repair-20260907T140824Z。
+目录保存 evaluation-identity.json、evaluation-sources.tar.gz、各自 predictions/report 和最终汇总。
+两份评测于 2026-09-07 22:23:52（北京时间）全部完成，
+evaluation-status.json 为 COMPLETED，evaluation-summary.json 为 passed，总耗时 112.699 秒。
+
+最终评测定向测试 17 passed；相关 46 个测试文件共 539 passed、6 skipped，30.15 秒。
+py_compile、git diff --check 通过；Ruff/codespell 未安装，未运行。
+
+### 27.3 最终结果与验收
+
+所有精度按 0–100 报告。两份权重各自覆盖完整 5,000 张 val2017，使用同一缓存合同及样本列表。
+COCO 列来自官方 annotations 与 category ID 映射上的 faster-coco-eval 1.8.0；
+内置 Validator 列用于核对训练历史，不与 COCO 列混算提升。
+
+| checkpoint | 内置 mAP50 | 内置 mAP50-95 | COCO AP50 | COCO AP | AP small | AP medium | AP large |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| best.pt | 22.873 | 11.396 | 23.726 | 11.972 | 5.860 | 12.542 | 16.483 |
+| last.pt | 22.150 | 10.937 | 22.956 | 11.489 | 5.849 | 12.775 | 15.421 |
+
+- 两种评测口径独立报告；COCO AP 与内置 AP 的差异不视为模型精度变化。
+- best/last 子任务 wall time 为 56.592/55.192 秒；其中 Validator 计时为 27.959/27.200 秒，
+  不包含后续完整 COCO 汇总，不能混为训练吞吐。记录的峰值 GPU 分配内存均为 3,525,138,432 bytes。
+- 两份 checkpoint 严格重载通过，Teacher 参数数为 0，optimizer 更新为 0。
+- 两份预测的 image ID 集合均与官方 val2017 的 5,000 个 ID 完全一致，category ID 均属于官方类别集合。
+  report、predictions、Router 样本记录均重新校验 SHA256；预测数分别为 1,042,660 / 1,003,813。
+- 单 seed、低精度、同预算对照不足和第二数据集缺口仍然存在；代码交付情况见第 28 节。
+
+### 27.4 证据归档与复现
+
+小型脱敏证据：[final-evaluation-20260907.json](manifests/final-evaluation-20260907.json)，
+8,001 bytes，SHA256 为 `63a9cffe455f2ee3372755e4e2f34476348f9f064d6b89eef85856700399d52f`。
+该文件仅整理实测记录，不包含服务器绝对数据路径、完整预测或权重，随本次交付纳入 Git。
+
+| 外部评测目录内的产物 | SHA256 |
+| --- | --- |
+| evaluation-summary.json | `e5fd9531abb8fe6d2b56465e3e85a6c27463a068212cbad6222e5fab545829a9` |
+| evaluation-sources.tar.gz | `3b5054dd92368aae0d498627e306edf5a190e67c97e7a4e0a8963d92b6c55d36` |
+| final-best/val2017/report.json | `6f960cde68b83cd978849a7b85b703873b85ed9cb6550f9bd891e053fcaab58a` |
+| final-last/val2017/report.json | `310c3f9f3e703055ce886536c0b483141c680fb7120c88c39db4880000e992d4` |
+| best.pt（原训练目录） | `af5da7fe37fc709d04cb4df3414d6f300d883066688c7caed6cb832d8994859e` |
+| last.pt（原训练目录） | `3fcb8062617216238f350373c4beaf62b7e7e1db28468298daa1a21fdaf1a4ea` |
+
+评测源码指纹为 `5b7f9e60feabca7bee1e3aa3af580a4566233538298cb1d66f05baec9a9ea1ec`；
+评测当时 HEAD 为 `776cd0fe1641071eac00402fbbcbc75060847dd7` 加工作区实现，
+与训练时的 `6d55d3fe29fc92bfc5d35783b691b2189dac2bbcb64881948d2aae5cf516b364` 分开记录。
+精确执行命令保存于 command-best.json / command-last.json。以下为迁移机器后的复现模板，
+精确追溯历史运行使用对应源码快照；重新运行可使用第 28 节的已提交代码，
+并重新记录实际环境、代码指纹和结果，不是仅 checkout 旧 HEAD：
+
+```bash
+: "${WORK_ROOT:?设置外部工作区}"
+: "${DATA_ROOT:?设置 COCO 根目录}"
+: "${NPY_ROOT:?设置已校验的 NPY 根目录}"
+: "${CHECKPOINT:?设置 best.pt 或 last.pt}"
+: "${EVAL_OUT:?设置新的独立评测目录}"
+python -m scripts.d1.diagnose_wp8 val \
+  --workspace "$WORK_ROOT" --data-root "$DATA_ROOT" \
+  --checkpoint "$CHECKPOINT" --output-dir "$EVAL_OUT" \
+  --train-cache "$NPY_ROOT/train2017" --val-cache "$NPY_ROOT/val2017" \
+  --device 0 --batch 128 --workers 8 --prefetch-factor 1
+```
+
+当前结论：完整 COCO 训练及独立评测已完成，当前模型精度仍需提升。
+后续优先使用短预算实验验证空间特征利用与 aux 配置。
+
+## 28. 代码交付与复现边界（2026-09-07）
+
+### 28.1 可克隆代码与历史实验
+
+本次代码提交为 `e4297e742f472c443ce55914e31144afcc67705d`，
+交付目标为用户 fork 的 `origin/feat/topic-d1-fengyanqi`，
+不是 Tencent 上游分支，不自动发布 Issue 或 PR。
+本次补齐 NPY 读取器、布局基准、增量迁移、训练启动、最终评测和对应回归测试。
+最终评测摘要与本文档另作证据提交，避免证据引用自身 commit。
+
+| 对象 | 版本身份 |
+| --- | --- |
+| 已完成的 100 轮训练 | 基准提交 `776cd0f` 加当时运行源码快照；指纹 `6d55d3fe29fc92bfc5d35783b691b2189dac2bbcb64881948d2aae5cf516b364` |
+| best/last 独立评测 | 当时评测源码快照；指纹 `5b7f9e60feabca7bee1e3aa3af580a4566233538298cb1d66f05baec9a9ea1ec` |
+| 当前交付代码 | 提交 `e4297e742f472c443ce55914e31144afcc67705d`；文件校验值见发布记录 |
+
+发布前对待提交 Python 文件做了格式、导入及局部 lint 整理，未更改模型结构和训练配方。
+因此发布源码不宣称与历史快照逐字节一致，也不把历史结果记为在新提交上重新运行所得。
+原始训练、评测快照及其 SHA256 保持不变。本次未重新启动完整训练或全量评测。
+
+### 28.2 发布验证
+
+[publication-20260907.json](manifests/publication-20260907.json)记录代码提交、
+14 个 Python 文件的 SHA256、检查命令、日志摘要及历史评测证据链接。
+
+- D1、Foundation、LatentMixture、checkpoint、loss 组合等 47 个测试文件：
+  **560 passed、8 skipped，26.20 秒**，离线回归禁用 CUDA。
+- A40 真实 NPY 前向、反向与 checkpoint 严格重载：**1 passed，5.61 秒**。
+  这是离线回归中可选项的实际 GPU 验证，不与上项简单相加。
+- 14 个 Python 文件的 `py_compile`、Ruff check、Ruff format check、codespell 通过。
+- 六个相关 CLI 的 `--help` 检查及 `git diff --check` 通过。
+- Ruff 0.16.6、codespell 2.4.3 安装在外部独立检查目录，未修改训练环境的依赖。
+- 全仓 Ruff 扫描存在既有诊断，本次不修复无关文件，不宣称全仓 lint 通过。
+
+### 28.3 NPY 复现注意事项
+
+在仓库根目录使用 `python -m scripts.d1.launch_wp8_npy --help` 查看训练入口，
+使用第 27.4 节模板独立评测已有 checkpoint。运行时显式设置数据、缓存、权重和输出目录，
+不得将历史服务器路径当作其他机器的默认值；启动训练仍需用户明确授权。
+
+NPY 目录不只是数组文件，必须保留 split 索引、样本 metadata、合同、来源记录和转换收据。
+训练前校验包含所有收据、文件数量与大小及每个 split 最多 32 个样本的内容哈希，
+不等同于全缓存逐字节重新校验。
+
+`python -m scripts.d1.convert_cache_to_npy --help` 对应的是**增量迁移而非无损保留源文件的复制工具**：
+必须显式传入 `--retire-verified-source`；每个源 safetensors 分片仅在转换、
+独立回读验证及持久化收据完成后删除。当前实现限制源与目标为 `/root` 下同一文件系统内
+互不包含的目录，拒绝 NFS；转换期间不得继续从源缓存训练。需要保留源件时不要直接执行此工具。
+
+数据集、Teacher 权重、特征缓存、checkpoint、完整预测、日志及源码归档保留在外部工作区，
+不进入 Git。新机器需另外准备这些大文件或重新生成缓存，并核对合同和 SHA256；
+公开环境记录不是完整离线环境镜像，跨机器复现仍需重新验证软件与硬件兼容性。

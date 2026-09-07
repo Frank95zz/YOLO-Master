@@ -26,7 +26,7 @@
 | WP5：缓存 Dataset、Trainer 与 Validator | [WP5.md](WP5.md) | 已完成 |
 | WP6：Latent aux 损失闭环 | [WP6.md](WP6.md) | 已完成 |
 | WP7：最小训练与工程验收 | [WP7.md](WP7.md) | 已完成 |
-| WP8：完整 COCO 正式训练 | [WP8.md](WP8.md) | 缓存与训练准备完成，待审核启动 |
+| WP8：完整 COCO 正式训练 | [WP8.md](WP8.md) | 100 轮训练及 best/last 独立评测完成；精度不足，成本收益尚未证明 |
 
 阶段报告记录已经完成的实现、实测结果和复现证据；本文继续维护总体技术方案、WP8 路线及完整背景。后续阶段沿用 `WPn.md` 的方式补充完成报告。
 
@@ -60,6 +60,7 @@ P0 暂不包含：
 - `DINOv3Teacher`：加载、冻结、预处理并一次返回 block 4/8/12；
 - `FoundationTeacher` / `FoundationFeatures`：统一教师协议；
 - `FeatureCacheReader` / `FeatureCacheWriter`：可复现的分片特征缓存；
+- `NpyFeatureCacheReader`：读取逐图 FP16 NPY 缓存，兼容正式 Dataset、Trainer 与评测入口；
 - `DINOFeaturePyramidAdapter`：生成 P3/P4/P5 三组多层候选特征；
 - `D1FoundationDetectionModel`：连接 Adapter、三个 LatentMixture、Detect 和 CompositeCriterion；
 - `LatentMixture`：同尺度多特征融合、Router、balance loss 和 z-loss；
@@ -67,10 +68,15 @@ P0 暂不包含：
 - `CompositeCriterion`：将 routed aux loss 加入检测损失；
 - `collect_aux_loss(... include_kinds=(..., "latent"))`：统一收集 latent aux。
 
-当前缺口：
+当前实测状态与缺口：
 
 - 已完成并完整校验 COCO train2017/val2017 特征缓存；
-- 尚未执行正式完整训练和 COCO val2017 精度评测；
+- 已完成 NVMe 运行的 100 轮训练及两份 checkpoint 的完整 COCO val2017 独立评测；
+- best 权重的 COCO AP/AP50 为 11.972/23.726（0–100）；[脱敏评测摘要](manifests/final-evaluation-20260907.json)保留权重、源码、预测和测试校验信息；
+- NPY 缓存、训练和评测实现已整理为代码提交 `e4297e742f472c443ce55914e31144afcc67705d`；
+  [发布验证记录](manifests/publication-20260907.json)列出源码校验值和测试结果，
+  [WP8 第 28 节](WP8.md)说明历史实验与发布版本的关系；
+- 数据、权重、完整缓存及训练产物仍需在外部工作区准备；代码可克隆不等于大文件已公开；
 - P1 同预算成本对照和第二数据集实验不属于本次 WP8 P0 运行。
 
 ## 4. P0 固定技术方案
@@ -82,7 +88,7 @@ P0 暂不包含：
 | Teacher 层 | Block 4/8/12；实现索引 `3/7/11` |
 | 数据集 | COCO 2017：完整 `train2017`（118,287 张）+ `val2017`（5,000 张） |
 | 输入 | `640×640`，确定性 letterbox |
-| 缓存 | FP16、分片 safetensors、JSONL/index manifest |
+| 缓存 | 抽取采用 FP16 分片 safetensors；当前训练采用逐图 FP16 NPY，保留索引、合同和转换证据 |
 | P3/P4/P5 通道 | 64 / 128 / 256 |
 | 检测尺度 | stride 8 / 16 / 32 |
 | LatentMixture | 每个尺度一个，共三个 |
@@ -278,12 +284,15 @@ Git 证据位于：
 
 - [x] 完成并校验完整 train2017/val2017 特征缓存。
 - [x] 固定六卡 DDP 配方、运行身份、恢复和汇总入口。
-- [x] 写明启动前实验合同，等待审核确认。
-- [ ] 固定单 seed 训练，不在正式运行中继续调参。
-- [ ] 保存训练配置、日志、checkpoint、metrics JSON 和环境信息。
-- [ ] 输出 COCO mAP50-95、mAP50、训练时长和峰值显存。
-- [ ] 输出缓存大小、抽取耗时、读取吞吐和数据等待比例。
-- [ ] 补齐训练配方、缓存说明、接口维度表和已知局限。
+- [x] 写明启动前实验合同，经用户确认后启动。
+- [x] 固定 seed 0 完成 100 轮训练，不在该正式运行中继续调参。
+- [x] 在外部工作区保存训练配置、日志、checkpoint、metrics JSON 和环境信息。
+- [x] 输出 COCO mAP50-95、mAP50、训练时长和峰值显存。
+- [x] 输出缓存大小、抽取耗时、读取吞吐和数据等待比例。
+- [x] 记录训练配方、缓存说明、接口维度表和已知局限。
+
+上述勾选表示本次运行及本地证据已完成，不代表 P1 成本目标达标或公开复现包已发布。
+最终评测结果、证据索引和复现命令见 WP8 第 27 节。
 
 ## 7. 建议文件布局
 

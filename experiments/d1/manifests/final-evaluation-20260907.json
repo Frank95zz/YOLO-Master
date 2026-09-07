@@ -1,0 +1,195 @@
+{
+  "checkpoints": {
+    "best": {
+      "cache": {
+        "content_sha256": "cd5840678d79550482aaf4110b9e68b8c22819f2f6b31e0af40f0e5b7476fa1b",
+        "contract_sha256": "6bfda0e13bde01001c3f3f2d72631a2401fb9a77b146d6fb2794303e379e47a7",
+        "format": "d1-npy-cache-v1",
+        "sample_count": 5000,
+        "shard_count": 0
+      },
+      "checkpoint": {
+        "bytes": 7727840,
+        "epoch": -1,
+        "filename": "best.pt",
+        "sha256": "af5da7fe37fc709d04cb4df3414d6f300d883066688c7caed6cb832d8994859e",
+        "strict_reload": true,
+        "teacher_parameter_count": 0
+      },
+      "coco_metrics": {
+        "ap": 0.11971923968253446,
+        "ap50": 0.23726267503276144,
+        "ap_large": 0.16482840136987964,
+        "ap_medium": 0.12541763110657472,
+        "ap_small": 0.05859579114180608
+      },
+      "internal_metrics": {
+        "ap": 0.11396,
+        "ap50": 0.22873,
+        "precision": 0.32792,
+        "recall": 0.26951
+      },
+      "predictions": {
+        "bytes": 126531971,
+        "file": "predictions.json",
+        "images": 5000,
+        "sha256": "53f718fb956928f46a026a4ade9fe102c09388ff46c997a51187e75f43263371",
+        "total_detections": 1042660,
+        "zero_detection_images": 0
+      },
+      "report_file": "final-best/val2017/report.json",
+      "report_sha256": "6f960cde68b83cd978849a7b85b703873b85ed9cb6550f9bd891e053fcaab58a",
+      "router_samples": {
+        "bytes": 3171224,
+        "file": "router-samples.jsonl",
+        "sha256": "960eaa49b5dfb689c2393109aff131da1f175142691197998876cbe5674747c1"
+      },
+      "runtime": {
+        "batch": 128,
+        "device": "cuda:0",
+        "elapsed_seconds": 27.958518840372562,
+        "gpu_name": "NVIDIA A40",
+        "images_per_second": 178.83636928505373,
+        "peak_gpu_bytes": 3525138432,
+        "workers": 8
+      },
+      "selected_paths_sha256": "70d1b9c55663f6820a30e4ccc02b4c3174e9aafb6512b500f5ce7869f5d1b3d6",
+      "selected_sample_count": 5000,
+      "wall_seconds": 56.591806303709745
+    },
+    "last": {
+      "cache": {
+        "content_sha256": "cd5840678d79550482aaf4110b9e68b8c22819f2f6b31e0af40f0e5b7476fa1b",
+        "contract_sha256": "6bfda0e13bde01001c3f3f2d72631a2401fb9a77b146d6fb2794303e379e47a7",
+        "format": "d1-npy-cache-v1",
+        "sample_count": 5000,
+        "shard_count": 0
+      },
+      "checkpoint": {
+        "bytes": 7727840,
+        "epoch": -1,
+        "filename": "last.pt",
+        "sha256": "3fcb8062617216238f350373c4beaf62b7e7e1db28468298daa1a21fdaf1a4ea",
+        "strict_reload": true,
+        "teacher_parameter_count": 0
+      },
+      "coco_metrics": {
+        "ap": 0.11488664389372272,
+        "ap50": 0.22955578421065856,
+        "ap_large": 0.15420650599564195,
+        "ap_medium": 0.12775279915983137,
+        "ap_small": 0.05849061306339904
+      },
+      "internal_metrics": {
+        "ap": 0.10937,
+        "ap50": 0.2215,
+        "precision": 0.31398,
+        "recall": 0.26797
+      },
+      "predictions": {
+        "bytes": 121831325,
+        "file": "predictions.json",
+        "images": 5000,
+        "sha256": "a7fd7a18712947a666e07e544be14e0adbe5fd49393d4ab189c8a288b726b028",
+        "total_detections": 1003813,
+        "zero_detection_images": 0
+      },
+      "report_file": "final-last/val2017/report.json",
+      "report_sha256": "310c3f9f3e703055ce886536c0b483141c680fb7120c88c39db4880000e992d4",
+      "router_samples": {
+        "bytes": 3171481,
+        "file": "router-samples.jsonl",
+        "sha256": "ebcf438eceed35bf056803830243f076d1d29857f74bf53c6a51e4f772a1861e"
+      },
+      "runtime": {
+        "batch": 128,
+        "device": "cuda:0",
+        "elapsed_seconds": 27.20027408376336,
+        "gpu_name": "NVIDIA A40",
+        "images_per_second": 183.82167711260846,
+        "peak_gpu_bytes": 3525138432,
+        "workers": 8
+      },
+      "selected_paths_sha256": "70d1b9c55663f6820a30e4ccc02b4c3174e9aafb6512b500f5ce7869f5d1b3d6",
+      "selected_sample_count": 5000,
+      "wall_seconds": 55.19200962036848
+    }
+  },
+  "code": {
+    "commit": "776cd0fe1641071eac00402fbbcbc75060847dd7",
+    "dirty": true,
+    "files_sha256": {
+      "scripts/d1/diagnose_wp8.py": "f640a2ce167bb63f26b1dfcb817a5e6e2b10e52874800e31741067775a407b65",
+      "scripts/d1/run_wp8_train.py": "d3c5bd84af26fadadcc450993a37509419c9cf21691d03f8f7bcf4ab1ed49cfa",
+      "tests/test_d1_final_eval.py": "47fab31b778f6f51bdb4fcb7c9e0ef7595953142223beba932d4174b208f88cb",
+      "ultralytics/models/yolo/detect/foundation_train.py": "8a66309b7edf02bc38b692cc8b93594d24d22376225a17973cb383ed876efc36"
+    },
+    "fingerprint": "5b7f9e60feabca7bee1e3aa3af580a4566233538298cb1d66f05baec9a9ea1ec",
+    "source_snapshot_sha256": "3b5054dd92368aae0d498627e306edf5a190e67c97e7a4e0a8963d92b6c55d36"
+  },
+  "completed_utc": "2026-09-07T14:23:52.644663+00:00",
+  "limitations": [
+    "Single-seed evaluation; no confidence intervals.",
+    "Original six-rank training cleanup failed; original FAILED status is retained.",
+    "The repair has rank-path regression tests and independent checkpoint evaluations; no new six-rank full training was run.",
+    "Internal validator and COCO API metrics are separate protocols, not a repair-induced accuracy gain.",
+    "Current sources are a dirty worktree, not a published clean reproduction commit.",
+    "No matched-budget final cost comparison, second-dataset result, or 50-percent cost reduction claim."
+  ],
+  "protocol": {
+    "batch": 128,
+    "coco_backend": "faster-coco-eval",
+    "coco_backend_version": "1.8.0",
+    "dataset": "COCO 2017",
+    "gpu": "NVIDIA A40",
+    "gpu_count": 1,
+    "imgsz": 640,
+    "metric_scale": "0-1",
+    "optimizer_steps": 0,
+    "original_training_restarted": false,
+    "prefetch_factor": 1,
+    "sample_count": 5000,
+    "seed": 0,
+    "split": "val2017",
+    "workers": 8
+  },
+  "raw_evidence": {
+    "repair_diff_sha256": "08fb8e7b4944b019da049b6272a908ab6a2a2cfccf4a661f1d823cbc40b319ac",
+    "status_sha256": "11975ba8d1c2b05256a9385c07156553d3d8c813c07ff3220c4b979901be8f6e",
+    "summary_sha256": "e5fd9531abb8fe6d2b56465e3e85a6c27463a068212cbad6222e5fab545829a9",
+    "workspace_relative_directory": "manifests/d1-final-eval-repair-20260907T140824Z"
+  },
+  "regression": {
+    "git_diff_check": "passed",
+    "log_sha256": "a18158d9c0edb53323bdc0ef3b6d4d9aeaf52986eda027d019d7bd2c95ca04f5",
+    "passed": 539,
+    "py_compile": "passed",
+    "seconds": 30.15,
+    "skipped": 6,
+    "unavailable_tools": [
+      "ruff",
+      "codespell"
+    ]
+  },
+  "repair_run": "d1-final-eval-repair-20260907T140824Z",
+  "schema_version": "d1-final-evaluation-v1",
+  "started_utc": "2026-09-07T14:21:59.946512+00:00",
+  "status": "passed",
+  "total_wall_seconds": 112.699119,
+  "training_run": "wp8-p0-nvme-npy-b384-s0-20260906T130709Z",
+  "verification": {
+    "checkpoint_report_prediction_router_sha256_verified": true,
+    "original_artifacts_unchanged": true,
+    "original_training_status_preserved": true,
+    "prediction_category_ids_within_official_categories": true,
+    "prediction_image_ids_equal_official_val2017": true,
+    "protected_artifact_sha256": {
+      "manifests/wp8-p0-nvme-npy-b384-s0-20260906T130709Z/status.json": "132f25a987ce43020bc7898ba57983d7514841bbd187938fca1a5ff28dddf0a1",
+      "manifests/wp8-p0-nvme-npy-b384-s0-20260906T130709Z/training.log": "f2fcc22a07ee895061fdadcc916063cd91946229c3a6d6282ba2305d50e19c74",
+      "manifests/wp8-p0-nvme-npy-b384-s0-20260906T130709Z/validation/epoch-099.json": "72b17455bbe46bff7928bc8e7b29b48e0be872d44adeb12b111bdb949b284e12",
+      "runs/wp8-p0-nvme-npy-b384-s0-20260906T130709Z/results.csv": "3bb015184bcd3b5fe1d029a525e8c88fe356d6cb11e986e736259e2b151bd110",
+      "runs/wp8-p0-nvme-npy-b384-s0-20260906T130709Z/weights/best.pt": "af5da7fe37fc709d04cb4df3414d6f300d883066688c7caed6cb832d8994859e",
+      "runs/wp8-p0-nvme-npy-b384-s0-20260906T130709Z/weights/last.pt": "3fcb8062617216238f350373c4beaf62b7e7e1db28468298daa1a21fdaf1a4ea"
+    }
+  }
+}
