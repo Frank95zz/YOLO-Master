@@ -8,7 +8,6 @@ import json
 import math
 import os
 import subprocess
-import sys
 import time
 from pathlib import Path
 from typing import Any, Mapping
@@ -23,11 +22,11 @@ except ModuleNotFoundError:  # Direct execution sets sys.path to scripts/d1.
 from ultralytics.models.yolo.detect import D1FoundationDetectionTrainer
 from ultralytics.nn import D1FoundationDetectionModel
 from ultralytics.nn.foundation.cache import FeatureCacheReader, canonical_json_bytes, sha256_bytes, sha256_file
+from ultralytics.nn.foundation.npy_cache import NpyFeatureCacheReader, npy_index_path, validate_npy_evidence
 from ultralytics.nn.mixture_loss import initialize_mixture_loss_ema_buffer
 from ultralytics.nn.tasks import load_checkpoint
 from ultralytics.utils import YAML
 from ultralytics.utils.torch_utils import unwrap_model
-
 
 SCHEMA_VERSION = "d1-wp8-train-v2"
 SPLIT_COUNTS = {"train2017": 118_287, "val2017": 5_000}
@@ -52,6 +51,17 @@ def load_json(path: Path) -> dict[str, Any]:
 
 def git_commit(repo_root: Path) -> str:
     return subprocess.check_output(["git", "-C", str(repo_root), "rev-parse", "HEAD"], text=True).strip()
+
+
+def code_fingerprint(repo_root: Path) -> str:
+    """Bind the actual sources, including new uncommitted modules, to this run."""
+    paths = []
+    for directory in ("ultralytics", "scripts/d1"):
+        paths.extend((repo_root / directory).rglob("*.py"))
+        paths.extend((repo_root / directory).rglob("*.yaml"))
+    return sha256_bytes(
+        canonical_json_bytes({str(path.relative_to(repo_root)): sha256_file(path) for path in sorted(paths)})
+    )
 
 
 def load_contract(path: Path) -> dict[str, Any]:
@@ -149,6 +159,15 @@ def discover_cache_report(workspace: Path, split: str, explicit: Path | None) ->
 
 
 def validate_cache_evidence(cache_dir: Path, report_path: Path, split: str) -> dict[str, Any]:
+    if npy_index_path(cache_dir) is not None:
+        reader = NpyFeatureCacheReader(cache_dir)
+        if (
+            tuple(reader.contract["feature_names"]) != FEATURE_NAMES
+            or tuple(reader.contract["output_layers"]) != OUTPUT_LAYERS
+            or tuple(reader.contract["expected_shape"]) != EXPECTED_SHAPE
+        ):
+            raise ValueError("NPY cache does not satisfy the formal D1 contract.")
+        return validate_npy_evidence(cache_dir, report_path, split, SPLIT_COUNTS[split])
     reader = FeatureCacheReader(cache_dir)
     report = load_json(report_path)
     final = report.get("finalization", {})
@@ -231,12 +250,17 @@ def resolved_paths(args: argparse.Namespace) -> argparse.Namespace:
     short = commit[:7]
     args.config = (args.config or args.repo_root / "ultralytics/cfg/experiments/d1/wp8-formal-coco2017.yaml").resolve()
     args.data_root = (args.data_root or args.workspace / "datasets/coco").resolve()
-    args.train_cache = (
-        args.train_cache or args.workspace / "feature_cache/coco2017-train2017-d1-cache-v1"
-    ).resolve()
+    args.train_cache = (args.train_cache or args.workspace / "feature_cache/coco2017-train2017-d1-cache-v1").resolve()
     args.val_cache = (args.val_cache or args.workspace / "feature_cache/coco2017-val2017-d1-cache-v1").resolve()
-    args.train_cache_report = discover_cache_report(args.workspace, "train2017", args.train_cache_report)
-    args.val_cache_report = discover_cache_report(args.workspace, "val2017", args.val_cache_report)
+    for split, name in (("train2017", "train"), ("val2017", "val")):
+        cache = getattr(args, f"{name}_cache")
+        explicit = getattr(args, f"{name}_cache_report")
+        report = (
+            (explicit or cache.parent / "summary.json").resolve()
+            if npy_index_path(cache) is not None
+            else discover_cache_report(args.workspace, split, explicit)
+        )
+        setattr(args, f"{name}_cache_report", report)
     args.run_root = (args.run_root or args.workspace / f"runs/wp8-formal-{short}").resolve()
     args.report_dir = (args.report_dir or args.workspace / f"manifests/wp8-formal-{short}").resolve()
     return args
@@ -258,6 +282,13 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
         entries = [line for line in manifest.read_text(encoding="utf-8").splitlines() if line]
         if len(entries) != count:
             raise ValueError(f"tracked {split} list has {len(entries)} entries instead of {count}.")
+        if len(set(entries)) != count or any(not (args.data_root / entry).is_file() for entry in entries):
+            raise ValueError(f"COCO {split} image list is duplicated or incomplete.")
+        cache_dir = args.train_cache if split == "train2017" else args.val_cache
+        if npy_index_path(cache_dir) is not None:
+            reader = NpyFeatureCacheReader(cache_dir)
+            if set(entries) != {record["image_path"] for record in reader.records.values()}:
+                raise ValueError(f"NPY {split} images differ from the WP0 split manifest.")
     if not torch.cuda.is_available() or torch.cuda.device_count() < contract["hardware"]["world_size"]:
         raise RuntimeError("WP8 preflight requires six visible CUDA devices.")
     gpu_names = [torch.cuda.get_device_name(index) for index in range(contract["hardware"]["world_size"])]
@@ -278,6 +309,8 @@ def prepare(args: argparse.Namespace) -> dict[str, Any]:
     identity = {
         "schema_version": SCHEMA_VERSION,
         "code_commit": git_commit(args.repo_root),
+        "code_fingerprint": code_fingerprint(args.repo_root),
+        "aux_contract": "scalar-once-v1",
         "config_sha256": sha256_file(args.config),
         "model_config_sha256": sha256_file(Path(overrides["model"])),
         "train_cache": train_cache,
@@ -360,6 +393,22 @@ class EpochTelemetry:
             self.step_seconds += now - self.batch_started
         self.previous_batch_ended = now
         self.batch_count += 1
+        if self.batch_count == 1 or self.batch_count % 10 == 0:
+            losses = _trainer.loss_items.detach().float().cpu()
+            if not torch.isfinite(losses).all():
+                raise RuntimeError("D1 training produced non-finite reported losses.")
+            write_json(
+                self.report_dir / f"progress-rank-{self.rank:02d}.json",
+                {
+                    "rank": self.rank,
+                    "epoch": int(_trainer.epoch) + 1,
+                    "batch": self.batch_count,
+                    "optimizer_steps": int(_trainer.optimizer_steps),
+                    "loss_items": losses.tolist(),
+                    "amp_scale": float(_trainer.scaler.get_scale()),
+                    "updated_unix": time.time(),
+                },
+            )
 
     def on_train_epoch_end(self, trainer) -> None:
         model = unwrap_model(trainer.model)
@@ -390,7 +439,15 @@ class EpochTelemetry:
             "validator_seen": int(getattr(trainer.validator, "seen", 0)),
             "metrics": dict(trainer.metrics or {}),
         }
-        write_json(self.report_dir / "validation" / f"epoch-{trainer.epoch:03d}.json", payload)
+        checkpoint = getattr(trainer, "_d1_final_eval_checkpoint", None)
+        if checkpoint is not None:
+            checkpoint = Path(checkpoint)
+            payload.update(phase="final", checkpoint=checkpoint.name)
+            filename = f"final-{checkpoint.stem}.json"
+        else:
+            payload["phase"] = "epoch"
+            filename = f"epoch-{trainer.epoch:03d}.json"
+        write_json(self.report_dir / "validation" / filename, payload)
 
 
 def train(args: argparse.Namespace) -> dict[str, Any]:
@@ -406,6 +463,8 @@ def train(args: argparse.Namespace) -> dict[str, Any]:
         preflight.get("status") != "passed"
         or identity.get("schema_version") != SCHEMA_VERSION
         or identity.get("code_commit") != git_commit(args.repo_root)
+        or identity.get("code_fingerprint") != code_fingerprint(args.repo_root)
+        or identity.get("aux_contract") != "scalar-once-v1"
         or identity.get("config_sha256") != sha256_file(args.config)
         or identity.get("global_batch") != GLOBAL_BATCH
         or identity.get("per_gpu_batch") != PER_GPU_BATCH
@@ -417,6 +476,9 @@ def train(args: argparse.Namespace) -> dict[str, Any]:
     if args.resume:
         if not args.resume.is_file():
             raise FileNotFoundError(args.resume)
+        original_identity = args.resume.resolve().parent.parent / "inputs/identity.json"
+        if not original_identity.is_file() or load_json(original_identity) != identity:
+            raise RuntimeError("Resume checkpoint belongs to a different D1 experiment identity.")
         overrides["resume"] = str(args.resume.resolve())
     telemetry = EpochTelemetry(args.report_dir)
     cache_io = contract["cache_io"]
@@ -445,17 +507,21 @@ def summarize(args: argparse.Namespace) -> dict[str, Any]:
     rows = read_results_csv(results_path)
     failures = []
     if len(rows) != contract["acceptance"]["require_epochs"]:
-        failures.append(f"results.csv contains {len(rows)} epochs instead of {contract['acceptance']['require_epochs']}")
+        failures.append(
+            f"results.csv contains {len(rows)} epochs instead of {contract['acceptance']['require_epochs']}"
+        )
     numeric = [value for row in rows for value in row.values()]
     if not numeric or not all(math.isfinite(value) for value in numeric):
         failures.append("training results contain NaN or Inf")
-    validation_path = args.report_dir / "validation" / f"epoch-{len(rows) - 1:03d}.json"
-    validation = load_json(validation_path) if validation_path.is_file() else {}
-    if validation.get("validator_seen") != SPLIT_COUNTS["val2017"]:
-        failures.append("final validation did not process all 5,000 COCO val images")
     checkpoint_path = args.run_root / "weights/best.pt"
     if not checkpoint_path.is_file():
         checkpoint_path = args.run_root / "weights/last.pt"
+    validation_path = args.report_dir / "validation" / f"final-{checkpoint_path.stem}.json"
+    validation = load_json(validation_path) if validation_path.is_file() else {}
+    if validation.get("phase") != "final" or validation.get("checkpoint") != checkpoint_path.name:
+        failures.append("a checkpoint-specific final validation report is required")
+    if validation.get("validator_seen") != SPLIT_COUNTS["val2017"]:
+        failures.append("final validation did not process all 5,000 COCO val images")
     checkpoint_model, checkpoint = load_checkpoint(checkpoint_path, device="cpu")
     if not isinstance(checkpoint_model, D1FoundationDetectionModel):
         failures.append("checkpoint does not contain D1FoundationDetectionModel")
@@ -477,13 +543,13 @@ def summarize(args: argparse.Namespace) -> dict[str, Any]:
         "status": "passed" if not failures else "failed",
         "identity": preflight["identity"],
         "epochs": len(rows),
-        "final_metrics": rows[-1] if rows else {},
+        "final_metrics": validation.get("metrics", {}),
+        "last_epoch_metrics": rows[-1] if rows else {},
+        "final_validation_report": validation_path.name,
         "final_validator_seen": validation.get("validator_seen"),
         "data_wait_ratio": wait / (wait + step) if wait + step else None,
         "peak_gpu_bytes_by_rank": {
-            str(rank): max(
-                (item["peak_gpu_bytes"] for item in epoch_reports if item["rank"] == rank), default=0
-            )
+            str(rank): max((item["peak_gpu_bytes"] for item in epoch_reports if item["rank"] == rank), default=0)
             for rank in range(contract["hardware"]["world_size"])
         },
         "routing_deltas": deltas,

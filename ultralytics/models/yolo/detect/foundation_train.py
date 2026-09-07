@@ -10,8 +10,8 @@ from typing import Any
 import torch
 
 from ultralytics.data.d1_cache import D1FeatureCacheDataset, FeatureProvider, move_d1_batch_to_device
-from ultralytics.models.yolo.detect.train import DetectionTrainer
 from ultralytics.models.yolo.detect.foundation_val import D1FoundationDetectionValidator
+from ultralytics.models.yolo.detect.train import DetectionTrainer
 from ultralytics.nn.foundation_detection_model import (
     D1_AUX_REPORT_NAMES,
     DEFAULT_D1_MODEL_CFG,
@@ -20,7 +20,6 @@ from ultralytics.nn.foundation_detection_model import (
 from ultralytics.nn.tasks import load_checkpoint
 from ultralytics.utils import DEFAULT_CFG, LOCAL_RANK, LOGGER, RANK, colorstr
 from ultralytics.utils.torch_utils import TORCH_2_4, strip_optimizer, torch_distributed_zero_first, unwrap_model
-
 
 _DISABLED_AUGMENTATIONS = (
     "hsv_h",
@@ -101,10 +100,10 @@ class D1FoundationDetectionTrainer(DetectionTrainer):
         """Use the stable dense D1 graph without per-step unused-parameter traversal."""
         return False, True
 
-
     def _setup_train(self) -> None:
         super()._setup_train()
-        if self.amp and self.amp_init_scale is not None:
+        # Base setup already restored the scaler for resumed runs.
+        if self.amp and self.amp_init_scale is not None and not self.resume:
             self.scaler = (
                 torch.amp.GradScaler(
                     "cuda",
@@ -235,16 +234,13 @@ class D1FoundationDetectionTrainer(DetectionTrainer):
 
     def plot_training_samples(self, batch: dict[str, Any], ni: int) -> None:
         """Feature batches intentionally have no RGB pixels to plot."""
-        return None
+        return
 
     def checkpoint_smoke_inputs(self, model: D1FoundationDetectionModel) -> tuple[dict[str, torch.Tensor], ...]:
         """Build deterministic cached-feature inputs for recovery checkpoint health checks."""
         first = next(model.parameters(), None)
         device = first.device if first is not None else torch.device("cpu")
-        zeros = {
-            name: torch.zeros(1, 384, 40, 40, dtype=torch.float32, device=device)
-            for name in model.source_names
-        }
+        zeros = {name: torch.zeros(1, 384, 40, 40, dtype=torch.float32, device=device) for name in model.source_names}
         ramp = torch.linspace(-1.0, 1.0, 384 * 40 * 40, dtype=torch.float32, device=device).reshape(1, 384, 40, 40)
         return (
             zeros,
@@ -271,6 +267,7 @@ class D1FoundationDetectionTrainer(DetectionTrainer):
         router_failures = []
         original_model = self.model
         original_ema = self.ema.ema if self.ema else None
+        original_final_checkpoint = getattr(self, "_d1_final_eval_checkpoint", None)
         try:
             for checkpoint_path in candidates:
                 self._reset_non_checkpoint_moe_runtime_state()
@@ -284,14 +281,21 @@ class D1FoundationDetectionTrainer(DetectionTrainer):
                     self.model = checkpoint_model
                     if self.ema:
                         self.ema.ema = None
-                    self.metrics = self.validator(trainer=self)
-                    self.metrics.pop("fitness", None)
-                    self.run_callbacks("on_fit_epoch_end")
+                    self._d1_final_eval_checkpoint = Path(checkpoint_path)
+                    metrics = self.validator(trainer=self)
+                    # Every rank validates, but only rank zero receives reduced metrics.
+                    if RANK in {-1, 0}:
+                        if not isinstance(metrics, Mapping):
+                            raise TypeError("D1 final evaluation did not return metrics on the main rank.")
+                        self.metrics = dict(metrics)
+                        self.metrics.pop("fitness", None)
+                        self.run_callbacks("on_fit_epoch_end")
                     return
                 except MoERouterError as exc:
                     router_failures.append(f"{checkpoint_path.name}: {exc}")
         finally:
             self.model = original_model
+            self._d1_final_eval_checkpoint = original_final_checkpoint
             if self.ema:
                 self.ema.ema = original_ema
         raise RuntimeError(

@@ -24,12 +24,12 @@ from ultralytics.data import converter
 from ultralytics.models.yolo.detect import D1FoundationDetectionTrainer
 from ultralytics.models.yolo.detect.foundation_val import D1FoundationDetectionValidator
 from ultralytics.nn import D1FoundationDetectionModel
-from ultralytics.nn.foundation.cache import FeatureCacheReader, sha256_file
+from ultralytics.nn.foundation.cache import sha256_file
+from ultralytics.nn.foundation.npy_cache import NPY_SCHEMA_VERSION, open_feature_cache
 from ultralytics.nn.foundation_detection_model import D1_AUX_REPORT_NAMES
 from ultralytics.nn.mixture_loss import initialize_mixture_loss_ema_buffer
 from ultralytics.nn.tasks import load_checkpoint
 from ultralytics.utils import YAML
-
 
 SCHEMA_VERSION = "d1-wp8-diagnostic-v1"
 EXPECTED_SPLIT_COUNTS = {"train2017": 118_287, "val2017": 5_000}
@@ -161,7 +161,7 @@ def _bbox_context(dataset: Any) -> dict[str, dict[str, Any]]:
         if counts["large"]:
             largest = "large"
         result[Path(im_file).stem] = {
-            "object_count": int(len(areas)),
+            "object_count": len(areas),
             "bbox_area_counts": counts,
             "largest_bbox_scale": largest,
         }
@@ -286,13 +286,15 @@ def _strict_checkpoint_model(checkpoint_path: Path) -> tuple[D1FoundationDetecti
 
 
 def _cache_identity(cache_dir: Path) -> dict[str, Any]:
-    reader = FeatureCacheReader(cache_dir, max_open_shards=1)
+    reader = open_feature_cache(cache_dir, max_open_shards=1)
+    is_npy = reader.index.get("schema_version") == NPY_SCHEMA_VERSION
     return {
         "path": str(cache_dir),
         "sample_count": len(reader.records),
         "contract_sha256": reader.index["contract_sha256"],
-        "content_sha256": reader.index["content_sha256"],
-        "shard_count": len(reader.index["shards"]),
+        "content_sha256": reader.index["source_content_sha256" if is_npy else "content_sha256"],
+        "shard_count": 0 if is_npy else len(reader.index["shards"]),
+        "format": reader.index.get("schema_version"),
     }
 
 
@@ -338,9 +340,7 @@ def _trainer_overrides(args: argparse.Namespace, data_yaml: Path, split: str) ->
     overrides.update(
         {
             "data": str(data_yaml),
-            "model": str(
-                (args.repo_root / "ultralytics/cfg/models/26/yolo26-d1-dinov3-latent-n.yaml").resolve()
-            ),
+            "model": str((args.repo_root / "ultralytics/cfg/models/26/yolo26-d1-dinov3-latent-n.yaml").resolve()),
             "device": str(args.device),
             "batch": args.batch,
             "nbs": args.batch,

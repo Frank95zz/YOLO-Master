@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable, Mapping
 from copy import deepcopy
-import os
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -13,7 +13,7 @@ import torch
 
 from ultralytics.data.dataset import YOLODataset
 from ultralytics.nn.foundation.cache import FeatureCacheReader
-
+from ultralytics.nn.foundation.npy_cache import open_feature_cache
 
 D1_FEATURE_NAMES = ("block4", "block8", "block12")
 D1_FEATURE_SHAPE = (384, 40, 40)
@@ -56,23 +56,38 @@ class D1FeatureBatch(dict[str, torch.Tensor]):
         *,
         dtype: torch.dtype | None = None,
         non_blocking: bool = False,
-    ) -> "D1FeatureBatch":
+    ) -> D1FeatureBatch:
         """Move every cached feature tensor while preserving the virtual image contract."""
         return type(self)(
-            {
-                name: value.to(device=device, dtype=dtype, non_blocking=non_blocking)
-                for name, value in self.items()
-            },
+            {name: value.to(device=device, dtype=dtype, non_blocking=non_blocking) for name, value in self.items()},
             image_size=self.image_size,
         )
+
+
+class D1TrainingBatch(dict):
+    """Store features once, with a virtual img alias for generic detector loops.
+
+    DataLoader recursively pins mapping items. Storing both keys would allocate
+    two pinned copies of the same large tensors before either reaches the GPU.
+    """
+
+    def __getitem__(self, key):
+        return super().__getitem__("features" if key == "img" else key)
+
+    def __setitem__(self, key, value):
+        super().__setitem__("features" if key == "img" else key, value)
+
+    def __contains__(self, key):
+        return super().__contains__("features" if key == "img" else key)
+
+    def get(self, key, default=None):
+        return super().get("features" if key == "img" else key, default)
 
 
 def _validate_cache_contract(reader: FeatureCacheReader) -> None:
     contract = reader.contract
     if tuple(contract["feature_names"]) != D1_FEATURE_NAMES:
-        raise ValueError(
-            f"D1 cache feature_names must be {D1_FEATURE_NAMES}, got {tuple(contract['feature_names'])}."
-        )
+        raise ValueError(f"D1 cache feature_names must be {D1_FEATURE_NAMES}, got {tuple(contract['feature_names'])}.")
     if tuple(contract["expected_shape"]) != D1_FEATURE_SHAPE:
         raise ValueError(
             f"D1 cache expected_shape must be {D1_FEATURE_SHAPE}, got {tuple(contract['expected_shape'])}."
@@ -185,7 +200,7 @@ class D1FeatureCacheDataset(YOLODataset):
             raise TypeError("trusted_cache must be a boolean.")
         if type(prefetch_factor) is not int or prefetch_factor <= 0:
             raise ValueError("prefetch_factor must be a positive integer.")
-        self.feature_reader = FeatureCacheReader(cache_dir, max_open_shards=max_open_shards)
+        self.feature_reader = open_feature_cache(cache_dir, max_open_shards=max_open_shards)
         _validate_cache_contract(self.feature_reader)
         self.feature_mode = feature_mode
         self.online_feature_provider = online_feature_provider
@@ -232,7 +247,8 @@ class D1FeatureCacheDataset(YOLODataset):
                 raise ValueError(f"cache record {sample_id!r} has inconsistent split {record['split']!r}.")
 
     def _requires_finite_check(self, sample_id: str) -> tuple[bool, str]:
-        shard = self.feature_reader.records[sample_id]["shard"]
+        record = self.feature_reader.records[sample_id]
+        shard = record.get("source_shard") or record["shard"]
         pid = os.getpid()
         if pid != self._finite_check_pid:
             self._finite_check_pid = pid
@@ -241,7 +257,7 @@ class D1FeatureCacheDataset(YOLODataset):
 
     def build_transforms(self, hyp: Any = None):
         """RGB transforms are intentionally absent because WP2 already fixed preprocessing."""
-        return None
+        return
 
     def _load_features(self, index: int) -> dict[str, torch.Tensor]:
         sample_id = self.sample_ids[index]
@@ -264,7 +280,8 @@ class D1FeatureCacheDataset(YOLODataset):
     ) -> dict[str, float]:
         """Compare one online extraction against its immutable cache entry."""
         if not callable(self.online_feature_provider):
-            raise RuntimeError("compare_online_with_cache requires an online_feature_provider.")
+            # Preserve the established error contract when online mode is unavailable.
+            raise RuntimeError("compare_online_with_cache requires an online_feature_provider.")  # noqa: TRY004
         sample_id = self.sample_ids[index]
         cached = _validated_features(self.feature_reader.get(sample_id), sample_id=sample_id)
         online = _validated_features(self.online_feature_provider(self.im_files[index]), sample_id=sample_id)
@@ -301,7 +318,7 @@ class D1FeatureCacheDataset(YOLODataset):
             raise ValueError("cannot collate an empty D1 batch.")
         feature_values = [sample["features"] for sample in batch]
         payload = [{key: value for key, value in sample.items() if key != "features"} for sample in batch]
-        result = YOLODataset.collate_fn(payload)
+        result = D1TrainingBatch(YOLODataset.collate_fn(payload))
         features = D1FeatureBatch(
             {name: torch.stack([value[name] for value in feature_values], dim=0) for name in D1_FEATURE_NAMES},
             image_size=D1_IMAGE_SIZE,
@@ -340,5 +357,6 @@ __all__ = [
     "D1_IMAGE_SIZE",
     "D1FeatureBatch",
     "D1FeatureCacheDataset",
+    "D1TrainingBatch",
     "move_d1_batch_to_device",
 ]
