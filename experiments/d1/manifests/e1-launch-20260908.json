@@ -1,0 +1,132 @@
+{
+  "active_variant": "A",
+  "check_interval_minutes": 150,
+  "check_interval_seconds": 8955.184848725796,
+  "checked_unix": 1788807256.817916,
+  "estimated_seconds": 35820.73939490318,
+  "global_batch": 384,
+  "identity": {
+    "commit": "49cd0941e86f82e78473b387bbb1f4bb34f6b4b8",
+    "contract_sha256": "619bc71e155f3fe291179189edc656f6a8399b50f7bf911f123fc7b5e18d0322",
+    "source_sha256": "178141213efb2b52e224b562f1016a0c97526b8d86d0592675a91ff393847edd"
+  },
+  "monitor_name": "D1 E1 training status",
+  "monitor_status": "ACTIVE",
+  "rank_progress": [
+    {
+      "amp_retries": 0,
+      "amp_scale": 16.0,
+      "batch": 190,
+      "epoch": 2,
+      "loss": [
+        2.1964850425720215,
+        3.7974607944488525,
+        0.026847269386053085,
+        0.10389482975006104,
+        3.222642421722412,
+        0.0042615910060703754,
+        0.07848704606294632
+      ],
+      "optimizer_steps": 499,
+      "updated_unix": 1788807253.1622903
+    },
+    {
+      "amp_retries": 0,
+      "amp_scale": 16.0,
+      "batch": 190,
+      "epoch": 2,
+      "loss": [
+        2.2736873626708984,
+        3.7718446254730225,
+        0.025361139327287674,
+        0.10389482975006104,
+        3.20188570022583,
+        0.004240834154188633,
+        0.07804249972105026
+      ],
+      "optimizer_steps": 499,
+      "updated_unix": 1788807253.1618605
+    },
+    {
+      "amp_retries": 0,
+      "amp_scale": 16.0,
+      "batch": 190,
+      "epoch": 2,
+      "loss": [
+        2.393003463745117,
+        3.821305751800537,
+        0.02384878695011139,
+        0.10389482975006104,
+        3.382615327835083,
+        0.004421563819050789,
+        0.08139493316411972
+      ],
+      "optimizer_steps": 499,
+      "updated_unix": 1788807253.1633432
+    },
+    {
+      "amp_retries": 0,
+      "amp_scale": 16.0,
+      "batch": 190,
+      "epoch": 2,
+      "loss": [
+        2.415921211242676,
+        3.78983998298645,
+        0.022612087428569794,
+        0.10389482975006104,
+        3.271202325820923,
+        0.004310150630772114,
+        0.07950081676244736
+      ],
+      "optimizer_steps": 499,
+      "updated_unix": 1788807253.1594217
+    },
+    {
+      "amp_retries": 0,
+      "amp_scale": 16.0,
+      "batch": 190,
+      "epoch": 2,
+      "loss": [
+        2.523317813873291,
+        3.7386319637298584,
+        0.022822123020887375,
+        0.10389482975006104,
+        3.3297441005706787,
+        0.004368692636489868,
+        0.08079595863819122
+      ],
+      "optimizer_steps": 499,
+      "updated_unix": 1788807253.163468
+    },
+    {
+      "amp_retries": 0,
+      "amp_scale": 16.0,
+      "batch": 190,
+      "epoch": 2,
+      "loss": [
+        2.152090072631836,
+        3.680988311767578,
+        0.024662327021360397,
+        0.10389482975006104,
+        3.286756992340088,
+        0.0043257055804133415,
+        0.07981086522340775
+      ],
+      "optimizer_steps": 499,
+      "updated_unix": 1788807253.160365
+    }
+  ],
+  "schedule_epochs": 100,
+  "schema_version": "d1-e1-launch-v1",
+  "scope": "Sequential A/B/C/S seed0 screening; results are not yet complete.",
+  "screen_epochs": 50,
+  "started_unix": 1788806990.978146,
+  "status": "running_verified",
+  "variants": [
+    "A",
+    "B",
+    "C",
+    "S"
+  ],
+  "world_size": 6
+}
