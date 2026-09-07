@@ -114,6 +114,7 @@ def mechanism_evidence(source, batch):
     """Probe an independent model; never update the trained model or its aux EMA."""
     from ultralytics.nn.mixture_loss import _collect_mixture_aux_loss
 
+    batch = {**batch, "features": {name: value.float() for name, value in batch["features"].items()}}
     model = D1FoundationDetectionModel(source.config_dict(), verbose=False)
     initialize_mixture_loss_ema_buffer(model)
     model.load_state_dict(source.state_dict(), strict=True)

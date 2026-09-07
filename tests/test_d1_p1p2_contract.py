@@ -164,7 +164,7 @@ def test_mechanism_probe_does_not_modify_training_model():
     model = experiment.construct_model("B").train()
     before = detached_state(model)
     batch = {
-        "features": {name: torch.randn(2, 384, 4, 4) for name in model.source_names},
+        "features": {name: torch.randn(2, 384, 4, 4).half() for name in model.source_names},
         "batch_idx": torch.tensor([0.0, 1.0]),
         "cls": torch.tensor([[0.0], [1.0]]),
         "bboxes": torch.tensor([[0.5, 0.5, 0.3, 0.3], [0.4, 0.4, 0.2, 0.2]]),
