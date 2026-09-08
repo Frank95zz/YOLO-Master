@@ -1,0 +1,17 @@
+{
+  "status": "PASSED",
+  "toolkit_commit": "005445782213e20cb91bc50a597db3dd949e749a",
+  "real_image_count": 8,
+  "official_vs_wrapper_max_abs_0_1": 0,
+  "tolerance_0_1": 1E-6,
+  "tests": [
+    "fixed_real_images_vs_official_entry",
+    "exact_iou_threshold",
+    "duplicate_prediction",
+    "score0_ignore_match",
+    "ignore_region_filter",
+    "empty_predictions_10_classes"
+  ],
+  "fixture_not_model_accuracy": true,
+  "matlab_version": "26.1.0.3346908 (R2026a) Update 5"
+}

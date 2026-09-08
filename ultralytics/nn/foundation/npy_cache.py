@@ -20,7 +20,7 @@ from ultralytics.nn.foundation.cache import (
 )
 
 NPY_SCHEMA_VERSION = "d1-npy-cache-v1"
-SPLITS = ("train2017", "val2017")
+SPLITS = ("train2017", "val2017", "visdrone-train", "visdrone-val")
 
 
 def npy_index_path(root: str | Path) -> Path | None:
@@ -63,8 +63,9 @@ class NpyFeatureCacheReader:
         for line in data.splitlines():
             record = json.loads(line)
             sid = record.get("sample_id", "")
-            if not re.fullmatch(rf"{self.split}/[0-9]{{12}}", sid) or sid <= previous:
-                raise ValueError("NPY sample IDs must be sorted, unique, and in the selected COCO split.")
+            id_pattern = r"[A-Za-z0-9][A-Za-z0-9_-]*" if self.split.startswith("visdrone-") else r"[0-9]{12}"
+            if not re.fullmatch(rf"{self.split}/{id_pattern}", sid) or sid <= previous:
+                raise ValueError("NPY sample IDs must be sorted, unique, and in the selected dataset split.")
             if record.get("split") != self.split or record.get("npy_path") != f"{sid}.npy":
                 raise ValueError("NPY sample path or split mismatch.")
             if record.get("image_path") != f"images/{sid}.jpg":

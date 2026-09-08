@@ -1,0 +1,224 @@
+{
+  "class_names": [
+    "pedestrian",
+    "people",
+    "bicycle",
+    "car",
+    "van",
+    "truck",
+    "tricycle",
+    "awning-tricycle",
+    "bus",
+    "motor"
+  ],
+  "dataset": "VisDrone2019-DET",
+  "originals_preserved": true,
+  "sample_count": 8629,
+  "samples_sha256": "b0927b2ef71d0f9a611d16b5ecb59db400b1316d787c384f3bfda392b3dd56ce",
+  "schema_version": "d1-visdrone-data-v1",
+  "source_download_receipt": {
+    "class_names": [
+      "pedestrian",
+      "people",
+      "bicycle",
+      "car",
+      "van",
+      "truck",
+      "tricycle",
+      "awning-tricycle",
+      "bus",
+      "motor"
+    ],
+    "created_utc": "2026-09-07T05:01:25Z",
+    "dataset": "VisDrone2019-DET",
+    "features_extracted": false,
+    "labels_converted": false,
+    "mirror_reference": "https://docs.ultralytics.com/datasets/detect/visdrone/",
+    "mirror_release": "https://github.com/ultralytics/assets/releases/tag/v0.0.0",
+    "official_source": "https://github.com/VisDrone/VisDrone-Dataset",
+    "original_annotations_preserved": true,
+    "original_split_preserved": true,
+    "source_repo_commit": "776cd0fe1641071eac00402fbbcbc75060847dd7",
+    "split_ids_disjoint": true,
+    "splits": [
+      {
+        "annotations": 548,
+        "asset_id": 178787920,
+        "folder": "VisDrone2019-DET-val",
+        "hash_note": "Locally computed SHA256; GitHub release API provided no digest.",
+        "image_list": "_download/val-images.txt",
+        "image_list_sha256": "60396791d28c928fd853bb536d943c40a46f7af3558e50119783e0e4f13b8a6b",
+        "images": 548,
+        "name": "VisDrone2019-DET-val.zip",
+        "original_category_counts": {
+          "0": 1378,
+          "1": 8844,
+          "10": 4886,
+          "11": 32,
+          "2": 5125,
+          "3": 1287,
+          "4": 14064,
+          "5": 1975,
+          "6": 750,
+          "7": 1045,
+          "8": 532,
+          "9": 251
+        },
+        "sha256": "abeea063037e5d20398837deb11084e652402a34ddf4f207bdf541a6f2a35ef9",
+        "size": 81638851,
+        "split": "val",
+        "upstream_sha256": null,
+        "url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/VisDrone2019-DET-val.zip",
+        "zip_crc_passed": true
+      },
+      {
+        "annotations": 6471,
+        "asset_id": 178786188,
+        "folder": "VisDrone2019-DET-train",
+        "hash_note": "Locally computed SHA256; GitHub release API provided no digest.",
+        "image_list": "_download/train-images.txt",
+        "image_list_sha256": "78b0a6080b3210dc9b35838784dce553b4dbc38215416013d9092f47e5470ddb",
+        "images": 6471,
+        "name": "VisDrone2019-DET-train.zip",
+        "original_category_counts": {
+          "0": 8813,
+          "1": 79337,
+          "10": 29647,
+          "11": 1532,
+          "2": 27059,
+          "3": 10480,
+          "4": 144867,
+          "5": 24956,
+          "6": 12875,
+          "7": 4812,
+          "8": 3246,
+          "9": 5926
+        },
+        "sha256": "86a77eba93137bfc16e4993860de9245b0675c0dba0d3ab98fb458699e256f84",
+        "size": 1549875511,
+        "split": "train",
+        "upstream_sha256": null,
+        "url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/VisDrone2019-DET-train.zip",
+        "zip_crc_passed": true
+      },
+      {
+        "annotations": 1610,
+        "asset_id": 178784663,
+        "folder": "VisDrone2019-DET-test-dev",
+        "hash_note": "Locally computed SHA256; GitHub release API provided no digest.",
+        "image_list": "_download/test-dev-images.txt",
+        "image_list_sha256": "dd722ac0b7788670906f299baa8eb389451864bdf3870d575fcff3f515120729",
+        "images": 1610,
+        "name": "VisDrone2019-DET-test-dev.zip",
+        "original_category_counts": {
+          "0": 2180,
+          "1": 21006,
+          "10": 5845,
+          "11": 265,
+          "2": 6376,
+          "3": 1302,
+          "4": 28074,
+          "5": 5771,
+          "6": 2659,
+          "7": 530,
+          "8": 599,
+          "9": 2940
+        },
+        "sha256": "b28a94b06dfd9e36ce77ff8155fb82b9d2c030f198a76105933bd56c6ea6a68d",
+        "size": 311251787,
+        "split": "test-dev",
+        "upstream_sha256": null,
+        "url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/VisDrone2019-DET-test-dev.zip",
+        "zip_crc_passed": true
+      }
+    ],
+    "storage_note": "Temporary local NVMe copy; not guaranteed persistent storage.",
+    "test_dev_usage": "Reserved for final evaluation, not training or tuning.",
+    "training_started": false
+  },
+  "source_download_receipt_sha256": "67fd1e3aa04da0958b9143f53449e4dafa3834bba3e0dc61cf5f1d9c34d3bc00",
+  "split_ids_disjoint": true,
+  "split_image_hashes_disjoint": true,
+  "splits": {
+    "test-dev": {
+      "counts": {
+        "class_0": 21006,
+        "class_1": 6376,
+        "class_2": 1302,
+        "class_3": 28074,
+        "class_4": 5771,
+        "class_5": 2659,
+        "class_6": 530,
+        "class_7": 599,
+        "class_8": 2940,
+        "class_9": 5845,
+        "empty_training_images": 0,
+        "ignored_boxes": 2445,
+        "original_boxes": 77547,
+        "training_boxes": 75102
+      },
+      "images": 1610,
+      "paths_sha256": "3799abac15141e4c97bd3517488746bfc1563e1b62f864f271b7786dd8879157",
+      "same_split_duplicate_image_bytes": []
+    },
+    "train": {
+      "counts": {
+        "class_0": 79337,
+        "class_1": 27059,
+        "class_2": 10480,
+        "class_3": 144866,
+        "class_4": 24956,
+        "class_5": 12875,
+        "class_6": 4812,
+        "class_7": 3246,
+        "class_8": 5926,
+        "class_9": 29647,
+        "dropped_degenerate": 1,
+        "empty_training_images": 0,
+        "ignored_boxes": 10345,
+        "original_boxes": 353550,
+        "training_boxes": 343204
+      },
+      "images": 6471,
+      "paths_sha256": "08690be5f316240d5d31a05e7589f11dcb2bd0fa1fd1256fc0b695342e7b25a4",
+      "same_split_duplicate_image_bytes": [
+        [
+          "0000239_06450_d_0000017",
+          "0000239_06950_d_0000018"
+        ],
+        [
+          "9999950_00000_d_0000079",
+          "9999950_00000_d_10000080"
+        ]
+      ]
+    },
+    "val": {
+      "counts": {
+        "class_0": 8844,
+        "class_1": 5125,
+        "class_2": 1287,
+        "class_3": 14064,
+        "class_4": 1975,
+        "class_5": 750,
+        "class_6": 1045,
+        "class_7": 532,
+        "class_8": 251,
+        "class_9": 4886,
+        "empty_training_images": 0,
+        "ignored_boxes": 1410,
+        "original_boxes": 40169,
+        "training_boxes": 38759
+      },
+      "images": 548,
+      "paths_sha256": "e7a836107d87985f4eaebe1af2ceaa27b52542d03fde7965561a197c283eea55",
+      "same_split_duplicate_image_bytes": [
+        [
+          "0000022_00000_d_0000004",
+          "0000023_00000_d_0000008"
+        ]
+      ]
+    }
+  },
+  "test_dev_use": "final evaluation only",
+  "training_ignore_background_mask": false
+}

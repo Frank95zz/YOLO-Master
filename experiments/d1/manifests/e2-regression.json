@@ -1,0 +1,35 @@
+{
+  "tests": [
+    "test_d1_visdrone_protocol.py",
+    "test_d1_npy_migration.py",
+    "test_d1_npy_training.py",
+    "test_d1_wp0_contract.py",
+    "test_d1_wp1_dinov3.py",
+    "test_d1_wp2_feature_cache.py",
+    "test_d1_wp2_cache_cli.py",
+    "test_d1_wp8_multi_gpu_cache.py",
+    "test_d1_p1p2_data.py",
+    "test_d1_wp3_foundation_adapter.py",
+    "test_d1_wp4_foundation_detection_model.py",
+    "test_d1_wp5_cached_pipeline.py",
+    "test_d1_wp6_latent_aux.py",
+    "test_d1_wp7_acceptance.py",
+    "test_d1_p1p2_contract.py",
+    "test_mixture_loss_composition.py"
+  ],
+  "command": "python -m pytest -q tests/test_d1_visdrone_protocol.py tests/test_d1_npy_migration.py tests/test_d1_npy_training.py tests/test_d1_wp0_contract.py tests/test_d1_wp1_dinov3.py tests/test_d1_wp2_feature_cache.py tests/test_d1_wp2_cache_cli.py tests/test_d1_wp8_multi_gpu_cache.py tests/test_d1_p1p2_data.py tests/test_d1_wp3_foundation_adapter.py tests/test_d1_wp4_foundation_detection_model.py tests/test_d1_wp5_cached_pipeline.py tests/test_d1_wp6_latent_aux.py tests/test_d1_wp7_acceptance.py tests/test_d1_p1p2_contract.py tests/test_mixture_loss_composition.py",
+  "exit_code": 0,
+  "log_sha256": "4d0106ee237ff2a8ab1977df7b2e379b6235bd7fe70ac6e08aedb29b139ae437",
+  "result_tail": "257 passed, 8 skipped in 12.31s",
+  "source_sha256": {
+    "scripts/d1/prepare_visdrone.py": "0499057ccbbc4e50b074c1d589cfcd9a2e673d95475e43f48b144a09e32eaee2",
+    "scripts/d1/cache_visdrone.py": "5c5cf75072eb57ceaca19368a7503a21d0b67f650f16619fae3c0ef3185dd97b",
+    "scripts/d1/evaluate_visdrone.py": "3ec798cb26d660e25cddb65eb50536a87acb22c47f85f171a6ea68975e91a07f",
+    "scripts/d1/evaluate_visdrone_official.m": "e13fd693722ba59aac52b07097744416ab4f097f8416ec21a262f9f7a9fe6752",
+    "scripts/d1/test_visdrone_official.m": "1a7d956fd2b0296b343a6f31b6be5fcc60dc38653c3080b0d355c237f0c4d2c7",
+    "scripts/d1/visdrone_matlab_compat/mean2.m": "44d2ce1bcfb717f7b4a0eb46fa09c7464cb6ea9b16f352b262c90629c4910ac6",
+    "ultralytics/nn/foundation/npy_cache.py": "5ace2f28ddb1c933f9807f0c6eecea73a9c54cff7a3df47f845ec8cf0e038464",
+    "tests/test_d1_visdrone_protocol.py": "49855f33922c277d1ae5070d417bc24099c6bc78aff88f17c27c262b5ad8724a"
+  },
+  "code_provenance": "Tested source file hashes; cache run separately binds a clean commit."
+}
