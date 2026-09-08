@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from scripts.d1 import run_p1p2 as experiment
-from scripts.d1.p1p2_runtime import clean_child_env, detached_state, load_initial_tensors
+from scripts.d1.p1p2_runtime import clean_child_env, detached_state, load_initial_tensors, load_resume_tensors
 from ultralytics.utils import YAML
 
 
@@ -91,6 +91,56 @@ def test_resume_registers_aux_buffer_before_strict_load(monkeypatch, variant):
         module.value_fusion_mode == ("router_only" if variant == "A" else "weighted_sum")
         for module in restored.mixtures.values()
     )
+
+
+@pytest.mark.parametrize("saved_aux", [False, True])
+def test_scratch_resume_matches_saved_buffer_schema(saved_aux):
+    from ultralytics.nn.mixture_loss import initialize_mixture_loss_ema_buffer
+
+    source = experiment.construct_model("S")
+    if saved_aux:
+        initialize_mixture_loss_ema_buffer(source).fill_(2.5)
+    saved = detached_state(source)
+    for _ in ("online", "ema"):
+        restored = experiment.construct_model("S")
+        initialize_mixture_loss_ema_buffer(restored)
+        load_resume_tensors(restored, saved, variant="S")
+        actual = restored.state_dict()
+        assert actual.keys() == saved.keys()
+        assert all(torch.equal(value, actual[key]) for key, value in saved.items())
+        assert hasattr(restored, "_mixture_loss_ema_buf") == saved_aux
+
+
+@pytest.mark.parametrize("variant", list("ABC"))
+def test_frozen_resume_preserves_aux_and_rejects_missing_buffer(variant):
+    source = experiment.construct_model(variant)
+    source._mixture_loss_ema_buf.fill_(2.5)
+    saved = detached_state(source)
+    restored = experiment.construct_model(variant)
+    load_resume_tensors(restored, saved, variant=variant)
+    assert torch.equal(restored._mixture_loss_ema_buf, source._mixture_loss_ema_buf)
+    saved.pop("_mixture_loss_ema_buf")
+    with pytest.raises(RuntimeError, match="Missing key"):
+        load_resume_tensors(restored, saved, variant=variant)
+    with pytest.raises(ValueError, match="Scratch resume"):
+        load_resume_tensors(restored, saved, variant="S")
+
+
+@pytest.mark.parametrize("variant", list("ABCS"))
+@pytest.mark.parametrize("corruption", ["missing", "unexpected"])
+def test_resume_keeps_strict_parameter_validation(variant, corruption):
+    from ultralytics.nn.mixture_loss import initialize_mixture_loss_ema_buffer
+
+    source = experiment.construct_model(variant)
+    saved = detached_state(source)
+    restored = experiment.construct_model(variant)
+    initialize_mixture_loss_ema_buffer(restored)
+    if corruption == "missing":
+        saved.pop(next(iter(dict(source.named_parameters()))))
+    else:
+        saved["unexpected_parameter"] = torch.zeros(1)
+    with pytest.raises(RuntimeError, match="Missing key|Unexpected key"):
+        load_resume_tensors(restored, saved, variant=variant)
 
 
 def matrix(tmp_path):

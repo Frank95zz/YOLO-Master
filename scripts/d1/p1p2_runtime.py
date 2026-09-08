@@ -67,6 +67,17 @@ def load_initial_tensors(model, tensors):
     model.load_state_dict(state, strict=True)
 
 
+def load_resume_tensors(model, state, *, variant):
+    """Strictly restore E1 state without retaining a buffer added only by generic resume."""
+    if variant == "S" and "_mixture_loss_ema_buf" not in state:
+        if isinstance(model, D1FoundationDetectionModel):
+            raise ValueError("Scratch resume cannot remove a frozen model's auxiliary state")
+        # BaseTrainer initializes this buffer even for Scratch, which has no mixture loss.
+        if "_mixture_loss_ema_buf" in model._buffers:
+            delattr(model, "_mixture_loss_ema_buf")
+    model.load_state_dict(state, strict=True)
+
+
 def clean_child_env() -> dict:
     """A single-GPU evaluator must not inherit its parent's torchrun rank."""
     env = os.environ.copy()
@@ -279,8 +290,8 @@ class E1Policy:
             if state["identity"] != self.e1["identity"] or state["epoch"] + 1 != self.start_epoch:
                 raise ValueError("Resume identity or epoch does not match")
             model = unwrap_model(self.model)
-            model.load_state_dict(state["model"], strict=True)
-            self.ema.ema.load_state_dict(state["ema"], strict=True)
+            load_resume_tensors(model, state["model"], variant=self.e1["variant"])
+            load_resume_tensors(self.ema.ema, state["ema"], variant=self.e1["variant"])
             self.ema.updates = state["ema_updates"]
             self.optimizer.load_state_dict(state["optimizer"])
             self.scaler.load_state_dict(state["scaler"])
