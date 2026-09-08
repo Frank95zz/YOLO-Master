@@ -1,0 +1,307 @@
+{
+  "aux_probes": [
+    {
+      "active_aux": 0.00582028366625309,
+      "balance_only_cold_start": 0.0,
+      "rank": 0,
+      "z_only": 0.00582028366625309,
+      "zero_aux": 0.0
+    },
+    {
+      "active_aux": 0.00582028366625309,
+      "balance_only_cold_start": 0.0,
+      "rank": 1,
+      "z_only": 0.00582028366625309,
+      "zero_aux": 0.0
+    },
+    {
+      "active_aux": 0.00582028366625309,
+      "balance_only_cold_start": 0.0,
+      "rank": 2,
+      "z_only": 0.00582028366625309,
+      "zero_aux": 0.0
+    },
+    {
+      "active_aux": 0.00582028366625309,
+      "balance_only_cold_start": 0.0,
+      "rank": 3,
+      "z_only": 0.00582028366625309,
+      "zero_aux": 0.0
+    },
+    {
+      "active_aux": 0.00582028366625309,
+      "balance_only_cold_start": 0.0,
+      "rank": 4,
+      "z_only": 0.00582028366625309,
+      "zero_aux": 0.0
+    },
+    {
+      "active_aux": 0.00582028366625309,
+      "balance_only_cold_start": 0.0,
+      "rank": 5,
+      "z_only": 0.00582028366625309,
+      "zero_aux": 0.0
+    }
+  ],
+  "contract": {
+    "amp_growth_interval": 1000000,
+    "amp_init_scale": 16,
+    "balance_loss_coeff": 0.01,
+    "conf": 0.001,
+    "dataset": "VisDrone2019-DET",
+    "global_batch": 96,
+    "imgsz": 640,
+    "latent_aux_gain": 0.1,
+    "max_det": 500,
+    "mixture_aux_budget": 3.0,
+    "nc": 10,
+    "per_gpu_batch": 16,
+    "prefetch_factor": 1,
+    "profiles": {
+      "benchmark": {
+        "train_samples": 6471,
+        "val_samples": 548,
+        "window_epochs": 3
+      },
+      "smoke": {
+        "train_samples": 96,
+        "val_samples": 8,
+        "window_epochs": 1
+      },
+      "smoke-resume": {
+        "train_samples": 96,
+        "val_samples": 8,
+        "window_epochs": 2
+      }
+    },
+    "router_z_loss_coeff": 0.001,
+    "schedule_epochs": 300,
+    "schema_version": "d1-e2-engineering-v1",
+    "seed": 0,
+    "value_fusion_mode": "weighted_sum",
+    "workers": 4,
+    "world_size": 6
+  },
+  "identity": {
+    "commit": "f328a10907f57c66c2efb92d7b506be7cc836b8d",
+    "contract_sha256": "981abae51baf66e717ff891cf807fa2a96e1928b84d85d4327a36e07a6552b0a"
+  },
+  "parameters": 3477987,
+  "profiles": {
+    "benchmark": {
+      "amp_retries": 0,
+      "checkpoint_sha256": "27d1f8a1d0535b61e5849a3d9a039e677e90da021565be843d2a3d224d7235e1",
+      "degenerate_predictions_dropped": 32,
+      "epochs": 3,
+      "evidence_sha256": {
+        "evaluations/E2-benchmark/predictions-txt/export.json": "e07ba16dbea24ba9d167b4c96d83524680a6d56013461c7f94f4f18a1e488c52",
+        "evaluations/E2-benchmark/report.json": "cc9d70f9a5b393b254d50d7763ea0d04e7b88152c4a140b58d5a2b99f894d2b8",
+        "reports/E2-benchmark/training-result.json": "9e016e755879a5bfe30c1cb8decace1f139adeb8e22f32832a68978cf186a035"
+      },
+      "head_max_det": 500,
+      "internal_monitoring_metrics": {
+        "fitness": 0.02665,
+        "metrics/mAP50(B)": 0.07558,
+        "metrics/mAP50-95(B)": 0.02665,
+        "metrics/precision(B)": 0.38435,
+        "metrics/recall(B)": 0.11872,
+        "val/box_loss": 2.99554,
+        "val/cls_loss": 2.30024,
+        "val/dfl_loss": 0.00514,
+        "val/latent_aux_loss": 0.0,
+        "val/latent_balance_loss": 0.0,
+        "val/latent_z_loss": 0.0,
+        "val/mixture_aux_loss": 0.0
+      },
+      "nine_adapter_branches_nonzero_gradient_all_ranks": true,
+      "optimizer_updates": 204,
+      "parameter_updates": {
+        "p3": {
+          "residual_gain_abs_delta": 0.1337268203496933,
+          "router_delta_l2": 2.0218358891916894
+        },
+        "p4": {
+          "residual_gain_abs_delta": 0.12684057652950287,
+          "router_delta_l2": 2.0111110526893707
+        },
+        "p5": {
+          "residual_gain_abs_delta": 0.11715471744537354,
+          "router_delta_l2": 2.1250181961162533
+        }
+      },
+      "peak_allocated_bytes": 5009873920,
+      "peak_reserved_bytes": 8808038400,
+      "resume_sha256": "232727fdf478a05d8b17259e9d32ae945dbdd52170cd0343a87fa280a53e15b3",
+      "strict_reload": true,
+      "teacher_parameters": 0,
+      "train_samples": 6471,
+      "val_samples": 548,
+      "validation_metrics_by_epoch": [
+        {
+          "epoch": 1,
+          "epoch_wall_seconds": 19.50821952521801,
+          "metrics": {
+            "metrics/mAP50(B)": 0.02268,
+            "metrics/mAP50-95(B)": 0.00715,
+            "metrics/precision(B)": 0.02242,
+            "metrics/recall(B)": 0.13394,
+            "val/box_loss": 3.37534,
+            "val/cls_loss": 3.04034,
+            "val/dfl_loss": 0.00643,
+            "val/latent_aux_loss": 0.0,
+            "val/latent_balance_loss": 0.0,
+            "val/latent_z_loss": 0.0,
+            "val/mixture_aux_loss": 0.0
+          },
+          "seen": 548,
+          "updated_unix": 1788886348.6130319
+        },
+        {
+          "epoch": 2,
+          "epoch_wall_seconds": 18.01530611515045,
+          "metrics": {
+            "metrics/mAP50(B)": 0.05057,
+            "metrics/mAP50-95(B)": 0.01599,
+            "metrics/precision(B)": 0.38198,
+            "metrics/recall(B)": 0.08853,
+            "val/box_loss": 3.17845,
+            "val/cls_loss": 2.45198,
+            "val/dfl_loss": 0.00553,
+            "val/latent_aux_loss": 0.0,
+            "val/latent_balance_loss": 0.0,
+            "val/latent_z_loss": 0.0,
+            "val/mixture_aux_loss": 0.0
+          },
+          "seen": 548,
+          "updated_unix": 1788886366.6319435
+        },
+        {
+          "epoch": 3,
+          "epoch_wall_seconds": 17.888994239270687,
+          "metrics": {
+            "metrics/mAP50(B)": 0.0756,
+            "metrics/mAP50-95(B)": 0.02666,
+            "metrics/precision(B)": 0.38426,
+            "metrics/recall(B)": 0.11868,
+            "val/box_loss": 2.99521,
+            "val/cls_loss": 2.30029,
+            "val/dfl_loss": 0.00514,
+            "val/latent_aux_loss": 0.0,
+            "val/latent_balance_loss": 0.0,
+            "val/latent_z_loss": 0.0,
+            "val/mixture_aux_loss": 0.0
+          },
+          "seen": 548,
+          "updated_unix": 1788886384.525632
+        }
+      ]
+    },
+    "smoke": {
+      "amp_retries": 0,
+      "checkpoint_sha256": "a68ff27dc3cafc8347eb0960fb27d1bb230115e06ab000169d54b5e6cf5f6ebe",
+      "degenerate_predictions_dropped": 960,
+      "epochs": 2,
+      "evidence_sha256": {
+        "evaluations/E2-smoke/predictions-txt/export.json": "0655a8cc0ff5b920104b637e24cb4cebf0cd283aa948b396169088e1590b6279",
+        "evaluations/E2-smoke/report.json": "a8f1dff060878bceae585e5974bfb2aae32b37def66b14b7c59445ca938ea7c4",
+        "reports/E2-smoke/training-result.json": "4a57f97d62b67849d7b428d948f81c1bdf458dcb26d43f74ccbe19f3804eec4d"
+      },
+      "head_max_det": 500,
+      "internal_monitoring_metrics": {
+        "fitness": 0.0,
+        "metrics/mAP50(B)": 0.0,
+        "metrics/mAP50-95(B)": 0.0,
+        "metrics/precision(B)": 0.0,
+        "metrics/recall(B)": 0.0,
+        "val/box_loss": 4.29417,
+        "val/cls_loss": 4.92189,
+        "val/dfl_loss": 0.01223,
+        "val/latent_aux_loss": 0.0,
+        "val/latent_balance_loss": 0.0,
+        "val/latent_z_loss": 0.0,
+        "val/mixture_aux_loss": 0.0
+      },
+      "optimizer_updates": 2,
+      "peak_allocated_bytes": 4870686720,
+      "peak_reserved_bytes": 5683281920,
+      "resume_sha256": "49bacbd40101590697e75b24e0b12edcf93ba0b6acb029ad895c20ac0c65c922",
+      "strict_reload": true,
+      "teacher_parameters": 0,
+      "train_samples": 96,
+      "val_samples": 8,
+      "validation_metrics_by_epoch": [
+        {
+          "epoch": 1,
+          "epoch_wall_seconds": 1.942072194069624,
+          "metrics": {
+            "metrics/mAP50(B)": 0.0,
+            "metrics/mAP50-95(B)": 0.0,
+            "metrics/precision(B)": 0.0,
+            "metrics/recall(B)": 0.0,
+            "val/box_loss": 4.58036,
+            "val/cls_loss": 5.10161,
+            "val/dfl_loss": 0.01406,
+            "val/latent_aux_loss": 0.0,
+            "val/latent_balance_loss": 0.0,
+            "val/latent_z_loss": 0.0,
+            "val/mixture_aux_loss": 0.0
+          },
+          "seen": 8,
+          "updated_unix": 1788886290.34923
+        },
+        {
+          "epoch": 2,
+          "epoch_wall_seconds": 2.6969368644058704,
+          "metrics": {
+            "metrics/mAP50(B)": 0.0,
+            "metrics/mAP50-95(B)": 0.0,
+            "metrics/precision(B)": 0.0,
+            "metrics/recall(B)": 0.0,
+            "val/box_loss": 4.48361,
+            "val/cls_loss": 4.96659,
+            "val/dfl_loss": 0.01272,
+            "val/latent_aux_loss": 0.0,
+            "val/latent_balance_loss": 0.0,
+            "val/latent_z_loss": 0.0,
+            "val/mixture_aux_loss": 0.0
+          },
+          "seen": 8,
+          "updated_unix": 1788886305.1460805
+        }
+      ]
+    }
+  },
+  "resume_input": {
+    "epoch": 1,
+    "last_sha256": "f886e705eda2834d1db1dd3845acdf54bb177a8ce9a6e0bf62bd3911943e4580",
+    "optimizer_steps": 1,
+    "ranks": 6,
+    "resume_sha256": "6460b2169bb0d8056eb8017021c5abbc3f94fe09f5cffe8a6131b1f3c09a5117",
+    "state_keys": [
+      "criterion",
+      "ema",
+      "ema_updates",
+      "epoch",
+      "execution_identity",
+      "identity",
+      "model",
+      "optimizer",
+      "optimizer_steps",
+      "ranks",
+      "scaler",
+      "scheduler"
+    ]
+  },
+  "resume_scope": "State restored and continued on all six ranks; no uninterrupted-reference bitwise comparison claimed",
+  "runtime_inputs_sha256": {
+    "benchmark-train.txt": "8a9c8b32081ba5b582be19324def4d92f292a49fdc612fa930a7525855bc37c8",
+    "benchmark-val.txt": "fdc4a8092af8759ad99e5afcd52b1180725d9a42c8f25538ab0a26ba1218c59e",
+    "benchmark.yaml": "bcc3bac2a6b12b34803b66b3470053e082e9ab9579b740d953acaddc522d54ea",
+    "initial.pt": "5a47a2949da28e8a53490ebba90740612f410d16caef05e9ee02365e91eb5e75",
+    "model.yaml": "de94c72830d9947bf2dbe36283ec5caf27d71a74d3da7922b5ebb78389473cd8",
+    "smoke-train.txt": "6ef82ee42ff6d657d2a400616335f725b09bd2db81bdc7ee6e810e9eba14d431",
+    "smoke-val.txt": "4ec4c7afac207a79b0fd2f3a56c7063dd4b12b9f5148158e91e45f707ad11cb6",
+    "smoke.yaml": "3cd66095d99a213b2e861804c57d01d41102d6e2e44a1ad37867b56c2e0508d8"
+  },
+  "status": "PASSED"
+}

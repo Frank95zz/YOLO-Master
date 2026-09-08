@@ -1,0 +1,72 @@
+{
+  "code_commit": "f328a10907f57c66c2efb92d7b506be7cc836b8d",
+  "matlab_log_sha256": "c759122c512ab4825bbd943b98f0f5651a1171a603899d7d5233f1c4ed9df906",
+  "privacy": "Only experiment metrics, public tool version and cryptographic digests; original logs remain local",
+  "runs": {
+    "benchmark": {
+      "backend": "official-matlab",
+      "checkpoint_epoch": 3,
+      "checkpoint_sha256": "27d1f8a1d0535b61e5849a3d9a039e677e90da021565be843d2a3d224d7235e1",
+      "compatibility": "Repository mean2 fallback: mean(value(:)); official matching and AP functions unchanged",
+      "export_sha256": "e07ba16dbea24ba9d167b4c96d83524680a6d56013461c7f94f4f18a1e488c52",
+      "image_count": 548,
+      "matlab_version": "26.1.0.3346908 (R2026a) Update 5",
+      "metrics": {
+        "AP_50": 0.08652895563321401,
+        "AP_75": 0.015505694179574562,
+        "AP_all": 0.030618034112969622,
+        "AR_1": 0.003362437450399619,
+        "AR_10": 0.020000400162292716,
+        "AR_100": 0.06517720655726217,
+        "AR_500": 0.12165448876376027
+      },
+      "metrics_percent": {
+        "AP_50": 8.652895563321401,
+        "AP_75": 1.5505694179574563,
+        "AP_all": 3.061803411296962,
+        "AR_1": 0.3362437450399619,
+        "AR_10": 2.0000400162292715,
+        "AR_100": 6.517720655726217,
+        "AR_500": 12.165448876376027
+      },
+      "official_report_sha256": "7ad394071955edde2b0909afbc245bfcd4c6555019901aa9e3c0c244744b1d27",
+      "scoring_seconds": 22.0004472,
+      "toolkit_commit": "005445782213e20cb91bc50a597db3dd949e749a",
+      "toolkit_manifest_sha256": "b5ab2def85f4b191802a0f219c317630d5e2f43d5d536ede773da10f9f638917"
+    },
+    "smoke": {
+      "backend": "official-matlab",
+      "checkpoint_epoch": 2,
+      "checkpoint_sha256": "a68ff27dc3cafc8347eb0960fb27d1bb230115e06ab000169d54b5e6cf5f6ebe",
+      "compatibility": "Repository mean2 fallback: mean(value(:)); official matching and AP functions unchanged",
+      "export_sha256": "0655a8cc0ff5b920104b637e24cb4cebf0cd283aa948b396169088e1590b6279",
+      "image_count": 8,
+      "matlab_version": "26.1.0.3346908 (R2026a) Update 5",
+      "metrics": {
+        "AP_50": 0,
+        "AP_75": 0,
+        "AP_all": 0,
+        "AR_1": 0,
+        "AR_10": 0,
+        "AR_100": 0,
+        "AR_500": 0
+      },
+      "metrics_percent": {
+        "AP_50": 0,
+        "AP_75": 0,
+        "AP_all": 0,
+        "AR_1": 0,
+        "AR_10": 0,
+        "AR_100": 0,
+        "AR_500": 0
+      },
+      "official_report_sha256": "42692299a033fa3e5cc4fb234efa3850ddf5915466ba6bbb6c367cb9c48541bb",
+      "scoring_seconds": 4.0987295,
+      "toolkit_commit": "005445782213e20cb91bc50a597db3dd949e749a",
+      "toolkit_manifest_sha256": "b5ab2def85f4b191802a0f219c317630d5e2f43d5d536ede773da10f9f638917"
+    }
+  },
+  "schema_version": "d1-e2-official-evidence-v1",
+  "source_manifest_sha256": "10aa470b2f0a7fb23936556fe90c338be318f9b1e4a89f236cc4db20364d3fc5",
+  "status": "PASSED"
+}

@@ -1,14 +1,26 @@
 {
-  "status": "PRE_INTEGRATION_PASSED",
-  "result": "273 passed, 8 skipped in 15.21s",
-  "new_engineering_tests": 16,
-  "log_sha256": "f62568c9cdda666be9d9b5caa379a98457754d746cbe7ae6d17dab48d2f89677",
-  "tested_scope": "Pre-merge E2 implementation on 6878f3d, before final formatting and shared-host gate additions",
-  "final_clean_commit_regression": "Required by run_e2 all before training; includes P5 compatibility",
-  "checks": {
-    "ruff": "0.16.6 passed",
+  "code_commit": "f328a10907f57c66c2efb92d7b506be7cc836b8d",
+  "lint": {
     "codespell": "2.4.3 passed",
-    "py_compile": "passed"
+    "py_compile": "passed",
+    "ruff": "0.16.6 passed"
   },
-  "tool_installation": "Separate lint-tool directory; training dependencies unchanged"
+  "log_sha256": "0d01defd1079257a3a8a436d3158bbed60322da455b5afa16447718c3081423d",
+  "passed": 300,
+  "scope": "Clean code execution before real E2 training, including P5 compatibility; opt-in integrations skipped",
+  "seconds": 19.94,
+  "skipped": 10,
+  "skipped_tests": [
+    "tests/test_d1_npy_training.py::test_real_npy_model_backward_and_checkpoint",
+    "tests/test_d1_wp1_dinov3.py::test_real_dinov3_vits16_multilayer_640",
+    "tests/test_d1_wp3_foundation_adapter.py::test_device_mismatch_is_rejected",
+    "tests/test_d1_wp3_foundation_adapter.py::test_real_wp2_cache_cuda_fp16",
+    "tests/test_d1_wp4_foundation_detection_model.py::test_real_wp2_cache_cuda_forward",
+    "tests/test_d1_wp5_cached_pipeline.py::test_real_wp2_cache_dataset_trainer_and_model",
+    "tests/test_d1_wp5_cached_pipeline.py::test_real_wp2_cache_one_batch_train_and_validate",
+    "tests/test_d1_wp7_acceptance.py::test_d1_amp_check_uses_feature_inputs_without_rgb_model",
+    "tests/test_d1_p5_ablation.py::test_real_npy_and_labels_cpu_one_step[DW]",
+    "tests/test_d1_p5_ablation.py::test_real_npy_and_labels_cpu_one_step[BN64]"
+  ],
+  "status": "PASSED"
 }

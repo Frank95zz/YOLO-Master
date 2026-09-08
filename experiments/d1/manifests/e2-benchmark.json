@@ -1,0 +1,65 @@
+{
+  "all_rank_peak_reserved_bytes": 8808038400,
+  "data_wait_scope": "Sum of host batch-acquisition waits per rank; excludes H2D and compute, not a disk cold-read benchmark",
+  "epochs": [
+    {
+      "amp_retries": 0,
+      "epoch": 1,
+      "max_rank_data_wait_seconds": 0.024621885269880295,
+      "peak_gpu_bytes": 4976927232,
+      "wall_seconds": 19.50821952521801
+    },
+    {
+      "amp_retries": 0,
+      "epoch": 2,
+      "max_rank_data_wait_seconds": 0.023143939673900604,
+      "peak_gpu_bytes": 5009873920,
+      "wall_seconds": 18.01530611515045
+    },
+    {
+      "amp_retries": 0,
+      "epoch": 3,
+      "max_rank_data_wait_seconds": 0.025129009038209915,
+      "peak_gpu_bytes": 4902936576,
+      "wall_seconds": 17.888994239270687
+    }
+  ],
+  "estimate_scope": "Epoch train, internal val and checkpoint; excludes startup, MATLAB official eval and Teacher extraction",
+  "estimated_300_epoch_gpu_hours": 8.976075088605285,
+  "estimated_300_epoch_hours": 1.4960125147675474,
+  "estimated_60_epoch_hours": 0.2992025029535095,
+  "identity": {
+    "commit": "f328a10907f57c66c2efb92d7b506be7cc836b8d",
+    "contract_sha256": "981abae51baf66e717ff891cf807fa2a96e1928b84d85d4327a36e07a6552b0a"
+  },
+  "limitation": "Two measured early warmup epochs, not a convergence or end-to-end cost guarantee",
+  "median_epoch_seconds": 17.95215017721057,
+  "process_seconds": 75.23909514769912,
+  "resources": {
+    "cpu_pressure_end": "some avg10=0.00 avg60=1.03 avg300=29.07 total=87033447957",
+    "cpu_pressure_start": "some avg10=0.12 avg60=3.32 avg300=37.68 total=87033075969",
+    "cpu_quota_cores": 32,
+    "cpu_throttled_nanoseconds_delta": 0,
+    "cpu_throttled_periods_delta": 0,
+    "gpu_memory_utilization_after": "0, 266, 0\n1, 266, 0\n2, 266, 0\n3, 266, 0\n4, 266, 0\n5, 266, 0",
+    "gpu_memory_utilization_before": "0, 266, 3\n1, 266, 1\n2, 266, 1\n3, 266, 1\n4, 266, 1\n5, 266, 2",
+    "loadavg_end": [
+      "8.18",
+      "58.78",
+      "80.87"
+    ],
+    "loadavg_start": [
+      "7.47",
+      "73.40",
+      "87.06"
+    ]
+  },
+  "status": "PASSED",
+  "timed_epochs": [
+    2,
+    3
+  ],
+  "train_images_per_epoch": 6471,
+  "updates_per_epoch": 68,
+  "validation_images_per_epoch": 548
+}

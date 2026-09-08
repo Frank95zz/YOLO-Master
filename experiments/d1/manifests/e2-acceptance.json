@@ -1,0 +1,37 @@
+{
+  "schema_version": "d1-e2-acceptance-v1",
+  "status": "PASSED",
+  "e2_complete": true,
+  "training_code_commit": "f328a10907f57c66c2efb92d7b506be7cc836b8d",
+  "cache_code_commit": "6878f3db9ee6f18914b41518c8c4560eb75ebd84",
+  "formal_experiments_started": false,
+  "test_dev_evaluated": false,
+  "gates": {
+    "data_and_splits": true,
+    "complete_train_val_cache": true,
+    "official_toolkit_parity": true,
+    "real_ten_class_training": true,
+    "strict_checkpoint_reload": true,
+    "state_restore_and_continuation": true,
+    "three_epoch_full_split_benchmark": true,
+    "actual_prediction_official_scoring": true
+  },
+  "evidence_sha256": {
+    "e2-visdrone-data.json": "03093a46f25f9af6aca320bc8427b8f21fcfcc91e6ad1f6bdbff21bbe15f35ea",
+    "e2-visdrone-cache.json": "5c83edeb0587eba8a0660cc546976f57c8ec9edb117e213d91a203f71b7b99ca",
+    "e2-visdrone-matlab-tests.json": "aef2951a485c5474102e4bbba36a8760e5589cc646170a8cc74b0f87fc3c81aa",
+    "visdrone-toolkit.json": "b5ab2def85f4b191802a0f219c317630d5e2f43d5d536ede773da10f9f638917",
+    "e2-engineering-regression.json": "cada54a43b4f2c150009a9103597cf6769d828c53103d73442c19cf7f5011084",
+    "e2-engineering-results.json": "afbf73d635cf2374247332228c040764139c2030595bb5339edcd92afb7fa9a2",
+    "e2-official-evaluation.json": "78ce9c400415557c407f42a77f3ab9d7371c3f6ead2ed174175eb009e39d3fc9",
+    "e2-benchmark.json": "e8a492676eec67cb765749512b0a8c1d351b8258b476f191a8d9da6f5150ed3a",
+    "e2-closure-validation.json": "2feb59efdefe6ad5f5e933dd05208004aa71a0fe016b7916bbd7fd766a0be95f"
+  },
+  "limitations": [
+    "Engineering acceptance only; no formal accuracy or P1/P2 completion claim",
+    "No uninterrupted-reference bitwise resume comparison",
+    "No ignore-region background-gradient mask in training",
+    "ETA from two early warmup epochs; not total end-to-end cost",
+    "Full MATLAB logs remain local; only sanitized metrics and digests synchronized"
+  ]
+}

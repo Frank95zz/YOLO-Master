@@ -1,0 +1,43 @@
+{
+  "schema_version": "d1-e2-closure-validation-v1",
+  "status": "PASSED",
+  "training_code_commit": "f328a10907f57c66c2efb92d7b506be7cc836b8d",
+  "scope": "Post-scoring documentation and evidence consistency; no new training",
+  "pytest": {
+    "passed": 305,
+    "skipped": 10,
+    "seconds": 20.05,
+    "tests": [
+      "test_d1_visdrone_protocol.py",
+      "test_d1_npy_migration.py",
+      "test_d1_npy_training.py",
+      "test_d1_wp0_contract.py",
+      "test_d1_wp1_dinov3.py",
+      "test_d1_wp2_feature_cache.py",
+      "test_d1_wp2_cache_cli.py",
+      "test_d1_wp8_multi_gpu_cache.py",
+      "test_d1_p1p2_data.py",
+      "test_d1_wp3_foundation_adapter.py",
+      "test_d1_wp4_foundation_detection_model.py",
+      "test_d1_wp5_cached_pipeline.py",
+      "test_d1_wp6_latent_aux.py",
+      "test_d1_wp7_acceptance.py",
+      "test_d1_p1p2_contract.py",
+      "test_mixture_loss_composition.py",
+      "tests/test_d1_e2_engineering.py",
+      "tests/test_d1_p5_ablation.py",
+      "tests/test_d1_e2_evidence.py"
+    ],
+    "log_sha256": "4aed3279d43a83f09f3e891929a33fa528b4c68762f5f8617c8ed2b8fd534f8d"
+  },
+  "evidence_test_sha256": "14e477983069d18059f5132f13addb9e26352c87e1096cd27ddf853490ffcf49",
+  "checks": {
+    "ruff": true,
+    "ruff_format": true,
+    "codespell": true,
+    "py_compile": true
+  },
+  "limitations": [
+    "Optional real-weight, CUDA and external-data tests skipped in this CPU regression; actual E2 GPU run evidence recorded separately."
+  ]
+}
