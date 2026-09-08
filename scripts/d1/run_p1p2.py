@@ -346,6 +346,12 @@ def evaluate(args):
     matrix = load_matrix(args.workspace)
     profile, variant = args.run_id.split("-")
     spec = spec_for(matrix, profile, variant)
+    return evaluate_registered(args, matrix, spec, construct_model(variant), overrides_for(matrix, spec))
+
+
+def evaluate_registered(args, matrix, spec, model, common):
+    """Strictly evaluate a registered model with the shared COCO protocol."""
+    profile, variant = spec["profile"], spec["variant"]
     expected_root = args.workspace / "runs" / args.run_id / "weights"
     checkpoint_path = args.checkpoint.resolve()
     if checkpoint_path.parent != expected_root.resolve():
@@ -354,14 +360,14 @@ def evaluate(args):
     saved = checkpoint.get("ema")
     if saved is None:
         saved = checkpoint.get("model")
-    model = construct_model(variant).eval()
+    model = model.eval()
     model.load_state_dict(saved.float().state_dict(), strict=True)
     if not all(
         torch.isfinite(tensor).all() for tensor in model.state_dict().values() if isinstance(tensor, torch.Tensor)
     ):
         raise FloatingPointError("Checkpoint contains non-finite values")
     args.output.mkdir(parents=True, exist_ok=True)
-    common = overrides_for(matrix, spec)
+    common = deepcopy(common)
     common.update(
         device="0",
         batch=128,

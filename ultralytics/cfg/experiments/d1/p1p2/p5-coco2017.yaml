@@ -1,0 +1,17 @@
+# Architecture screening only. Preparation does not authorize training.
+schema_version: d1-p5-ablation-v1
+base_contract: ultralytics/cfg/experiments/d1/p1p2/e1-coco2017.yaml
+base_variant: B
+schedule_epochs: 100
+screen_epochs: 50
+seed: 0
+maximum_runs: 3
+selection:
+  max_ap_drop_points: 0.5
+  max_ap75_drop_points: 1.0
+  max_ap_large_drop_points: 1.0
+  require_lower_measured_gpu_hours: true
+variants:
+  BASE: {p5_mode: conv, p5_parameters: 2655744, downstream_parameters: 3542567}
+  DW: {p5_mode: depthwise, p5_parameters: 309120, downstream_parameters: 1195943}
+  BN64: {p5_mode: bottleneck, p5_bottleneck_channels: 64, p5_parameters: 518016, downstream_parameters: 1404839}

@@ -242,6 +242,8 @@ def _mechanism_evidence(source, batch):
 class E1Policy:
     """Require finite updates, preserve exact resume state, and stop at a window boundary."""
 
+    evaluation_module = "scripts.d1.run_p1p2"
+
     def __init__(self, *args, run_spec, **kwargs):
         self.e1 = run_spec
         self.e1_rank = int(os.environ.get("RANK", "0"))
@@ -557,7 +559,7 @@ class E1Policy:
             sys.executable,
             "-u",
             "-m",
-            "scripts.d1.run_p1p2",
+            self.evaluation_module,
             "evaluate",
             "--workspace",
             self.e1["workspace"],

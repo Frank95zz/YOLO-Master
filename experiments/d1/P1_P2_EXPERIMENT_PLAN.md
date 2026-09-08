@@ -571,6 +571,104 @@ E1 每小时监控已暂停，完成状态不授权重跑或扩展矩阵。E4 �
 正式基线待最终冻结架构确定后按第 4.3、9 节统一设计，不能沿用旧同参声明或把旧参照成绩当作新架构的正式匹配结果。
 不同时更换 Teacher、融合、Neck 和检测头；可选结构实验不替代 E3 的 aux 扫描、E5 的尺寸对照或 P1 的两数据集证据。
 
+### 6.5 P5 Adapter 轻量化对照
+
+**执行边界：本次仅批准方案、代码和工程验收；以下正式训练须用户再次明确确认后启动。**
+不改变已经完成的 E1 记录，不启动 E2/E3/E4 训练，不以参数减少代替 GPU-hours 收益。
+
+#### 6.5.1 问题与三组结构
+
+当前 P5 为三个 DINO 来源各自使用独立的普通 `3x3 Conv(384->256, stride=2)`，
+三条分支含 GroupNorm 共 2,655,744 参数，占 COCO 下游 3,542,567 可训练参数的 74.97%。
+这里的分母不包含冻结 Teacher；P5 参数占比也不是计算量或实际训练耗时占比。
+
+三个组都保持 block4/8/12 顺序、独立参数及 `[B,256,20,20]` 输出；P3/P4、LatentMixture、Detect 不变。
+所有卷积不带 bias；每个卷积后均接 `GroupNorm(get_safe_groups(C,8)) + SiLU`。
+
+| 实验 ID | P5 每条分支 | 三条 P5 参数 | COCO 下游可训练参数 |
+| --- | --- | ---: | ---: |
+| P5-BASE | 普通 `3x3 384->256, stride=2, padding=1` | 2,655,744 | 3,542,567 |
+| P5-DW | `3x3 depthwise 384->384, groups=384, stride=2, padding=1`，再 `1x1 384->256` | 309,120 | 1,195,943 |
+| P5-BN64 | `1x1 384->64`，再普通 `3x3 64->256, stride=2, padding=1` | 518,016 | 1,404,839 |
+
+P5-DW 将空间下采样与通道混合分开；P5-BN64 先压缩通道再做普通空间卷积。
+BN64 表示 64 通道瓶颈，不是 BatchNorm；两种结构都只使用 GroupNorm。
+本轮不实现平均池化方案，不同时增加可学习层权重、P3 细化或跨尺度 Neck。
+FP16 三层缓存及其 key/索引完全复用，不重抽 Teacher，也不修改缓存内容。
+
+#### 6.5.2 配方与配对初始化
+
+三组均采用 E1-B 的 weighted_sum，固定三层权重 `[1,1,1]` 归一化；
+`balance_loss_coeff=0.01`、`router_z_loss_coeff=0.001`、`latent_aux_gain=0.1`、`mixture_aux_budget=3.0`。
+保留 aux 是为了只研究 P5 结构，不代表已经确定 AUX_STAR；B/C 的后续 aux 比较仍按 E3 执行。
+
+- 数据：完整 COCO 2017 train2017=118,287、val2017=5,000，640 输入，无增强；只用已验证 NVMe RGB/NPY 路径。
+- 预算：seed0，保留 100 epoch 余弦调度，固定前 50 epoch 筛选；最多三组各一次，不自动延长或增加 seed。
+- 硬件：六张 A40，每卡 batch64、全局 batch384、nbs384、每 rank workers4、prefetch1；不额外累积梯度。
+- 优化：AdamW、lr0=0.001、lrf=0.01、weight_decay=0.0005、warmup3；AMP 初始 scale16、growth_interval=1,000,000。
+- 每 5 轮保存并独立评测标准 AP；第 50 轮为主结果，standard-best 仅作补充；最终 last/standard-best 严格重载评测。
+- 使用三个独立实验目录、优化器和恢复状态，严禁把原 P5 权重以宽松加载方式塞入新 P5，或从旧 best 接着微调。
+
+复用已验证 E1 `initial-frozen.pt` 中所有非 P5 初始张量，逐项核验相同键、形状、dtype 和数值；
+BASE 还复用原 P5 初始张量，DW/BN64 的新 P5 以 seed0 初始化并分别保存摘要。
+这样 Router、专家、检测头等不会因为新 P5 消耗随机数的数量不同而改变初始化。
+原 E1-B50 精度可作历史参照，但跨时间吞吐、争用和代码身份不同，不能替代本轮配对 BASE 的成本测量。
+正式启动前先报告三组短基准与预计时间，用户确认后按 BASE、DW、BN64 顺序串行运行，不和其他 GPU 作业争用。
+
+#### 6.5.3 指标、判据与边界
+
+记录标准 AP/AP50/AP75/AP_small/AP_medium/AP_large、检测及 aux loss、P5 各卷积梯度、
+Router 概率和 residual gain、参数量、卷积 MACs、显存、数据等待/计算/验证时间与实际 GPU-hours。
+理论上 DW 的 P5 卷积 MACs 约减少 88.50%，BN64 约减少 72.22%；仅指正式 40x40 输入下三条 P5 的卷积乘加，
+不含归一化、激活、其他模块、反向传播或 I/O；不是整网实测速率。
+
+预登记的探索性保留线：相对新 BASE，第 50 轮整体 AP 下降不超过 0.5 点，
+AP75 与 AP_large 各下降不超过 1.0 点，且实际训练加最终评测的 GPU-hours 更低。
+AP_small 必须单列，不能假定压缩 P5 自动修复小目标；单 seed 通过仅保留候选，不作为统计等效或 P1 成功结论。
+若两组均通过，先比较实测成本；成本受争用污染或差异不足时保留并列，待确认预算后用独立 seed 复核。
+若均未通过，则保留原 P5，不自动增加瓶颈宽度、Teacher 大小或训练轮数。
+本次不是新的 Scratch 对照；最终参数口径、正式基线和两数据集统计仍按第 4.3、9 节，待冻结架构确定后处理。
+
+#### 6.5.4 实现入口与启动门禁
+
+- Adapter 通过 `p5_mode=conv/depthwise/bottleneck` 选择结构；仅 bottleneck 接受 `p5_bottleneck_channels=64`。
+- 新模型配置：[DW](../../ultralytics/cfg/models/26/yolo26-d1-dinov3-latent-p5-dw-n.yaml)、[BN64](../../ultralytics/cfg/models/26/yolo26-d1-dinov3-latent-p5-bottleneck64-n.yaml)。
+- 独立合同：[P5 COCO](../../ultralytics/cfg/experiments/d1/p1p2/p5-coco2017.yaml)。
+- 独立入口：[run_p5_ablation.py](../../scripts/d1/run_p5_ablation.py)，复用现有 E1 训练策略和标准评测，不修改 E1 的组别和合同。
+- 新旧架构只能严格按各自配置恢复；旧配置没有 P5 字段时仍构建原始结构，不改变旧 state_dict 键。
+
+工程检查和准备命令如下；运行参数注入外部路径，不把服务器路径写入 Git 配置：
+
+```bash
+python -m scripts.d1.run_p5_ablation inspect
+python -m scripts.d1.run_p5_ablation prepare --source-workspace "$E1_WORKSPACE" --workspace "$P5_WORKSPACE"
+```
+
+`prepare` 只核验来源并生成模型配置、配对初始化、哈希及实验登记，不训练；要求代码已提交且工作树干净。
+确认正式训练后，才能对单组执行以下模板；没有 `--approved` 必须直接拒绝：
+
+```bash
+torchrun --standalone --nproc_per_node=6 -m scripts.d1.run_p5_ablation train --workspace "$P5_WORKSPACE" --variant DW --approved
+python -m scripts.d1.run_p5_ablation evaluate --workspace "$P5_WORKSPACE" --run-id P5-DW --checkpoint "$P5_WORKSPACE/runs/P5-DW/weights/last.pt" --output "$P5_WORKSPACE/reports/P5-DW/final/last"
+```
+
+BASE/BN64 使用各自 variant 与目录；恢复需同时提供 `--resume --approved`，并通过配置、来源和恢复状态身份检查。
+预计超过 3 分钟的基准、训练或全量评测按已有约定后台挂载，保存 PID/日志，只确认启动一次后退出并给出状态命令。
+本节模板不是启动授权；本轮不生成正式训练结果，也不改写旧 E1 成绩。
+
+#### 6.5.5 工程验收状态
+
+截至 2026-09-09，两种轻量结构、独立模型 YAML、实验合同及准备/训练/恢复/评测入口已实现。
+新增测试 29 项通过，其中两项使用真实 COCO 单图的 NPY 特征与检测标注，在 CPU 上完成 loss、
+反向传播、AdamW 更新及严格 checkpoint 重载；其余覆盖形状、参数独立性、配对初始化、非法输入和启动门禁。
+相关回归共 **284 passed, 8 skipped**；跳过项为未启用的可选集成测试。
+原始默认 Adapter 的参数布局及旧 checkpoint 保持兼容，E1 原有组别与训练合同不变。
+
+本轮没有启动正式训练，也没有执行六卡 AMP/DDP 吞吐基准；不能据此报告 AP、实际加速比或新训练 ETA。
+正式启动前仍需独占 GPU 的短基准与用户确认。服务器未安装 Ruff，静态检查采用 `py_compile` 与 `git diff --check`。
+真实单样本验收可由 `D1_P5_CACHE_ROOT` 和 `D1_P5_RGB_ROOT` 指向本机缓存与 RGB 根目录后运行
+`python -m pytest -q tests/test_d1_p5_ablation.py`；不设置这两个变量时只跳过真实数据测试，不下载数据。
+
 ## 7. E2 VisDrone 数据和评测协议
 
 实际实现、数据统计、评测验收和缓存复现入口见 [E2 执行记录](E2.md)。

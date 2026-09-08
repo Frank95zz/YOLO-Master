@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 
 from ultralytics.cfg import get_cfg
-from ultralytics.nn.mixture_loss import build_composite_criterion
+from ultralytics.nn.mixture_loss import build_composite_criterion, initialize_mixture_loss_ema_buffer
 from ultralytics.nn.modules import DINOFeaturePyramidAdapter, Detect, LatentMixture
 from ultralytics.nn.tasks import BaseModel
 from ultralytics.utils import LOGGER, YAML
@@ -129,12 +129,19 @@ class D1FoundationDetectionModel(BaseModel):
         unexpected_mixture = sorted(set(mixture_cfg) - _MIXTURE_KEYS)
         if unexpected_mixture:
             raise ValueError(f"unsupported latent_mixture keys: {unexpected_mixture}.")
+        unexpected_adapter = sorted(
+            set(adapter_cfg) - {"pyramid_channels", "norm_groups", "p5_mode", "p5_bottleneck_channels"}
+        )
+        if unexpected_adapter:
+            raise ValueError(f"unsupported adapter keys: {unexpected_adapter}.")
 
         adapter = DINOFeaturePyramidAdapter(
             in_channels=in_channels,
             source_names=source_names,
             pyramid_channels=adapter_cfg.get("pyramid_channels", (64, 128, 256)),
             norm_groups=adapter_cfg.get("norm_groups", 8),
+            p5_mode=adapter_cfg.get("p5_mode", "conv"),
+            p5_bottleneck_channels=adapter_cfg.get("p5_bottleneck_channels"),
         )
         strides = tuple(detect_cfg.get("strides", ()))
         if strides != _REQUIRED_STRIDES or strides != adapter.strides:
@@ -355,6 +362,8 @@ class D1FoundationDetectionModel(BaseModel):
         state_dict = data["state_dict"]
         if not isinstance(state_dict, Mapping):
             raise TypeError("checkpoint state_dict must be a mapping.")
+        if "_mixture_loss_ema_buf" in state_dict:
+            initialize_mixture_loss_ema_buffer(model)
         model.load_state_dict(state_dict, strict=strict)
         return model
 

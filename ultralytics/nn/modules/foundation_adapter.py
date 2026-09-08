@@ -45,6 +45,7 @@ def _projection(
     kernel_size: int,
     stride: int,
     norm_groups: int,
+    groups: int = 1,
 ) -> nn.Sequential:
     padding = kernel_size // 2
     return nn.Sequential(
@@ -54,10 +55,34 @@ def _projection(
             kernel_size=kernel_size,
             stride=stride,
             padding=padding,
+            groups=groups,
             bias=False,
         ),
         nn.GroupNorm(get_safe_groups(out_channels, norm_groups), out_channels),
         nn.SiLU(inplace=True),
+    )
+
+
+def _p5_projection(
+    in_channels: int,
+    out_channels: int,
+    norm_groups: int,
+    mode: str,
+    bottleneck_channels: int | None,
+) -> nn.Sequential:
+    """Keep the legacy layout or build an independently parameterized lightweight branch."""
+    if mode == "conv":
+        return _projection(in_channels, out_channels, kernel_size=3, stride=2, norm_groups=norm_groups)
+    if mode == "depthwise":
+        return nn.Sequential(
+            _projection(
+                in_channels, in_channels, kernel_size=3, stride=2, norm_groups=norm_groups, groups=in_channels
+            ),
+            _projection(in_channels, out_channels, kernel_size=1, stride=1, norm_groups=norm_groups),
+        )
+    return nn.Sequential(
+        _projection(in_channels, bottleneck_channels, kernel_size=1, stride=1, norm_groups=norm_groups),
+        _projection(bottleneck_channels, out_channels, kernel_size=3, stride=2, norm_groups=norm_groups),
     )
 
 
@@ -78,12 +103,24 @@ class DINOFeaturePyramidAdapter(nn.Module):
         source_names: Sequence[str] = ("block4", "block8", "block12"),
         pyramid_channels: Sequence[int] = (64, 128, 256),
         norm_groups: int = 8,
+        p5_mode: str = "conv",
+        p5_bottleneck_channels: int | None = None,
     ) -> None:
         super().__init__()
         self.in_channels = _positive_int("in_channels", in_channels)
         self.source_names = _source_names(source_names)
         self.out_channels = _pyramid_channels(pyramid_channels)
         self.norm_groups = _positive_int("norm_groups", norm_groups)
+        if not isinstance(p5_mode, str) or p5_mode not in {"conv", "depthwise", "bottleneck"}:
+            raise ValueError("p5_mode must be 'conv', 'depthwise', or 'bottleneck'.")
+        if p5_mode == "bottleneck":
+            p5_bottleneck_channels = _positive_int("p5_bottleneck_channels", p5_bottleneck_channels)
+            if p5_bottleneck_channels >= self.in_channels:
+                raise ValueError("p5_bottleneck_channels must be smaller than in_channels.")
+        elif p5_bottleneck_channels is not None:
+            raise ValueError("p5_bottleneck_channels is only valid with p5_mode='bottleneck'.")
+        self.p5_mode = p5_mode
+        self.p5_bottleneck_channels = p5_bottleneck_channels
 
         p3_channels, p4_channels, p5_channels = self.out_channels
         self.branches = nn.ModuleDict(
@@ -117,12 +154,12 @@ class DINOFeaturePyramidAdapter(nn.Module):
                 ),
                 "p5": nn.ModuleDict(
                     {
-                        name: _projection(
+                        name: _p5_projection(
                             self.in_channels,
                             p5_channels,
-                            kernel_size=3,
-                            stride=2,
-                            norm_groups=self.norm_groups,
+                            self.norm_groups,
+                            self.p5_mode,
+                            self.p5_bottleneck_channels,
                         )
                         for name in self.source_names
                     }
