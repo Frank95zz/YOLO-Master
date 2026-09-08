@@ -152,6 +152,246 @@ VisDrone 改为 10 类后必须重新统计，两边都不能沿用 COCO 的参�
 额外记录 FLOPs、总参数、冻结 Teacher 参数、训练参数和推理时 Teacher 依赖。
 同参不等于同 FLOPs，比较的是两种完整方法，不宣称只有一个网络因素不同。
 
+### 4.4 指标范围、单位与读取顺序
+
+本节按当前 E0/E1 的实际实现解释指标，核对基线为 `9347a8b9541790c980d5371ae9cf79630ecc606d`；
+仅补充评价口径，不修改正在运行的模型、训练配方或筛选门槛。
+“已记录”指当前运行产物确实保存的字段；“派生”需要从同口径记录计算；“待补齐”不能当成现有成果。
+
+| 类别 | 当前有哪些 | 用途与边界 |
+| --- | --- | --- |
+| 独立 COCO 精度 | 6 项：AP、AP50、AP75、APsmall、APmedium、APlarge | 模型效果的主要证据，每 5 轮及最终 checkpoint 评测 |
+| 逐轮精度监控 | 4 项：Precision、Recall、内置 mAP50、内置 mAP50-95 | 判断学习趋势；后两项与标准 AP 名称相近，但实现口径不同，不混表 |
+| loss 监控 | Frozen 为 7 项训练 loss、7 项验证 loss；Scratch 为 3 项检测 loss 及对应验证项 | 解释优化过程，不能代替标准 AP；验证 aux 的 4 项为 0 |
+| 机制与稳定性 | Router 概率/熵、balance/z、残差增益、特征幅值、梯度范数、AMP 与有效更新数 | 回答融合和 aux 是否、如何起作用，不是一组精度分数 |
+| 资源与成本 | 参数量、显存、分段耗时、数据等待；由记录派生吞吐和 GPU-hours | P1 的成本对照；冷启动、摊销、磁盘/主存等完整账本仍需 E4/E6 补齐 |
+| 配对与统计 | AP 保留率、AP 差、成本节省率、达标时间、均值/标准差/置信区间 | E1 只做单 seed 筛选，不提前宣称正式多 seed 收益达标 |
+
+当前 A 组 `results.csv` 实际有 **25 列**：epoch/time 2 列、训练 loss 7 列、精度 4 列、验证 loss 7 列、学习率 5 列。
+这不是“25 个独立评价指标”：进度和优化诊断也在同一文件里，6 项独立 COCO AP 则保存在评测 JSON 中。
+下文 `AP` 未加“内置”限定时，均指对应数据集的独立标准评测结果。
+
+- AP、Precision、Recall 统一保存为 `0..1`；展示时可乘 100。例如 `AP=0.25` 是 25.0 AP 点，不是“25% 的图片全部检测正确”。
+- AP 从 0.25 到 0.27 是增加 **2.0 AP 点**，相对增加 8%；二者不可混称。
+- 秒为计时基本单位；`GPUh` 为 GPU-hours；`MiB=2^20 bytes`、`GiB=2^30 bytes`，不与十进制 GB 混用。
+- 未实现、缺失或无有效分母的指标写 `N/A`/未知并说明原因，不填 0。评测器的无有效 GT 占位值不当成实际负精度。
+
+### 4.5 检测精度：检测对不对、漏不漏、框得准不准
+
+**基础概念。** `IoU = 预测框与真值框的交集面积 / 并集面积`，范围 0..1，越大表示框越重合。
+在固定类别、IoU 门槛和置信度门槛下，正确匹配为 TP，错误类别/未匹配或重复预测通常为 FP，未被检出的有效真值为 FN；
+ignore/crowd 等特殊目标交给标准评测器处理，不能机械套用普通一对一计数。
+
+```text
+Precision = TP / (TP + FP)
+Recall    = TP / (TP + FN)
+F1        = 2 * Precision * Recall / (Precision + Recall)
+```
+
+例如有 100 个有效目标，预测 80 个框，其中 60 个正确、20 个误检，则 Precision=75%、Recall=60%。
+提高置信度门槛通常会减少误检但增加漏检，所以一个阈值下的 P/R 不能完整反映模型质量。
+AP 对某类目标按置信度排序，汇总不同召回率下的插值 Precision；mAP 再对有效类别平均。
+COCO 通常也把这个跨类别平均结果简称为 AP。它不是最后一个 batch 的准确率，也不是所有类别 TP 汇总后的一个 Precision。
+
+| 指标 / 实际字段 | 含义 | 如何使用 |
+| --- | --- | --- |
+| AP / `official.AP_all` | 对 IoU=0.50、0.55、…、0.95 共 10 个门槛以及有效类别平均，综合分类、检出和定位能力 | **主指标，越高越好**；E1 固定第 50 轮选组，E4 用固定末轮比较 |
+| AP50 / `official.AP_50` | 只要求 IoU≥0.50 的 AP，定位要求相对宽松 | 判断是否大致找到目标；高 AP50 但低 AP75 常提示精细定位不足，不能仅据此确定原因 |
+| AP75 / `official.AP_75` | 只要求 IoU≥0.75 的 AP，框位置和大小要求更严格 | 检查定位质量，通常不高于 AP50 |
+| APsmall / `official.AP_small` | 标准 small 面积范围的 AP，仍跨 10 个 IoU 门槛 | 检查小目标能力，与高分辨率特征是否有帮助相关 |
+| APmedium / `official.AP_medium` | 标准 medium 面积范围的 AP | 检查中等目标能力 |
+| APlarge / `official.AP_large` | 标准 large 面积范围的 AP | 检查大目标能力；不能只改善大目标就宣称所有尺度均改善 |
+| Precision / `metrics/precision(B)` | 内置 Validator 的类别平均查准率，即报告阈值下预测有多可靠 | 越高通常误检越少，须同时看 Recall；`(B)` 表示 bounding boxes，不是 B 实验组 |
+| Recall / `metrics/recall(B)` | 内置 Validator 的类别平均查全率，即报告阈值下找回多少有效目标 | 越高通常漏检越少，须同时看 Precision |
+| 内置 mAP50 / `metrics/mAP50(B)` | 内置匹配与积分实现得到的 IoU=0.50 类别平均 AP | 每轮监控，不直接替代 `official.AP_50` |
+| 内置 mAP50-95 / `metrics/mAP50-95(B)` | 内置实现的 10 个 IoU 门槛平均 AP | 每轮监控，并作为当前内部 `fitness`；不直接替代 `official.AP_all` |
+
+面积按原始标注/标准工具的 `area` 计算，不按 640 LetterBox 后的框重新分桶，也不是 P3/P4/P5 的名称映射。
+当前 COCO 工具范围是 small `[0,32^2]`、medium `[32^2,96^2]`、large `[96^2,1e10]` 像素平方；
+精确边界处理沿用工具，不能自行改成互斥分桶后仍声称完全相同的标准 AP。
+COCO 参数定义可核对 [官方评测实现](https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/cocoeval.py)。
+
+**必须区分的两套精度口径：**
+
+1. 当前独立评测使用 `faster-coco-eval==1.8.0`、`iouType=bbox`、完整 val2017 的 5,000 图及官方标注，保留类别语义；
+   IoU 为 0.50:0.05:0.95，召回率采样为 0:0.01:1，`maxDets=[1,10,100]`，上述 6 项 AP 使用 100 档。
+   预测导出的 `conf=0.001, max_det=300` 是输入候选截断，**不等于标准评测改成 maxDets=300**；标准工具继续按其规则截断。
+2. 内置 P/R 在 IoU=0.50 下，选取平滑后的类别平均 F1 曲线最高点对应的共同置信度，再分别平均各类 P/R；
+   不是固定 `conf=0.25`，也不是直接在 `conf=0.001` 处读取。不同 epoch 的所选阈值可能不同。
+   内置匹配、AP 积分和有效标注/ignore 处理与独立标准评测并非完全相同，因此同一个 checkpoint 两套数值可能有差异。
+3. F1 是 P/R 的调和平均，用来解释二者平衡；当前不单独保存 F1 标量列。
+   对类别平均后的 P/R 再算 F1，不一定等于逐类 F1 的平均。`fitness` 当前等于内置 mAP50-95，不是额外的新评价维度。
+4. `best.pt` 按逐轮内部 fitness 选取；`standard-best.pt` 按每 5 轮独立 AP 选取，并列保留更早者；
+   `last.pt` 是当前末轮。报告必须带 checkpoint epoch 和 SHA256；“标准 best”不代表所有 epoch 都做过标准评测。
+   E1 仍按固定第 50 轮 AP 筛选，不能用某组 best 对另一组 last。
+
+类别 AP 可定位具体类别的失败，但当前 E1 小型独立报告只保存上述 6 项聚合 AP；完整类别表属于 E4 待补齐输出。
+VisDrone 的 AP/AP50/AP75 及 AR@1/10/100/500 应按第 7.2 节锁定的官方工具实现：
+AR 是在给定预测数上限下对 IoU 门槛/类别平均的最大召回率，不是内置 Recall 的别名。
+该工具 AP 默认使用 maxDets=500；其输出为百分制，后续适配器须除以 100 转成统一 `0..1` 口径，并保留原值和工具版本。
+当前尚未运行正式 VisDrone 评测，也未将 COCO AR 持久化到 E1 摘要，不能把这些项写成已有结果。
+VisDrone 指标与 ignore 语义以 [官方检测工具](https://github.com/VisDrone/VisDrone2018-DET-toolkit)为准，不与 COCO 数值混表。
+
+### 4.6 训练与验证 loss：模型正在优化什么
+
+loss 衡量当前优化目标的误差，通常希望训练中下降，但它与 AP 不是同一个量：loss 降低不保证验证 AP 提高。
+以下为 Frozen 的 7 个实际字段；CSV 中分别加 `train/` 或 `val/` 前缀。
+三个检测项已经乘过 `box=7.5、cls=0.5、dfl=1.5`，不能读取后再次乘这些系数。
+
+| 字段 | 当前代码中的实际含义 | 正确解读 |
+| --- | --- | --- |
+| `box_loss` | 按分配目标质量加权并归一化的 `1-CIoU` 定位损失；CIoU 同时考虑重叠、中心距离和长宽比 | 越低通常定位误差越小；不是 `1-AP`，也不只是 `1-IoU` |
+| `cls_loss` | 分类 logits 与分配器生成的目标分数之间的 BCEWithLogitsLoss，按目标分数总和归一化 | 衡量类别/置信度预测误差；当前没有另列 `obj_loss`，不能凭旧版 YOLO 习惯补造一项 |
+| `dfl_loss` | **当前 reg_max=1，实际是归一化 left/top/right/bottom 距离的加权 L1 回归损失**，不是离散分布 DFL | 字段沿用历史名称，值非零正常；不能称为“DFL 已关闭所以此列应为 0” |
+| `latent_balance_loss` | P3/P4/P5 三个 LatentMixture 的未乘系数 balance 项之和 | 检查专家平均概率是否失衡；越低越均匀，不代表检测精度必然越好 |
+| `latent_z_loss` | 三个尺度的未乘系数 Router z-loss 之和，即每尺度对 `logsumexp(logits)^2` 求均值 | 约束路由 logits 的数值尺度，不是框回归，也不是某个方向的坐标损失 |
+| `latent_aux_loss` | 三尺度 `c_balance * balance + c_z * z_loss` 的总和，已乘局部系数，但未做全局 gain/EMA/预算缩放 | 当前默认等于 `0.01 * latent_balance_loss + 0.001 * latent_z_loss`；raw 指全局归一化之前，不是完全未加权 |
+| `mixture_aux_loss` | 经过 EMA 归一化、`latent_aux_gain` 和全局预算缩放后，实际加入模型 loss 的 scalar aux | 这是有效辅助项；不能再加上前面三个诊断项，否则重复计数 |
+
+单尺度的 balance 公式为 `E * sum_e(mean(p_e)^2) - 1`，并截断到非负数；`E=4`，均匀使用专家时为 0。
+balance 启用时按当前 DDP 实现同步平均概率；z-loss 为本地 batch 的路由统计，二者不能假设都是同一种全局归约。
+设三尺度加权和为 `raw_latent`，D1 当前仅启用 latent routed loss 时：
+
+```text
+normalized_aux = latent_aux_gain * raw_latent / clamped_EMA_latent
+budget_scale   = min(1, mixture_aux_budget / max(abs(normalized_aux), 1e-4))
+effective_aux  = normalized_aux * budget_scale
+L_native      = o2m_weight * sum(L_one2many) + o2o_weight * sum(L_one2one)
+L_total       = L_native + effective_aux
+```
+
+EMA 是辅助损失幅值的指数移动平均，用于归一化；它不是用于评测的模型权重 EMA。
+当前 aux EMA 衰减为 0.99，latent 初值为 0.1，预算为 3.0；分母和缩放系数不建立额外梯度路径。
+`scalar-once-v1` 保证 aux 对原生 loss 向量求和时只加入一次；原生检测项保留本地 batch 缩放，Trainer 还会作 DDP 乘数和 AMP loss scaling。
+因此改变 batch 可能改变检测与 aux 的相对作用，不能只比较配置中的 0.1。
+
+**不能把 CSV 七列相加当作实际反传 loss。** 当前 `E2ELoss` 同时训练 one-to-many 与 one-to-one 分支，权重随调度变化；
+CSV 的三个检测 loss 只返回 one-to-one 的报告项，不是两分支加权后的全部原生 loss，也未包含上述 batch/DDP 缩放。
+判断 aux 强弱时，用同一真实 batch 的 `applied_aux / abs(native_loss)` 以及第 4.7 节的梯度比例；
+分母为 0 时标记无定义，不能用不同日志列或不同 batch 的数值硬算。
+
+- `train/*` 是 rank0 对本轮各 batch 报告项的算术平均，不是六卡全部目标逐个加权的全局 loss；跨组比较须保持 batch、归一化及报告方式一致。
+- `val/*` 是验证集损失，用于观察泛化趋势，但训练/验证模式和数据不同，不要求两个数值相等。
+- 验证时 LatentMixture 不发布训练 aux，四个 `val/latent_*`、`val/mixture_aux_loss` 字段为 0；不能据此断言训练未启用 aux。
+- C 组 gain=0 时有效 `mixture_aux_loss=0`，raw balance/z/aux 仍可能非零；Scratch 没有这些模块，该项记不适用。
+- 长期训练 loss 下降而验证 AP 停滞是排查线索，不足以单凭一条曲线确定过拟合或宣布某模块失效。
+
+实现依据：[原生检测 loss](../../ultralytics/utils/loss.py)、[D1 报告字段](../../ultralytics/nn/foundation_detection_model.py)、
+[统一辅助损失组合](../../ultralytics/nn/mixture_loss.py)。
+
+### 4.7 路由、梯度与数值稳定性：辅助机制是否真正生效
+
+这些是 P2 的机制证据，不能替代 AP/成本对照，也不是一律越大越好或越小越好。
+
+| 字段 / 派生指标 | 定义与用途 | 当前采集边界 |
+| --- | --- | --- |
+| `mean_router_probs`、`expert_usage` | 每个专家的平均路由概率，总和约为 1；判断是否集中在少数专家 | 当前 `expert_usage` 就是平均软概率，不是实际被派发样本数 |
+| `entropy` | `mean(-sum_e p_e * ln(p_e))`，4 专家时范围约 0..ln(4)=1.386；低表示单样本偏好更集中，高表示更均匀 | 高熵不等于高 AP；平均负载均匀也不意味着每个样本都是均匀路由 |
+| `executed_experts`、`mean_active_experts_per_sample`、`batch_expert_union`、`kernel_calls` | 模块报告的专家执行数/覆盖数，用来核对 dense 或 sparse 语义 | 当前训练和评测均执行全部 4 专家；`kernel_calls` 是模块级计数，不是 profiler 测得的全部 CUDA kernel 数 |
+| `mean_router_logits`、`temperature`、`noise_std` | 路由打分均值、softmax 温度和路由噪声幅值，解释概率分布及随机性 | logits 大小本身不是准确率；与 z-loss、entropy 一起看 |
+| `residual_gain`、`residual_gain_magnitude` | 可训练残差缩放系数及其最大绝对值，决定专家残差对输出的作用幅度 | 接近 0 提示残差贡献可能小，须结合残差特征和梯度；不是“百分之多少信息来自专家” |
+| `router_output_head_magnitude`、`identity_cold_start` | Router 输出头参数最大绝对值，以及增益/输出头均为零的冷启动标志 | 检查路由是否离开初始状态，不单独作为收益结论 |
+| 特征 `rms`、`abs_max` | `sqrt(mean(x^2))` 与 `max(abs(x))`，分别衡量整体幅值和极端值 | 对比九条 Adapter 候选与融合后 P3/P4/P5，寻找信号衰减、爆炸或层间失衡 |
+| 梯度 `detection`、`aux`、`total` | 对同一参数分别求 `L_native`、`L_aux`、`L_total` 的梯度 L2 范数 | 当前探针覆盖 Adapter 分支、Router、residual gain；零梯度须结合计算路径/初始化解释 |
+| 梯度比例（派生） | `norm(grad L_aux) / norm(grad L_native)`，解释 aux 相对检测监督的强度 | 同参数、同 batch、同精度；分母为零单独标记，范数不能揭示两者是否方向相反 |
+| 梯度可加性检查 | 逐元素检查 `g_detection + g_aux` 与 `g_total` 满足 `abs(delta) <= 2e-5 + 2e-4 * abs(g_total)` | 工程门槛，不是 AP；独立 FP32 探针关闭 autocast/TF32，不改训练模型/RNG/EMA |
+| `latent_publications`、`aux_step`、`aux_ema` | 当前步三尺度 aux 发布数、所属步号及归一化历史状态 | 发布数应为 3；缺失、陈旧、重复、非有限值不能当正常正则结果 |
+| `amp_scale`、`amp_retries` | 梯度缩放倍率，以及为完成有效更新而发生的 AMP 重试次数 | scale16 不是精度/速度分数；重试不等于新增有效更新，不允许静默跳过样本 |
+| `optimizer_steps`、`batches`、finite/NaN/Inf | 有效参数更新数、已消费 batch 数及数值有限性 | E1 每轮 309 次、50 轮 15,450 次有效更新，所有 rank 一致；失败则不作为有效配对结果 |
+| `lr/pg0` 至 `lr/pg4` | 当前 Frozen 的 5 个 optimizer 参数组实际学习率 | 反映 warmup、调度与组别倍率，不是 5 组实验；含义以 optimizer 参数归属为准 |
+
+当前逐 rank 的 epoch 路由 JSON 是**本轮最后一个训练 batch 的快照**，不是全轮概率/熵平均；
+独立梯度/幅值探针在第 1、25、50 轮开始时，各 rank 取两张真实样本，不是每个训练 batch 的统计，也不是这些轮完成后的全验证集结果。
+`aux_zero/balance_only/z_only` 是探针副本上的诊断用例，不代表额外完成了三次训练。
+E3 要求的逐轮全局统计、显式预算缩放/梯度比例时间序列仍需补齐，不能把稀疏快照冒充完整曲线。
+当前没有启用 sparse 推理，`inference_calibration_*` 等能力字段不代表已做过稀疏加速对照。
+实现依据：[LatentMixture](../../ultralytics/nn/modules/latent_mixture.py)、[E1 运行与诊断](../../scripts/d1/p1p2_runtime.py)。
+
+### 4.8 参数、显存、吞吐与时间：省在哪里
+
+| 指标 | 定义与单位 | 对照时的约束 |
+| --- | --- | --- |
+| 可训练参数 / `parameters` | 实际参与学习且 `requires_grad=True` 的参数元素个数 | 同数据集 Frozen 下游与 Scratch 匹配；当前 COCO 为 3,542,567 对 3,510,624 |
+| 冻结参数、总参数、FLOPs | Teacher 冻结参数单列；系统总参数包含 Teacher；FLOPs 为指定输入下计算量 | `teacher_parameters=0` 只证明训练模型隔离，不代表整个方法不依赖 Teacher；FLOPs 要说明 MAC 计数、输入/分支及未覆盖算子，不用参数量估算 |
+| `peak_allocated_bytes` | PyTorch 活跃张量的峰值显存，换算 GiB | 每 rank 在 epoch 开始重置、训练结束读取；训练峰值取所有 epoch、rank 的最大值，不把六卡相加作为单卡需求 |
+| `peak_reserved_bytes` | PyTorch allocator 向 CUDA 保留的峰值内存，包括可复用的分配器缓存 | 不与 allocated 相加；reserved 较大不等于都被活跃张量使用 |
+| `sampled_device_peak`、`teacher_peak_bytes` | 设备采样峰值、Teacher 抽取阶段峰值 | 完整三维表待补齐；设备采样受 CUDA 上下文/其他进程影响。当前训练峰值不覆盖 epoch 后验证或独立探针，不能冒充全流程峰值 |
+| GPU 利用率 | 设备采样周期内 GPU 执行任务的活跃程度百分比，用于判断是否持续有工作 | 不是显存占用率，也不是达到理论算力的百分比；状态快照不等于整次训练平均值，完整时间序列待补齐 |
+| `step_seconds` | 一轮各 batch 开始/结束回调间墙钟累计，包括区间内预处理、前反向及更新等 | 不是纯 GPU kernel 时间；DDP 通信/同步等待可能包含其中 |
+| `data_wait_seconds` | 上个 batch 结束至下个 batch 开始的时间累计 | 反映主线程可见的数据等待，含调度等开销；不是磁盘服务时间，也不包含被计算隐藏的全部预取开销 |
+| 数据等待占比（派生） | `wait / (wait + step)`，按单 rank 同一轮计算 | 越低通常阻塞越少；不能把六卡秒数相加后当成墙钟时间 |
+| 吞吐 images/s（派生） | 同一测量区间内实际处理样本数 / 墙钟秒数 | 明确是否含 DDP 尾部补齐，同时报有效唯一图片数；不固定用 batch384 乘所有 batch 冒充准确样本数 |
+| `epoch_wall_seconds` | 当前回调测量的本轮训练、内置验证、保存恢复状态等耗时 | **不含本轮随后启动的每 5 轮独立评测**；此前独立探针也不在此计时区间 |
+| `seconds` / `train_val_seconds` / `final_eval_seconds` | 各作业或阶段墙钟时间，秒；必须带 scope | E1 评测 `report.json.seconds` 不含所有启动/加载；外层评测 `cost.json.seconds` 更完整，不随意互换 |
+| GPU-hours / `GPUh` | `sum(实际占用 GPU 数 * 阶段秒数 / 3600)` | 6 卡占用 1 小时为 6 GPUh，即使有等数据/评测等待；不能按利用率打折 |
+| 磁盘读写吞吐、`storage_bytes` | 同期实际磁盘 bytes/s、缓存/权重/预测等占用字节数 | 用磁盘采样和文件实测；逻辑读文件量不等于物理读盘量，页缓存命中会改变差异；缓存热读不能代替训练吞吐 |
+| CPU/容器主存及页缓存 | CPU 使用、cgroup 上限/占用、匿名内存、文件缓存与 shared memory 等 | 辅助资源指标，当前未完整逐 run 采集；容器限额不是宿主机 `free` 总内存，shmem 可能已包含在 cache 中，不能重复相加 |
+| ETA | 剩余训练轮数、评测、收尾及排队组别的实测耗时外推 | 是排期估计，不是已发生训练成本，需要随当前组真实速度更新 |
+
+CSV 的 `time` 是本次 Trainer 进程启动后的累计秒数，跨进程 resume 可能重置；不能直接拿末行作为整个实验总成本。
+当前 E1 `cost.json` 汇总已记录训练尝试，包含训练中等待独立评测的时间，不含停机间隔和最终独立评测；
+每 5 轮评测是其子区间，不能再加一次。最终评测单独计费并以实际保留 GPU 数为准。
+尝试/重跑开销保持可追踪，正式方法成本和总研发成本按第 11 节分栏，不静默删除，也不重复计费。
+
+```text
+H_cold         = H_extract + H_train_val + H_eval
+H_amortized(K) = H_extract / K + H_train_val + H_eval
+```
+
+`H_extract` 是 train/val Teacher 特征抽取及该阶段 GPU 校验成本；`H_eval` 只计未包含在训练账本中的独立评测。
+`K` 是实际完成且确实复用同一缓存的运行数，不能用计划未来跑很多次来压低摊销成本。
+CPU 转换/复制不虚构 GPUh，但计入端到端墙钟及 CPU/RAM/存储资源；已有缓存不等于冷启动抽取成本为零。
+冻结下游的训练速度、验证速度不等于原始 RGB 到最终检测的在线推理速度；没有把 Teacher、预处理和后处理一起测量，就不报告端到端 FPS。
+
+### 4.9 P1/P2 收益、统计与有效性判据
+
+以下必须在同数据集、同 seed、同预算及同一独立评测协议下计算，未知分母不产生结论。
+
+| 指标 | 计算与含义 | 判读 |
+| --- | --- | --- |
+| 参数差异 `parameter_delta` | `(P_scratch_trainable - P_frozen_trainable) / P_frozen_trainable` | 保留符号，要求绝对值≤1%；只是配对资格，不是精度收益 |
+| AP 保留率 `retention` | `AP_frozen / AP_scratch`，Scratch AP 必须>0 | 例如 0.27/0.30=90%；可以超过100%。正式工作判据≥90%，不是“AP 至少90分” |
+| AP 差 `AP_drop` | `AP_scratch - AP_frozen`；乘100得到 AP 点 | 正数表示 Frozen 落后，负数表示超过参照；与保留率同时报告 |
+| 成本节省率 `saving` | `1 - H_frozen/H_scratch`，两边 H 采用同一口径且参照>0 | 50%表示成本减半；负值表示更贵，不将负结果截断为0 |
+| 加速比（派生） | `T_scratch/T_frozen` 或同口径 `H_scratch/H_frozen` | 2倍才对应成本节省50%；“速度快50%”即1.5倍只对应约33.3%节省，不能混用 |
+| 同 GPU 预算 AP | 在同一累计 GPUh 下比较标准评测点的 AP | 按第11.3节不插值的共同可比较范围报告，不外推未到达的精度 |
+| 达标时间/成本 | 第11.3节共同 `AP_target` 首次连续两个标准评测点达标，并计到第二个点结束 | 未达标记 `target_not_reached`；潜在早停曲线不能改写已实际跑完的支出 |
+| 均值、样本标准差 | 对 seed0/1/2 的 AP、成本、配对差和 saving 计算；`s=sqrt(sum((x-mean)^2)/(n-1))` | 均值描述典型结果，标准差描述跨训练种子波动，不是同一训练的 epoch 波动 |
+| 配对差及95% t区间 | 先按相同 seed 得到差值/比例，再算 `mean ± t(0.975,n-1)*s/sqrt(n)`；n=3 时 t≈4.303 | 区间依赖独立 seed 等假设，小样本很不稳定；不是“95%的图片正确”，也不是未来每次训练结果的95%范围 |
+| 完整性与复现门槛 | `seen`/ID覆盖、有限值、有效更新、`strict_reload`、checkpoint/预测 SHA256、代码/合同/数据身份 | COCO 必须完整5,000验证图且无缺漏；SHA256是内容身份，不是精度分数；工程通过不等于收益达标 |
+
+E1 的 **80% 保留率暂停线**和 **0.5 AP 点并列线**只用于筛选，正式 P1 仍按精度保留≥90%且同口径成本节省≥50%判断。
+逐 seed saving 的均值不一定等于 `1-两组平均成本之比`，两种统计明确命名，不混作同一个结果。
+F1/PR 曲线、Router 曲线、loss 曲线可支持解释，但不能替代多 seed、两数据集及标准 AP 的正式证据。
+当前只有 E1 seed0 在运行，多 seed 置信区间、VisDrone 收益和尺寸扫描均未完成，不能从现有单次结果生成这些结论。
+
+### 4.10 指标文件索引与待补齐项
+
+下列路径都相对于运行参数指定的外部 `workspace`；`<run-id>` 为 `E1-A/B/C/S`，`NNN` 为三位 epoch。
+不把当前服务器绝对路径写入统一合同，不把全部日志复制进 Git。
+
+| 产物 | 主要内容 |
+| --- | --- |
+| `runs/<run-id>/results.csv` | 逐轮训练/验证 loss、4项内部精度、学习率及进度时间 |
+| `reports/<run-id>/progress-rank-*.json` | 最近已写入 batch 的 loss、raw aux、EMA、AMP、有效更新，不是完整逐batch历史 |
+| `reports/<run-id>/epochs/rank-*-epoch-NNN.json` | 本轮数据等待/step计时、训练峰值显存、末batch路由快照 |
+| `reports/<run-id>/validation/epoch-NNN.json` | 内部验证结果、seen、本轮墙钟 |
+| `reports/<run-id>/official/epoch-NNN/report.json` | 每5轮独立COCO六项AP、重载/覆盖、预测及checkpoint摘要 |
+| `reports/<run-id>/official/epoch-NNN/cost.json` | 对应独立评测的外层耗时和保留GPU数，属于训练作业的已包含子区间 |
+| `reports/<run-id>/mechanism/rank-*-epoch-NNN.json` | 第1/25/50轮开始时的独立FP32梯度/幅值探针 |
+| `reports/<run-id>/standard-best.json` | 标准best的epoch、AP和checkpoint摘要 |
+| `reports/<run-id>/final/{last,standard-best}/report.json` | 最终两个checkpoint严格重载后的独立重评结果 |
+| `reports/<run-id>/training-result.json`、`reports/<run-id>/cost.json`、`jobs/` | 完成状态、实际训练尝试和作业分段成本 |
+
+当前已有：完整 COCO E1 入口、六项标准 AP、逐轮监控、训练峰值显存、有效更新/AMP记录、稀疏机制探针和作业成本分段。
+当前仍待补齐：VisDrone 官方 AP/AR 与类别表、逐 epoch 全局机制统计、全阶段设备/主存/磁盘采样、
+可审计的冷启动/摊销成本总表、正式多 seed 统计、底座尺寸比较及匹配精度停止确认。
+本节定义这些项不代表相应采集器已经实现；后续按 E2-E6 逐项实现与验收。
+
+数值来源以 [E1 编排/独立评测](../../scripts/d1/run_p1p2.py)、[COCO 评测封装](../../scripts/d1/launch_wp8_p1.py)、
+[内部指标实现](../../ultralytics/utils/metrics.py)、[训练器](../../ultralytics/engine/trainer.py)及上述 loss/路由实现为准。
+本节与第 6、8、9、11 节共同约束报告，不能为获得更好数字临时更换评测器、checkpoint选择或成本口径。
+
 ## 5. E0 工程实施清单
 
 以下是阶段职责分配。`run_p1p2.py`、COCO 合同和 `test_d1_p1p2_contract.py` 已实现；
