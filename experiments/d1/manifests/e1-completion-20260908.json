@@ -1,0 +1,584 @@
+{
+  "audit_code_commit": "76069cbbf100125c01cb7b5f6bc6b78321e79706",
+  "audited_at_utc": "2026-09-08T14:52:42.281181+00:00",
+  "automatic_screening_selection": "C",
+  "completion_regression": {
+    "device": "CPU",
+    "failed": 0,
+    "log_sha256": "64239c6ab1998d77d92dc4aa6c58e0f1bd442272aed3194ce3c972718f063bc2",
+    "passed": 36,
+    "pytest_seconds": 1.07,
+    "tests": [
+      "tests/test_d1_cache_cleanup_runner.py",
+      "tests/test_d1_wp6_latent_aux.py",
+      "tests/test_mixture_loss_composition.py"
+    ]
+  },
+  "dataset": {
+    "name": "COCO 2017",
+    "train2017": 118287,
+    "val2017": 5000
+  },
+  "epochs": 50,
+  "execution_identity": {
+    "commit": "ab48913c74c0534dfbf32f5e6ec7bb07cf4c0131",
+    "contract_sha256": "619bc71e155f3fe291179189edc656f6a8399b50f7bf911f123fc7b5e18d0322",
+    "source_sha256": "cc17abf13c4236331be7cbd64c3c2fd28bf4dd03607404d61b11871efd7bb170"
+  },
+  "fusion": "weighted_sum",
+  "global_batch": 384,
+  "groups": {
+    "A": {
+      "AP_retention_vs_S": 0.5001134486566369,
+      "cost_scope": "Training attempts plus two final evaluation jobs under the declared six-GPU reservation; periodic evaluations are already included; excludes idle downtime and Teacher extraction. Not cold-start total.",
+      "csv_numeric_values_finite": true,
+      "csv_rows": 50,
+      "epoch_median_seconds": 142.95494028367102,
+      "final_evaluation_seconds": 122.45078019052744,
+      "final_evaluations": {
+        "last": {
+          "checkpoint_epoch": 50,
+          "checkpoint_sha256": "728fbecfd297de466c15628fabc0dc6f64832e57b325653208e9847a67c7fa51",
+          "execution_identity": {
+            "commit": "9347a8b9541790c980d5371ae9cf79630ecc606d",
+            "contract_sha256": "619bc71e155f3fe291179189edc656f6a8399b50f7bf911f123fc7b5e18d0322",
+            "source_sha256": "f4d263706445eb649ba845995e0bb9e9edaa3e0372eb8af8ecdfe6b591733d09"
+          },
+          "official": {
+            "AP_50": 0.22494532638672973,
+            "AP_75": 0.10452461008996616,
+            "AP_all": 0.11375749877657784,
+            "AP_large": 0.14989191359678472,
+            "AP_medium": 0.12474406608413713,
+            "AP_small": 0.060227065914114426
+          },
+          "prediction_sha256": "c87c911eb1eaa33af5d24dbfaefa1e70d5bee7cd7e9cef52a6f1804c42c36ac2",
+          "report_sha256": "54da2c65fe7dd40962d3d37f8d1c74d64c26768d9c6c1b99431965e242b9e10b",
+          "seen": 5000,
+          "status": "passed",
+          "strict_reload": true,
+          "teacher_parameters": 0
+        },
+        "standard-best": {
+          "checkpoint_epoch": 40,
+          "checkpoint_sha256": "c8aa01daf5b36009cf5ec2986e474238125550608c70f06f3755da48a45b6ccd",
+          "execution_identity": {
+            "commit": "9347a8b9541790c980d5371ae9cf79630ecc606d",
+            "contract_sha256": "619bc71e155f3fe291179189edc656f6a8399b50f7bf911f123fc7b5e18d0322",
+            "source_sha256": "f4d263706445eb649ba845995e0bb9e9edaa3e0372eb8af8ecdfe6b591733d09"
+          },
+          "official": {
+            "AP_50": 0.22552315907993034,
+            "AP_75": 0.10383809985335413,
+            "AP_all": 0.11398317668606046,
+            "AP_large": 0.1512110693067329,
+            "AP_medium": 0.12457588802654712,
+            "AP_small": 0.05490705788018609
+          },
+          "prediction_sha256": "cec089f48323e3860ac7293ef689aa6ee57fbc34f0d51c8fefa3e29471bd06e4",
+          "report_sha256": "8baa00c0b199ebd081d10ac210a430d8a0143f490c4a6d05016014f559338314",
+          "seen": 5000,
+          "status": "passed",
+          "strict_reload": true,
+          "teacher_parameters": 0
+        }
+      },
+      "final_jobs": [
+        {
+          "label": "E1-A-final-last",
+          "returncode": 0,
+          "seconds": 61.60476964339614
+        },
+        {
+          "label": "E1-A-final-standard-best",
+          "returncode": 0,
+          "seconds": 60.8460105471313
+        }
+      ],
+      "standard_AP_curve": [
+        {
+          "AP": 0.05695997142216435,
+          "epoch": 5
+        },
+        {
+          "AP": 0.08245032115675036,
+          "epoch": 10
+        },
+        {
+          "AP": 0.09555438977007542,
+          "epoch": 15
+        },
+        {
+          "AP": 0.10376575532742326,
+          "epoch": 20
+        },
+        {
+          "AP": 0.11073802009331739,
+          "epoch": 25
+        },
+        {
+          "AP": 0.11265979024763366,
+          "epoch": 30
+        },
+        {
+          "AP": 0.11351049462140464,
+          "epoch": 35
+        },
+        {
+          "AP": 0.11398317668606046,
+          "epoch": 40
+        },
+        {
+          "AP": 0.11390710969097692,
+          "epoch": 45
+        },
+        {
+          "AP": 0.11375749877657784,
+          "epoch": 50
+        }
+      ],
+      "train_and_final_GPUh": 13.361313863005488,
+      "train_and_final_saving_vs_S": 0.11441673497659877,
+      "trainable_parameters": 3542567,
+      "training": {
+        "epochs": 50,
+        "execution_identity": {
+          "commit": "9347a8b9541790c980d5371ae9cf79630ecc606d",
+          "contract_sha256": "619bc71e155f3fe291179189edc656f6a8399b50f7bf911f123fc7b5e18d0322",
+          "source_sha256": "f4d263706445eb649ba845995e0bb9e9edaa3e0372eb8af8ecdfe6b591733d09"
+        },
+        "last_sha256": "728fbecfd297de466c15628fabc0dc6f64832e57b325653208e9847a67c7fa51",
+        "optimizer_steps": 15450,
+        "resume_sha256": "6ed0bda2e7ab4dc3dbd9f0dd28bc4caee73ccc9e8a45f2cd23e332a57443fbc5",
+        "status": "completed"
+      },
+      "training_job_cost": {
+        "GPUh": 13.157229229354611,
+        "reserved_gpus": 6,
+        "scope": "All recorded training attempts; excludes downtime and final evaluations",
+        "seconds": 7894.337537612766,
+        "segments": 2
+      },
+      "training_job_saving_vs_S": 0.11775895476792353
+    },
+    "B": {
+      "AP_retention_vs_S": 1.267658729117448,
+      "cost_scope": "Training attempts plus two final evaluation jobs under the declared six-GPU reservation; periodic evaluations are already included; excludes idle downtime and Teacher extraction. Not cold-start total.",
+      "csv_numeric_values_finite": true,
+      "csv_rows": 50,
+      "epoch_median_seconds": 144.11663649231195,
+      "final_evaluation_seconds": 105.86549979448318,
+      "final_evaluations": {
+        "last": {
+          "checkpoint_epoch": 50,
+          "checkpoint_sha256": "d6ca339d0868d9b3fe8f8941c9eee52b95a0d74a61ca055465661871fe0cd839",
+          "execution_identity": {
+            "commit": "d9151b49188651b9c3562fc6b7877a5b3f1626e9",
+            "contract_sha256": "619bc71e155f3fe291179189edc656f6a8399b50f7bf911f123fc7b5e18d0322",
+            "source_sha256": "f4d263706445eb649ba845995e0bb9e9edaa3e0372eb8af8ecdfe6b591733d09"
+          },
+          "official": {
+            "AP_50": 0.4894304968065397,
+            "AP_75": 0.29996940119436255,
+            "AP_all": 0.2883459477325587,
+            "AP_large": 0.40960217783067004,
+            "AP_medium": 0.3314210739804304,
+            "AP_small": 0.12791610493509636
+          },
+          "prediction_sha256": "2a2a5cdd9239c3ec04940ca47660b86b12b2bb144f0e3f1d15520f821ffb85ba",
+          "report_sha256": "8904827e06a858f06b1c4c2af49123d4a8b705ae7975c5decaa1f180846b6d44",
+          "seen": 5000,
+          "status": "passed",
+          "strict_reload": true,
+          "teacher_parameters": 0
+        },
+        "standard-best": {
+          "checkpoint_epoch": 30,
+          "checkpoint_sha256": "fefa11bd32561e98395149d5d0ebae07f1d2b16e4867a1ec948a6729d16b3414",
+          "execution_identity": {
+            "commit": "d9151b49188651b9c3562fc6b7877a5b3f1626e9",
+            "contract_sha256": "619bc71e155f3fe291179189edc656f6a8399b50f7bf911f123fc7b5e18d0322",
+            "source_sha256": "f4d263706445eb649ba845995e0bb9e9edaa3e0372eb8af8ecdfe6b591733d09"
+          },
+          "official": {
+            "AP_50": 0.49410184854167283,
+            "AP_75": 0.3054373821217,
+            "AP_all": 0.2931343309084911,
+            "AP_large": 0.42580033813328294,
+            "AP_medium": 0.32888758917054917,
+            "AP_small": 0.12465599487804209
+          },
+          "prediction_sha256": "4983560cd3e31a84e8d91444aed446c6238d6ee1f63cef96a7d5c751f4d0e4ee",
+          "report_sha256": "8decc86c1510be3dc867fc4724429d4dc92e2c3210ab922c3211321111eb2f07",
+          "seen": 5000,
+          "status": "passed",
+          "strict_reload": true,
+          "teacher_parameters": 0
+        }
+      },
+      "final_jobs": [
+        {
+          "label": "E1-B-final-last",
+          "returncode": 0,
+          "seconds": 53.03219650685787
+        },
+        {
+          "label": "E1-B-final-standard-best",
+          "returncode": 0,
+          "seconds": 52.83330328762531
+        }
+      ],
+      "standard_AP_curve": [
+        {
+          "AP": 0.22048506006917504,
+          "epoch": 5
+        },
+        {
+          "AP": 0.25485848243115294,
+          "epoch": 10
+        },
+        {
+          "AP": 0.2752171508802809,
+          "epoch": 15
+        },
+        {
+          "AP": 0.2858927451595353,
+          "epoch": 20
+        },
+        {
+          "AP": 0.29144389626947215,
+          "epoch": 25
+        },
+        {
+          "AP": 0.2931343309084911,
+          "epoch": 30
+        },
+        {
+          "AP": 0.29236502775858025,
+          "epoch": 35
+        },
+        {
+          "AP": 0.2907468446165251,
+          "epoch": 40
+        },
+        {
+          "AP": 0.28965195062882365,
+          "epoch": 45
+        },
+        {
+          "AP": 0.2883459477325587,
+          "epoch": 50
+        }
+      ],
+      "train_and_final_GPUh": 14.428195251661043,
+      "train_and_final_saving_vs_S": 0.04370420526241692,
+      "trainable_parameters": 3542567,
+      "training": {
+        "epochs": 50,
+        "execution_identity": {
+          "commit": "9347a8b9541790c980d5371ae9cf79630ecc606d",
+          "contract_sha256": "619bc71e155f3fe291179189edc656f6a8399b50f7bf911f123fc7b5e18d0322",
+          "source_sha256": "f4d263706445eb649ba845995e0bb9e9edaa3e0372eb8af8ecdfe6b591733d09"
+        },
+        "last_sha256": "d6ca339d0868d9b3fe8f8941c9eee52b95a0d74a61ca055465661871fe0cd839",
+        "optimizer_steps": 15450,
+        "resume_sha256": "da4e9f9e2dfe83c3587296f916a8ddb9cb40b4afa45b8fdb99ac104135bf7e31",
+        "status": "completed"
+      },
+      "training_job_cost": {
+        "GPUh": 14.25175275200357,
+        "reserved_gpus": 6,
+        "scope": "All recorded training attempts; excludes downtime and final evaluations",
+        "seconds": 8551.051651202142,
+        "segments": 1
+      },
+      "training_job_saving_vs_S": 0.044367090886847205
+    },
+    "C": {
+      "AP_retention_vs_S": 1.2582119203488151,
+      "cost_scope": "Training attempts plus two final evaluation jobs under the declared six-GPU reservation; periodic evaluations are already included; excludes idle downtime and Teacher extraction. Not cold-start total.",
+      "csv_numeric_values_finite": true,
+      "csv_rows": 50,
+      "epoch_median_seconds": 144.7682663295418,
+      "final_evaluation_seconds": 105.89325462654233,
+      "final_evaluations": {
+        "last": {
+          "checkpoint_epoch": 50,
+          "checkpoint_sha256": "c0c19d1b738305e8c1fa0bae59b2d34c7df289c851d2fe50cfdcf6bbe4ee2330",
+          "execution_identity": {
+            "commit": "d9151b49188651b9c3562fc6b7877a5b3f1626e9",
+            "contract_sha256": "619bc71e155f3fe291179189edc656f6a8399b50f7bf911f123fc7b5e18d0322",
+            "source_sha256": "f4d263706445eb649ba845995e0bb9e9edaa3e0372eb8af8ecdfe6b591733d09"
+          },
+          "official": {
+            "AP_50": 0.4845994794555309,
+            "AP_75": 0.3009387169942042,
+            "AP_all": 0.28619714461633194,
+            "AP_large": 0.4079702309137447,
+            "AP_medium": 0.32854966831564164,
+            "AP_small": 0.12871345039143914
+          },
+          "prediction_sha256": "ca3339fc8927106ae86e84bdd34d999d238d454c895f64d67a88f2179efe0103",
+          "report_sha256": "ed9cd11f3f4c671026a8aab9aea63eba85d4ee21f16c7fda3980bad0bcbfa481",
+          "seen": 5000,
+          "status": "passed",
+          "strict_reload": true,
+          "teacher_parameters": 0
+        },
+        "standard-best": {
+          "checkpoint_epoch": 30,
+          "checkpoint_sha256": "8eea15a57bb28c7a135342defc4fe35c19b6723da809eee7797ff9f6cd6d80d9",
+          "execution_identity": {
+            "commit": "d9151b49188651b9c3562fc6b7877a5b3f1626e9",
+            "contract_sha256": "619bc71e155f3fe291179189edc656f6a8399b50f7bf911f123fc7b5e18d0322",
+            "source_sha256": "f4d263706445eb649ba845995e0bb9e9edaa3e0372eb8af8ecdfe6b591733d09"
+          },
+          "official": {
+            "AP_50": 0.48802092610303077,
+            "AP_75": 0.30616758108495973,
+            "AP_all": 0.29018890410392073,
+            "AP_large": 0.4236163039139233,
+            "AP_medium": 0.3252821838011997,
+            "AP_small": 0.12389118598072785
+          },
+          "prediction_sha256": "abb4cf3d76876a3202ec5b60bc732cf165ecedf502ae490159dcacaac8a23c59",
+          "report_sha256": "2a4b28c65457f1feaeabcf0a62ded9728a820a182c4792c06b20655b6e3fc44e",
+          "seen": 5000,
+          "status": "passed",
+          "strict_reload": true,
+          "teacher_parameters": 0
+        }
+      },
+      "final_jobs": [
+        {
+          "label": "E1-C-final-last",
+          "returncode": 0,
+          "seconds": 52.574754267930984
+        },
+        {
+          "label": "E1-C-final-standard-best",
+          "returncode": 0,
+          "seconds": 53.318500358611345
+        }
+      ],
+      "standard_AP_curve": [
+        {
+          "AP": 0.21429976713220233,
+          "epoch": 5
+        },
+        {
+          "AP": 0.2578425403918035,
+          "epoch": 10
+        },
+        {
+          "AP": 0.27183965765211915,
+          "epoch": 15
+        },
+        {
+          "AP": 0.28362756594299193,
+          "epoch": 20
+        },
+        {
+          "AP": 0.2892403463141089,
+          "epoch": 25
+        },
+        {
+          "AP": 0.29018890410392073,
+          "epoch": 30
+        },
+        {
+          "AP": 0.29007380727551313,
+          "epoch": 35
+        },
+        {
+          "AP": 0.2890042420817613,
+          "epoch": 40
+        },
+        {
+          "AP": 0.28729021819812384,
+          "epoch": 45
+        },
+        {
+          "AP": 0.28619714461633194,
+          "epoch": 50
+        }
+      ],
+      "train_and_final_GPUh": 13.246923935015996,
+      "train_and_final_saving_vs_S": 0.12199845986932878,
+      "trainable_parameters": 3542567,
+      "training": {
+        "epochs": 50,
+        "execution_identity": {
+          "commit": "d9151b49188651b9c3562fc6b7877a5b3f1626e9",
+          "contract_sha256": "619bc71e155f3fe291179189edc656f6a8399b50f7bf911f123fc7b5e18d0322",
+          "source_sha256": "f4d263706445eb649ba845995e0bb9e9edaa3e0372eb8af8ecdfe6b591733d09"
+        },
+        "last_sha256": "c0c19d1b738305e8c1fa0bae59b2d34c7df289c851d2fe50cfdcf6bbe4ee2330",
+        "optimizer_steps": 15450,
+        "resume_sha256": "0e51f6ca52e6a01c6b75e1072e55b588c3e30d53e6995245839ead44e5a0bd64",
+        "status": "completed"
+      },
+      "training_job_cost": {
+        "GPUh": 13.070435177305093,
+        "reserved_gpus": 6,
+        "scope": "All recorded training attempts; excludes downtime and final evaluations",
+        "seconds": 7842.261106383055,
+        "segments": 1
+      },
+      "training_job_saving_vs_S": 0.12357881804348714
+    },
+    "S": {
+      "AP_retention_vs_S": 1.0,
+      "cost_scope": "Training attempts plus two final evaluation jobs under the declared six-GPU reservation; periodic evaluations are already included; excludes idle downtime and Teacher extraction. Not cold-start total.",
+      "csv_numeric_values_finite": true,
+      "csv_rows": 50,
+      "epoch_median_seconds": 166.53683826699853,
+      "final_evaluation_seconds": 104.50110333785415,
+      "final_evaluations": {
+        "last": {
+          "checkpoint_epoch": 50,
+          "checkpoint_sha256": "99ab50036b2e5bba93b7fc601314241f739aad6b07071e5d0ee0afd9f92a12e3",
+          "execution_identity": {
+            "commit": "ab48913c74c0534dfbf32f5e6ec7bb07cf4c0131",
+            "contract_sha256": "619bc71e155f3fe291179189edc656f6a8399b50f7bf911f123fc7b5e18d0322",
+            "source_sha256": "cc17abf13c4236331be7cbd64c3c2fd28bf4dd03607404d61b11871efd7bb170"
+          },
+          "official": {
+            "AP_50": 0.34634585459593054,
+            "AP_75": 0.23974282673203393,
+            "AP_all": 0.22746338672184035,
+            "AP_large": 0.338226268539368,
+            "AP_medium": 0.2290234778701448,
+            "AP_small": 0.0895922528457716
+          },
+          "prediction_sha256": "e69f40bc02f165a5fcc761ca3077e9d6cc64ceb3c06264522b02952e83d6e743",
+          "report_sha256": "d20e8ccbe1b1eef36c6a7453c6d88e4926ff034bfe18744e03f3fd82219aaee5",
+          "seen": 5000,
+          "status": "passed",
+          "strict_reload": true,
+          "teacher_parameters": 0
+        },
+        "standard-best": {
+          "checkpoint_epoch": 30,
+          "checkpoint_sha256": "e36b513a8dc0e8d17c48f680e414d629006a465176a7782f0d93dac2f89fe22a",
+          "execution_identity": {
+            "commit": "ab48913c74c0534dfbf32f5e6ec7bb07cf4c0131",
+            "contract_sha256": "619bc71e155f3fe291179189edc656f6a8399b50f7bf911f123fc7b5e18d0322",
+            "source_sha256": "cc17abf13c4236331be7cbd64c3c2fd28bf4dd03607404d61b11871efd7bb170"
+          },
+          "official": {
+            "AP_50": 0.360971780935777,
+            "AP_75": 0.252530445801698,
+            "AP_all": 0.2388143244473101,
+            "AP_large": 0.35639259459093064,
+            "AP_medium": 0.24664780797968666,
+            "AP_small": 0.09205130857552685
+          },
+          "prediction_sha256": "1fb9bb079162440b8e464397552985c3c2bb59477b942eb592a91bcde8e94d2b",
+          "report_sha256": "47ac4d53fb394325c4a4ad8c0dbd04cc741b5ae9d3c959cef569f94cc7f10057",
+          "seen": 5000,
+          "status": "passed",
+          "strict_reload": true,
+          "teacher_parameters": 0
+        }
+      },
+      "final_jobs": [
+        {
+          "label": "E1-S-final-last",
+          "returncode": 0,
+          "seconds": 50.20842333510518
+        },
+        {
+          "label": "E1-S-final-standard-best",
+          "returncode": 0,
+          "seconds": 54.292680002748966
+        }
+      ],
+      "standard_AP_curve": [
+        {
+          "AP": 0.09031832250449437,
+          "epoch": 5
+        },
+        {
+          "AP": 0.17221168858342115,
+          "epoch": 10
+        },
+        {
+          "AP": 0.20646459942024753,
+          "epoch": 15
+        },
+        {
+          "AP": 0.2232852074944313,
+          "epoch": 20
+        },
+        {
+          "AP": 0.23491420041913721,
+          "epoch": 25
+        },
+        {
+          "AP": 0.2388143244473101,
+          "epoch": 30
+        },
+        {
+          "AP": 0.23826650042946046,
+          "epoch": 35
+        },
+        {
+          "AP": 0.2343064524354729,
+          "epoch": 40
+        },
+        {
+          "AP": 0.23131251335500488,
+          "epoch": 45
+        },
+        {
+          "AP": 0.22746338672184035,
+          "epoch": 50
+        }
+      ],
+      "train_and_final_GPUh": 15.08758621658509,
+      "train_and_final_saving_vs_S": 0.0,
+      "trainable_parameters": 3510624,
+      "training": {
+        "epochs": 50,
+        "execution_identity": {
+          "commit": "ab48913c74c0534dfbf32f5e6ec7bb07cf4c0131",
+          "contract_sha256": "619bc71e155f3fe291179189edc656f6a8399b50f7bf911f123fc7b5e18d0322",
+          "source_sha256": "cc17abf13c4236331be7cbd64c3c2fd28bf4dd03607404d61b11871efd7bb170"
+        },
+        "last_sha256": "99ab50036b2e5bba93b7fc601314241f739aad6b07071e5d0ee0afd9f92a12e3",
+        "optimizer_steps": 15450,
+        "resume_sha256": "c0a59a48b3adf3b1fef6e074421d14b8b9040e815dda6e2988b27792c866bc83",
+        "status": "completed"
+      },
+      "training_job_cost": {
+        "GPUh": 14.913417711022,
+        "reserved_gpus": 6,
+        "scope": "All recorded training attempts; excludes downtime and final evaluations",
+        "seconds": 8948.0506266132,
+        "segments": 4
+      },
+      "training_job_saving_vs_S": 0.0
+    }
+  },
+  "identity": {
+    "commit": "49cd0941e86f82e78473b387bbb1f4bb34f6b4b8",
+    "contract_sha256": "619bc71e155f3fe291179189edc656f6a8399b50f7bf911f123fc7b5e18d0322",
+    "source_sha256": "178141213efb2b52e224b562f1016a0c97526b8d86d0592675a91ff393847edd"
+  },
+  "limitations": [
+    "Single seed and COCO only",
+    "Existing Scratch matches trainable parameters, not complete-system total parameters",
+    "B CPU contention retained in actual cost; time differences do not isolate aux overhead",
+    "A and S include recorded recovery segments; idle downtime excluded",
+    "Automatic C selection is a within-0.5-AP screening tie-break, not statistical superiority or final AUX_STAR",
+    "Teacher extraction cost not added here; no claim of 50 percent cold-start saving"
+  ],
+  "pause_full_coco": false,
+  "reserved_gpus": 6,
+  "schedule_epochs": 100,
+  "schema_version": "d1-e1-completion-v1",
+  "scope": "E1 seed0, same trainable parameter count only; final P1 baseline pending architecture and parameter-scope confirmation",
+  "seed": 0,
+  "source_summary_sha256": "d98e29444b932e17e047006d1e00380bd3338c06a40d9d71d90bb8a2e8e17bea"
+}
