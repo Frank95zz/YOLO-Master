@@ -1,0 +1,118 @@
+{
+  "large_artifacts": "External workspace only; no weights, images, caches or credentials in Git",
+  "original_completed_epochs": 24,
+  "original_optimizer_steps": 7416,
+  "production_probe": {
+    "atol": 2e-05,
+    "backend_restored": true,
+    "cases_per_rank": 4,
+    "checkpoint_epoch": 24,
+    "checkpoint_unchanged": true,
+    "execution_identity": {
+      "commit": "dc046d261e62d6ac35dac09ae6364157d0707605",
+      "contract_sha256": "619bc71e155f3fe291179189edc656f6a8399b50f7bf911f123fc7b5e18d0322",
+      "source_sha256": "f4d263706445eb649ba845995e0bb9e9edaa3e0372eb8af8ecdfe6b591733d09"
+    },
+    "hashes": {
+      "last": "4a10d165168410dccd0672796492cfd8a7ad15d666e73579de6992fc8824b487",
+      "resume": "c91e99c1c9cee5d6a42f6f7e03cb9e26011e9b69f9efe40574228070d32bc24d"
+    },
+    "max_rank_seconds": 12.147386211901903,
+    "monkeypatch": false,
+    "ranks": 6,
+    "rtol": 0.0002,
+    "samples": 12,
+    "script_sha256": "9092105ba61cf9e41e887bb2fa7b8a464463f09292e1b555bc8443f206d912d0",
+    "source_unchanged": true,
+    "status": "passed"
+  },
+  "quantification": {
+    "ddp-backward-no-tf32": {
+      "failed_elements": 0,
+      "max_abs_error": 7.152557373046875e-06,
+      "measured_elements": 18330330
+    },
+    "ddp-default": {
+      "failed_elements": 16851,
+      "max_abs_error": 0.0008940696716308594,
+      "measured_elements": 18330330
+    },
+    "ddp-no-tf32": {
+      "failed_elements": 0,
+      "max_abs_error": 5.900859832763672e-06,
+      "measured_elements": 18330330
+    }
+  },
+  "regression": {
+    "files": [
+      "tests/test_checkpoint_compat.py",
+      "tests/test_d1_cache_cleanup_runner.py",
+      "tests/test_d1_cache_layout_benchmark.py",
+      "tests/test_d1_cache_layout_gpu.py",
+      "tests/test_d1_final_eval.py",
+      "tests/test_d1_npy_migration.py",
+      "tests/test_d1_npy_training.py",
+      "tests/test_d1_p1p2_contract.py",
+      "tests/test_d1_p1p2_data.py",
+      "tests/test_d1_wp0_contract.py",
+      "tests/test_d1_wp1_dinov3.py",
+      "tests/test_d1_wp2_cache_cli.py",
+      "tests/test_d1_wp2_feature_cache.py",
+      "tests/test_d1_wp3_foundation_adapter.py",
+      "tests/test_d1_wp4_foundation_detection_model.py",
+      "tests/test_d1_wp5_cached_pipeline.py",
+      "tests/test_d1_wp6_latent_aux.py",
+      "tests/test_d1_wp7_acceptance.py",
+      "tests/test_d1_wp8_diagnostics.py",
+      "tests/test_d1_wp8_followup.py",
+      "tests/test_d1_wp8_formal_training.py",
+      "tests/test_d1_wp8_multi_gpu_cache.py",
+      "tests/test_d1_wp8_p1_control.py",
+      "tests/test_d1_wp8_p1_launch.py",
+      "tests/test_d1_wp8_training_benchmark.py",
+      "tests/test_ddp_checkpoint_coordination.py",
+      "tests/test_foundation_checkpoint.py",
+      "tests/test_foundation_dinov3.py",
+      "tests/test_foundation_distill_model.py",
+      "tests/test_foundation_teacher_protocol.py",
+      "tests/test_latent_mixture.py",
+      "tests/test_mixture_loss_composition.py"
+    ],
+    "passed": 466,
+    "seconds": 41.38294506072998,
+    "skipped": 6
+  },
+  "resume_scope": "A epochs25-50, then B/C/S epochs1-50; unchanged 100-epoch schedule, 50-epoch screening",
+  "revision": {
+    "approved": true,
+    "authorized_scope": [
+      "scripts/d1/p1p2_runtime.py",
+      "scripts/d1/run_p1p2.py"
+    ],
+    "checkpoint_sha256": {
+      "last": "4a10d165168410dccd0672796492cfd8a7ad15d666e73579de6992fc8824b487",
+      "resume": "c91e99c1c9cee5d6a42f6f7e03cb9e26011e9b69f9efe40574228070d32bc24d"
+    },
+    "created_unix": 1788845300.1914017,
+    "execution_identity": {
+      "commit": "dc046d261e62d6ac35dac09ae6364157d0707605",
+      "contract_sha256": "619bc71e155f3fe291179189edc656f6a8399b50f7bf911f123fc7b5e18d0322",
+      "source_sha256": "f4d263706445eb649ba845995e0bb9e9edaa3e0372eb8af8ecdfe6b591733d09"
+    },
+    "original_checkpoint_epoch": 24,
+    "original_identity": {
+      "commit": "49cd0941e86f82e78473b387bbb1f4bb34f6b4b8",
+      "contract_sha256": "619bc71e155f3fe291179189edc656f6a8399b50f7bf911f123fc7b5e18d0322",
+      "source_sha256": "178141213efb2b52e224b562f1016a0c97526b8d86d0592675a91ff393847edd"
+    },
+    "purpose": "User-approved full-FP32 diagnostic isolation and idempotent E1 continuation; training recipe unchanged",
+    "schema_version": "d1-e1-diagnostic-revision-v1"
+  },
+  "schema_version": "d1-e1-diagnostic-repair-evidence-v1",
+  "static_checks": {
+    "git_diff_check": "passed",
+    "py_compile": "passed",
+    "ruff": "passed"
+  },
+  "status": "repair_validation_passed_training_not_yet_resumed"
+}
