@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import signal
 import subprocess
@@ -99,13 +100,36 @@ def load_contract(path=CONFIG):
     return value
 
 
-def verify_source_identity(recorded, current):
-    """Permit clean documentation-only descendants, never a source/configuration change."""
-    if any(recorded[key] != current[key] for key in ("source_sha256", "contract_sha256")):
-        raise ValueError("Source identity changed since preparation")
-    if recorded["commit"] != current["commit"]:
+def verify_source_identity(recorded, current, revision=None):
+    """Require unchanged code or an explicitly recorded, hash-bound diagnostic repair."""
+    if recorded["contract_sha256"] != current["contract_sha256"]:
+        raise ValueError("Experiment contract changed since preparation")
+    reference = recorded
+    if recorded["source_sha256"] != current["source_sha256"]:
+        if (
+            not revision
+            or revision.get("schema_version") != "d1-e1-diagnostic-revision-v1"
+            or revision.get("approved") is not True
+            or revision.get("original_identity") != recorded
+        ):
+            raise ValueError("Source identity changed without an approved diagnostic revision")
+        reference = revision["execution_identity"]
+        if any(reference[key] != current[key] for key in ("source_sha256", "contract_sha256")):
+            raise ValueError("Current source differs from the approved diagnostic revision")
+        changed = subprocess.check_output(
+            ["git", "diff", "--name-only", recorded["commit"], reference["commit"], "--", "ultralytics", "scripts/d1"],
+            cwd=ROOT,
+            text=True,
+        ).splitlines()
+        if not changed or not set(changed) <= {"scripts/d1/p1p2_runtime.py", "scripts/d1/run_p1p2.py"}:
+            raise ValueError("Diagnostic revision also changed model, data, configuration or other training sources")
+        if subprocess.run(
+            ["git", "merge-base", "--is-ancestor", recorded["commit"], reference["commit"]], cwd=ROOT, check=False
+        ).returncode:
+            raise ValueError("Diagnostic revision is not a descendant of the original source")
+    if reference["commit"] != current["commit"]:
         result = subprocess.run(
-            ["git", "merge-base", "--is-ancestor", recorded["commit"], current["commit"]], cwd=ROOT, check=False
+            ["git", "merge-base", "--is-ancestor", reference["commit"], current["commit"]], cwd=ROOT, check=False
         )
         if result.returncode != 0:
             raise ValueError("Current checkout is not a descendant of the recorded code commit")
@@ -212,7 +236,11 @@ def load_matrix(workspace, *, check_code=True):
     if matrix["contract"] != load_contract():
         raise ValueError("Matrix contract changed")
     if check_code:
-        verify_source_identity(matrix["identity"], identity())
+        current = identity()
+        revision_path = workspace / "execution-revision.json"
+        revision = read_json(revision_path) if revision_path.exists() else None
+        verify_source_identity(matrix["identity"], current, revision)
+        matrix["execution_identity"] = current
     if matrix["data_receipt_sha256"] != sha256_file(workspace / "data/receipt.json"):
         raise ValueError("Data verification identity changed")
     receipt = read_json(workspace / "data/receipt.json")
@@ -246,6 +274,7 @@ def spec_for(matrix, profile, variant, window=None):
         },
         "workspace": str(workspace),
         "run_id": run_id,
+        "execution_identity": matrix.get("execution_identity", matrix["identity"]),
         "profile": original_profile,
         "variant": variant,
         "window": expected,
@@ -285,8 +314,12 @@ def worker(args):
         overrides["resume"] = str(args.workspace / "runs" / spec["run_id"] / "weights/last.pt")
         if not (output / "resume.pt").is_file():
             raise FileNotFoundError("Exact online resume state is required")
-    elif (output / "training-result.json").exists():
-        raise FileExistsError("Run already finished; use explicit validated resume")
+    elif (
+        (output / "training-result.json").exists()
+        or (output / "resume.pt").exists()
+        or (args.workspace / "runs" / spec["run_id"] / "weights/last.pt").exists()
+    ):
+        raise FileExistsError("Run already contains training state; use explicit validated resume")
     if spec["variant"] == "S":
         trainer = E1ScratchTrainer(overrides=overrides, run_spec=spec)
     else:
@@ -391,6 +424,7 @@ def evaluate(args):
         "status": "passed",
         "identity": matrix["identity"],
         "run_id": args.run_id,
+        "execution_identity": matrix.get("execution_identity", matrix["identity"]),
         "checkpoint_sha256": sha256_file(checkpoint_path),
         "checkpoint_epoch": checkpoint["epoch"] + 1,
         "strict_reload": True,
@@ -418,11 +452,21 @@ def summarize(workspace):
             raise ValueError("Cannot summarize incomplete or different-budget runs")
         if final["identity"] != matrix["identity"] or final["status"] != "passed":
             raise ValueError("Mixed source identity")
+        last = workspace / "runs" / f"E1-{variant}" / "weights/last.pt"
+        if training["last_sha256"] != sha256_file(last) or final["checkpoint_sha256"] != training["last_sha256"]:
+            raise ValueError("Final result is not bound to the completed checkpoint")
+        final_reports = {}
+        for name in ("last", "standard-best"):
+            final_report = read_json(output / "final" / name / "report.json")
+            checkpoint = last.with_name(f"{name}.pt")
+            validate_evaluation(final_report, matrix, f"E1-{variant}", checkpoint)
+            final_reports[name] = final_report
         results[variant] = {
             "AP": final["official"]["AP_all"],
             "training": training,
             "evaluation": final,
             "cost": read_json(output / "cost.json"),
+            "final_evaluations": final_reports,
         }
     best_ap = max(results[key]["AP"] for key in "ABC")
     ties = [key for key in "ABC" if best_ap - results[key]["AP"] <= 0.005]
@@ -435,6 +479,7 @@ def summarize(workspace):
         "status": "completed",
         "identity": matrix["identity"],
         "results": results,
+        "execution_identity": matrix.get("execution_identity", matrix["identity"]),
         "selected": selected,
         "fusion": VARIANTS[selected]["value_fusion_mode"],
         "retention": retention,
@@ -443,6 +488,19 @@ def summarize(workspace):
     }
     scratch.write_json(workspace / "E1-summary.json", report)
     return report
+
+
+def validate_evaluation(report, matrix, run_id, checkpoint):
+    """Only reuse a completed evaluation of the exact registered checkpoint."""
+    if (
+        report.get("status") != "passed"
+        or report.get("seen") != 5000
+        or report.get("identity") != matrix["identity"]
+        or report.get("run_id") != run_id
+        or report.get("strict_reload") is not True
+        or report.get("checkpoint_sha256") != sha256_file(checkpoint)
+    ):
+        raise ValueError("Existing final evaluation has a different checkpoint or protocol")
 
 
 class Pipeline:
@@ -484,18 +542,34 @@ class Pipeline:
         log_path = self.workspace / "logs" / f"{label}.log"
         log_path.parent.mkdir(exist_ok=True)
         start = time.monotonic()
-        with log_path.open("a") as log:
-            self.child = subprocess.Popen(
-                command,
-                cwd=ROOT,
-                env=clean_child_env(),
-                stdout=log,
-                stderr=subprocess.STDOUT,
-                stdin=subprocess.DEVNULL,
-                start_new_session=True,
+        started_unix = time.time()
+        job_path = self.workspace / "jobs" / f"{label}-{time.time_ns()}.json"
+        result = None
+        try:
+            with log_path.open("a") as log:
+                self.child = subprocess.Popen(
+                    command,
+                    cwd=ROOT,
+                    env=clean_child_env(),
+                    stdout=log,
+                    stderr=subprocess.STDOUT,
+                    stdin=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+                self.status(label, child_pid=self.child.pid, command=command, log=str(log_path))
+                result = self.child.wait()
+        finally:
+            scratch.write_json(
+                job_path,
+                {
+                    "label": label,
+                    "started_unix": started_unix,
+                    "ended_unix": time.time(),
+                    "seconds": time.monotonic() - start,
+                    "returncode": result,
+                    "execution_identity": self.matrix.get("execution_identity", self.matrix["identity"]),
+                },
             )
-            self.status(label, child_pid=self.child.pid, command=command, log=str(log_path))
-            result = self.child.wait()
         if result or self.interrupted:
             raise RuntimeError(f"{label} exited {result}; interrupted={self.interrupted}")
         return time.monotonic() - start
@@ -522,6 +596,7 @@ class Pipeline:
 
     def execute(self):
         matrix = load_matrix(self.workspace)
+        self.matrix = matrix
         if not self.args.approved:
             raise ValueError("Explicit --approved is required for this matrix")
         if self.args.command == "engineering":
@@ -589,41 +664,107 @@ class Pipeline:
         benchmark = read_json(self.workspace / "benchmark.json")
         if benchmark["identity"] != matrix["identity"] or benchmark["status"] != "passed":
             raise ValueError("Benchmark identity mismatch")
+        launch_path = self.workspace / ("E1-resume-launch.json" if self.args.resume else "E1-launch.json")
+        if launch_path.exists():
+            scratch.write_json(
+                self.workspace / "launches" / f"{launch_path.stem}-{time.time_ns()}.json", read_json(launch_path)
+            )
+        estimate = benchmark["estimated_E1_seconds"]
+        if self.args.resume:
+            plan = read_json(self.workspace / "resume-plan.json")
+            if plan["identity"] != matrix["identity"] or plan["execution_identity"] != matrix["execution_identity"]:
+                raise ValueError("Resume plan is not bound to the approved execution revision")
+            estimate = plan["estimated_remaining_seconds"]
         scratch.write_json(
-            self.workspace / "E1-launch.json",
+            launch_path,
             {
                 "identity": matrix["identity"],
                 "started_unix": time.time(),
-                "estimated_seconds": benchmark["estimated_E1_seconds"],
-                "check_interval_seconds": benchmark["check_interval_seconds"],
+                "estimated_seconds": estimate,
+                "check_interval_seconds": estimate / 4,
+                "execution_identity": matrix.get("execution_identity", matrix["identity"]),
+                "resume": self.args.resume,
                 "variants": list(VARIANTS),
             },
         )
         for variant in VARIANTS:
-            seconds = self.child_run(f"E1-{variant}", self.train_command("E1", variant))
-            output = self.workspace / "reports" / f"E1-{variant}"
-            scratch.write_json(
-                output / "cost.json", {"seconds": seconds, "reserved_gpus": 6, "GPUh": seconds * 6 / 3600}
-            )
-            for name in ("last", "standard-best"):
-                self.child_run(
-                    f"E1-{variant}-final-{name}",
-                    [
-                        sys.executable,
-                        "-m",
-                        "scripts.d1.run_p1p2",
-                        "evaluate",
-                        "--workspace",
-                        str(self.workspace),
-                        "--run-id",
-                        f"E1-{variant}",
-                        "--checkpoint",
-                        str(self.workspace / "runs" / f"E1-{variant}" / "weights" / f"{name}.pt"),
-                        "--output",
-                        str(output / "final" / name),
-                    ],
-                )
+            self.finish_variant(matrix, variant)
         summarize(self.workspace)
+
+    def finish_variant(self, matrix, variant):
+        run_id = f"E1-{variant}"
+        output = self.workspace / "reports" / run_id
+        weights = self.workspace / "runs" / run_id / "weights"
+        result_path = output / "training-result.json"
+        result = read_json(result_path) if result_path.exists() else None
+        completed = result is not None and result.get("status") == "completed" and result.get("epochs") == 50
+        existing = (weights / "last.pt").exists() or (output / "resume.pt").exists() or result is not None
+        if existing and not self.args.resume:
+            raise FileExistsError("E1 already has state; explicitly use all --resume")
+        if not completed:
+            command = self.train_command("E1", variant)
+            if existing:
+                if not (weights / "last.pt").is_file() or not (output / "resume.pt").is_file():
+                    raise FileNotFoundError("Both last.pt and resume.pt are required")
+                state = torch.load(output / "resume.pt", map_location="cpu", weights_only=False)
+                if state["identity"] != spec_for(matrix, "E1", variant)["identity"] or not 0 <= state["epoch"] < 49:
+                    raise ValueError("Resume state identity/epoch requires explicit recovery before training")
+                del state
+                command.append("--resume")
+            self.child_run(run_id, command)
+            result = read_json(result_path)
+        if (
+            result.get("status") != "completed"
+            or result.get("epochs") != 50
+            or result.get("optimizer_steps") != 50 * 309
+        ):
+            raise ValueError("E1 run did not complete the fixed 50-epoch budget")
+        if result["last_sha256"] != sha256_file(weights / "last.pt") or result["resume_sha256"] != sha256_file(
+            output / "resume.pt"
+        ):
+            raise ValueError("Completed run checkpoints changed")
+        segments = [read_json(path) for path in (self.workspace / "jobs").glob(f"{run_id}-*.json")]
+        segments = [row for row in segments if row["label"] == run_id]
+        if any(not math.isfinite(row["seconds"]) or row["seconds"] < 0 for row in segments):
+            raise ValueError("Invalid job cost segment")
+        if segments:
+            seconds = sum(row["seconds"] for row in segments)
+            scratch.write_json(
+                output / "cost.json",
+                {
+                    "seconds": seconds,
+                    "reserved_gpus": 6,
+                    "GPUh": seconds * 6 / 3600,
+                    "segments": len(segments),
+                    "scope": "All recorded training attempts; excludes downtime and final evaluations",
+                },
+            )
+        elif not (output / "cost.json").exists():
+            raise ValueError("No auditable training cost is available")
+        for name in ("last", "standard-best"):
+            final_output = output / "final" / name
+            report_path = final_output / "report.json"
+            if report_path.exists():
+                validate_evaluation(read_json(report_path), matrix, run_id, weights / f"{name}.pt")
+                continue
+            self.child_run(
+                f"E1-{variant}-final-{name}",
+                [
+                    sys.executable,
+                    "-m",
+                    "scripts.d1.run_p1p2",
+                    "evaluate",
+                    "--workspace",
+                    str(self.workspace),
+                    "--run-id",
+                    run_id,
+                    "--checkpoint",
+                    str(weights / f"{name}.pt"),
+                    "--output",
+                    str(final_output),
+                ],
+            )
+            validate_evaluation(read_json(report_path), matrix, run_id, weights / f"{name}.pt")
 
 
 def main():

@@ -192,3 +192,168 @@ def test_source_identity_accepts_only_unchanged_descendants(monkeypatch):
     monkeypatch.setattr(experiment.subprocess, "run", lambda *args, **kwargs: SimpleNamespace(returncode=1))
     with pytest.raises(ValueError):
         experiment.verify_source_identity(recorded, {**recorded, "commit": "unrelated"})
+
+
+@pytest.mark.parametrize("fail", [False, True])
+@pytest.mark.parametrize("precision", ["highest", "high", "medium"])
+def test_diagnostic_precision_restores_backend_and_autocast(fail, precision):
+    from scripts.d1.p1p2_runtime import diagnostic_precision
+
+    original = (torch.get_float32_matmul_precision(), torch.backends.cudnn.allow_tf32)
+    try:
+        torch.set_float32_matmul_precision(precision)
+        torch.backends.cudnn.allow_tf32 = True
+        x = torch.ones(2, 2)
+        with torch.autocast("cpu", dtype=torch.bfloat16):
+            try:
+                with diagnostic_precision("cpu"):
+                    assert not torch.backends.cuda.matmul.allow_tf32
+                    assert not torch.backends.cudnn.allow_tf32
+                    assert (x @ x).dtype == torch.float32
+                    if fail:
+                        raise RuntimeError("probe failed")
+            except RuntimeError as error:
+                assert fail and str(error) == "probe failed"
+            assert (x @ x).dtype == torch.bfloat16
+        assert torch.get_float32_matmul_precision() == precision
+        assert torch.backends.cudnn.allow_tf32
+    finally:
+        torch.set_float32_matmul_precision(original[0])
+        torch.backends.cudnn.allow_tf32 = original[1]
+
+
+def test_mechanism_enters_precision_context(monkeypatch):
+    from scripts.d1 import p1p2_runtime as runtime
+
+    source = torch.nn.Linear(2, 2)
+    previous = torch.backends.cudnn.allow_tf32
+
+    def probe(model, batch):
+        assert model is source
+        assert not torch.backends.cudnn.allow_tf32
+        assert not torch.backends.cuda.matmul.allow_tf32
+        return {"verified": True}
+
+    monkeypatch.setattr(runtime, "_mechanism_evidence", probe)
+    assert runtime.mechanism_evidence(source, {}) == {"verified": True}
+    assert torch.backends.cudnn.allow_tf32 == previous
+
+
+@pytest.mark.parametrize("nonfinite", [False, True])
+def test_diagnostic_failure_identifies_parameter(monkeypatch, nonfinite):
+    from scripts.d1.p1p2_runtime import separated_gradients
+
+    parameter = torch.nn.Parameter(torch.ones(2))
+    first = torch.tensor([float("nan"), 1.0]) if nonfinite else torch.ones(2)
+    gradients = iter([(first,), (torch.ones(2),), (torch.zeros(2),)])
+    monkeypatch.setattr(torch.autograd, "grad", lambda *args, **kwargs: next(gradients))
+    with pytest.raises(FloatingPointError if nonfinite else ValueError, match="adapter.weight") as caught:
+        separated_gradients(parameter.sum(), parameter.sum(), (parameter,), ("adapter.weight",))
+    if not nonfinite:
+        assert "failed_elements=2/2" in str(caught.value)
+        assert "max_abs=2" in str(caught.value)
+
+
+def test_source_revision_is_exact_and_narrow(monkeypatch):
+    from types import SimpleNamespace
+
+    original = {"commit": "a", "source_sha256": "s", "contract_sha256": "c"}
+    repaired = {**original, "commit": "b", "source_sha256": "fixed"}
+    revision = {
+        "schema_version": "d1-e1-diagnostic-revision-v1",
+        "approved": True,
+        "original_identity": original,
+        "execution_identity": repaired,
+    }
+    monkeypatch.setattr(experiment.subprocess, "run", lambda *a, **k: SimpleNamespace(returncode=0))
+    monkeypatch.setattr(experiment.subprocess, "check_output", lambda *a, **k: "scripts/d1/p1p2_runtime.py\n")
+    experiment.verify_source_identity(original, repaired, revision)
+    experiment.verify_source_identity(original, {**repaired, "commit": "docs"}, revision)
+    for changed in [None, {**revision, "approved": False}, {**revision, "original_identity": repaired}]:
+        with pytest.raises(ValueError):
+            experiment.verify_source_identity(original, repaired, changed)
+    with pytest.raises(ValueError):
+        experiment.verify_source_identity(original, {**repaired, "source_sha256": "other"}, revision)
+    monkeypatch.setattr(experiment.subprocess, "check_output", lambda *a, **k: "ultralytics/nn/tasks.py\n")
+    with pytest.raises(ValueError):
+        experiment.verify_source_identity(original, repaired, revision)
+
+
+def test_pipeline_resumes_once_then_reuses_completed_outputs(tmp_path):
+    from types import SimpleNamespace
+
+    value = matrix(tmp_path)
+    pipeline = object.__new__(experiment.Pipeline)
+    pipeline.workspace = tmp_path
+    pipeline.args = SimpleNamespace(resume=True)
+    output = tmp_path / "reports/E1-A"
+    weights = tmp_path / "runs/E1-A/weights"
+    output.mkdir(parents=True)
+    weights.mkdir(parents=True)
+    torch.save({"epoch": 23}, weights / "last.pt")
+    torch.save({"epoch": 23, "identity": experiment.spec_for(value, "E1", "A")["identity"]}, output / "resume.pt")
+    write = experiment.scratch.write_json
+    write(tmp_path / "jobs/E1-A-before.json", {"label": "E1-A", "seconds": 5.0})
+    calls = []
+
+    def child(label, command):
+        calls.append((label, command))
+        if label == "E1-A":
+            assert command[-1] == "--resume"
+            torch.save({"epoch": 49}, weights / "last.pt")
+            torch.save({"epoch": 49}, weights / "standard-best.pt")
+            torch.save({"epoch": 49}, output / "resume.pt")
+            write(
+                output / "training-result.json",
+                {
+                    "status": "completed",
+                    "epochs": 50,
+                    "optimizer_steps": 15450,
+                    "last_sha256": experiment.sha256_file(weights / "last.pt"),
+                    "resume_sha256": experiment.sha256_file(output / "resume.pt"),
+                },
+            )
+            write(tmp_path / "jobs/E1-A-after.json", {"label": "E1-A", "seconds": 7.0})
+        else:
+            name = "standard-best" if label.endswith("standard-best") else "last"
+            write(
+                output / "final" / name / "report.json",
+                {
+                    "status": "passed",
+                    "seen": 5000,
+                    "identity": value["identity"],
+                    "run_id": "E1-A",
+                    "strict_reload": True,
+                    "checkpoint_sha256": experiment.sha256_file(weights / f"{name}.pt"),
+                },
+            )
+        return 7.0
+
+    pipeline.child_run = child
+    pipeline.finish_variant(value, "A")
+    assert len(calls) == 3
+    assert experiment.read_json(output / "cost.json")["seconds"] == 12.0
+    pipeline.finish_variant(value, "A")
+    assert len(calls) == 3
+    assert experiment.read_json(output / "cost.json")["seconds"] == 12.0
+    pipeline.args.resume = False
+    with pytest.raises(FileExistsError):
+        pipeline.finish_variant(value, "A")
+    pipeline.args.resume = True
+    path = output / "final/last/report.json"
+    write(path, {**experiment.read_json(path), "checkpoint_sha256": "changed"})
+    with pytest.raises(ValueError, match="checkpoint or protocol"):
+        pipeline.finish_variant(value, "A")
+
+
+def test_pipeline_rejects_missing_paired_resume(tmp_path):
+    from types import SimpleNamespace
+
+    pipeline = object.__new__(experiment.Pipeline)
+    pipeline.workspace = tmp_path
+    pipeline.args = SimpleNamespace(resume=True)
+    path = tmp_path / "reports/E1-A"
+    path.mkdir(parents=True)
+    torch.save({"epoch": 23}, path / "resume.pt")
+    with pytest.raises(FileNotFoundError, match="Both last.pt and resume.pt"):
+        pipeline.finish_variant(matrix(tmp_path), "A")

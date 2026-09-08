@@ -10,6 +10,7 @@ import signal
 import subprocess
 import sys
 import time
+from contextlib import contextmanager
 from copy import deepcopy
 from pathlib import Path
 
@@ -86,20 +87,47 @@ def clean_child_env() -> dict:
     return env
 
 
-def separated_gradients(native, auxiliary, parameters):
+@contextmanager
+def diagnostic_precision(device_type):
+    """Use full FP32 only for the independent probe, including exceptional exits."""
+    matmul = torch.backends.cuda.matmul.allow_tf32
+    cudnn = torch.backends.cudnn.allow_tf32
+    precision = torch.get_float32_matmul_precision()
+    try:
+        torch.backends.cuda.matmul.allow_tf32 = False
+        torch.backends.cudnn.allow_tf32 = False
+        with torch.autocast(device_type, enabled=False):
+            yield
+    finally:
+        torch.backends.cuda.matmul.allow_tf32 = matmul
+        torch.set_float32_matmul_precision(precision)
+        torch.backends.cudnn.allow_tf32 = cudnn
+
+
+def separated_gradients(native, auxiliary, parameters, parameter_names=None):
     """Verify additive diagnostic gradients without populating parameter.grad."""
     parameters = tuple(parameters)
+    names = tuple(parameter_names) if parameter_names is not None else tuple(str(i) for i in range(len(parameters)))
+    if len(names) != len(parameters):
+        raise ValueError("Gradient parameter names do not match parameters")
     detection = torch.autograd.grad(native, parameters, retain_graph=True, allow_unused=True)
     aux = torch.autograd.grad(auxiliary, parameters, retain_graph=True, allow_unused=True)
     total = torch.autograd.grad(native + auxiliary, parameters, allow_unused=True)
     rows = []
-    for parameter, first, second, combined in zip(parameters, detection, aux, total):
+    for name, parameter, first, second, combined in zip(names, parameters, detection, aux, total):
         zero = torch.zeros_like(parameter)
         first, second, combined = (zero if value is None else value for value in (first, second, combined))
         if not all(torch.isfinite(value).all() for value in (first, second, combined)):
-            raise FloatingPointError("Non-finite mechanism gradient")
+            raise FloatingPointError(f"Non-finite mechanism gradient: {name}")
         if not torch.allclose(first + second, combined, rtol=2e-4, atol=2e-5):
-            raise ValueError("Diagnostic decomposition changed the total gradient")
+            delta = ((first + second).double() - combined.double()).abs()
+            tolerance = 2e-5 + 2e-4 * combined.double().abs()
+            raise ValueError(
+                f"Diagnostic decomposition changed the total gradient: parameter={name}, "
+                f"failed_elements={int((delta > tolerance).sum())}/{combined.numel()}, "
+                f"max_abs={float(delta.max()):.9g}, max_tolerance_ratio={float((delta / tolerance).max()):.9g}, "
+                "rtol=0.0002, atol=0.00002"
+            )
         rows.append(
             {
                 "detection": float(first.float().norm()),
@@ -112,6 +140,12 @@ def separated_gradients(native, auxiliary, parameters):
 
 def mechanism_evidence(source, batch):
     """Probe an independent model; never update the trained model or its aux EMA."""
+    with diagnostic_precision(next(source.parameters()).device.type):
+        return _mechanism_evidence(source, batch)
+
+
+def _mechanism_evidence(source, batch):
+    """Execute the probe inside the isolated precision context."""
     from ultralytics.nn.mixture_loss import _collect_mixture_aux_loss
 
     batch = {**batch, "features": {name: value.float() for name, value in batch["features"].items()}}
@@ -173,7 +207,9 @@ def mechanism_evidence(source, batch):
                 latent_gain=gain,
                 aux_budget=3.0,
             )
-            gradients = separated_gradients(native.sum(), auxiliary, (parameter for _, parameter in selected))
+            gradients = separated_gradients(
+                native.sum(), auxiliary, (parameter for _, parameter in selected), (name for name, _ in selected)
+            )
             if case == "aux_zero" and any(row["aux"] != 0.0 for row in gradients):
                 raise ValueError("Disabled aux has a nonzero gradient")
             result[case] = {
@@ -182,6 +218,7 @@ def mechanism_evidence(source, batch):
                 "aux_requires_grad": auxiliary.requires_grad,
                 "gradients": dict(zip((name for name, _ in selected), gradients)),
                 "amplitudes": deepcopy(amplitudes),
+                "precision": {"dtype": "float32", "autocast": False, "matmul_tf32": False, "cudnn_tf32": False},
             }
         if any(parameter.grad is not None for parameter in model.parameters()):
             raise ValueError("Diagnostics unexpectedly populated .grad")
@@ -343,6 +380,7 @@ class E1Policy:
                 "amp_scale": self.scaler.get_scale(),
                 "world_size": self.world_size,
                 "start_epoch": self.start_epoch,
+                "execution_identity": self.e1.get("execution_identity", self.e1["identity"]["source"]),
                 "samples": len(self.train_loader.dataset),
                 "batches_per_epoch": len(self.train_loader),
                 "optimizer_groups": [
@@ -464,6 +502,7 @@ class E1Policy:
                 criterion = getattr(model.criterion, "native_criterion", model.criterion)
                 state = {
                     "identity": self.e1["identity"],
+                    "execution_identity": self.e1.get("execution_identity", self.e1["identity"]["source"]),
                     "epoch": self.epoch,
                     "model": detached_state(model),
                     "ema": detached_state(self.ema.ema),
@@ -555,6 +594,7 @@ class E1Policy:
                     "optimizer_steps": self.optimizer_steps,
                     "last_sha256": sha256_file(self.last),
                     "resume_sha256": sha256_file(self.e1_output / "resume.pt"),
+                    "execution_identity": self.e1.get("execution_identity", self.e1["identity"]["source"]),
                 },
             )
 
