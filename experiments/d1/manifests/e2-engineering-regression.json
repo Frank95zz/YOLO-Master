@@ -1,0 +1,14 @@
+{
+  "status": "PRE_INTEGRATION_PASSED",
+  "result": "273 passed, 8 skipped in 15.21s",
+  "new_engineering_tests": 16,
+  "log_sha256": "f62568c9cdda666be9d9b5caa379a98457754d746cbe7ae6d17dab48d2f89677",
+  "tested_scope": "Pre-merge E2 implementation on 6878f3d, before final formatting and shared-host gate additions",
+  "final_clean_commit_regression": "Required by run_e2 all before training; includes P5 compatibility",
+  "checks": {
+    "ruff": "0.16.6 passed",
+    "codespell": "2.4.3 passed",
+    "py_compile": "passed"
+  },
+  "tool_installation": "Separate lint-tool directory; training dependencies unchanged"
+}

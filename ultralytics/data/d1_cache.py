@@ -101,8 +101,8 @@ def _validate_cache_contract(reader: FeatureCacheReader) -> None:
 def _sample_id(im_file: str) -> str:
     path = Path(im_file)
     split = path.parent.name
-    if split not in {"train2017", "val2017"}:
-        raise ValueError(f"D1 COCO image must be below train2017 or val2017, got {im_file!r}.")
+    if split not in {"train2017", "val2017", "visdrone-train", "visdrone-val"}:
+        raise ValueError(f"D1 image must be below train2017/val2017 or visdrone-train/visdrone-val, got {im_file!r}.")
     return f"{split}/{path.stem}"
 
 
@@ -168,7 +168,7 @@ def _validated_features(
 
 
 class D1FeatureCacheDataset(YOLODataset):
-    """Pair COCO detection labels with immutable DINOv3 feature-cache samples."""
+    """Pair registered COCO or VisDrone labels with immutable DINOv3 features."""
 
     def __init__(
         self,
@@ -226,6 +226,8 @@ class D1FeatureCacheDataset(YOLODataset):
             fraction=fraction,
         )
         self.sample_ids = tuple(_sample_id(path) for path in self.im_files)
+        if any(sid.startswith("visdrone-") for sid in self.sample_ids) and data.get("nc") != 10:
+            raise ValueError("VisDrone cached training requires nc=10.")
         if len(self.sample_ids) != len(set(self.sample_ids)):
             raise ValueError("D1 dataset contains duplicate sample IDs.")
         self._validate_cache_coverage()

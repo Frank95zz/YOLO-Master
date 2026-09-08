@@ -243,6 +243,9 @@ class E1Policy:
     """Require finite updates, preserve exact resume state, and stop at a window boundary."""
 
     evaluation_module = "scripts.d1.run_p1p2"
+    required_schedule_epochs = 100
+    required_global_batch = 384
+    required_workers = 4
 
     def __init__(self, *args, run_spec, **kwargs):
         self.e1 = run_spec
@@ -285,8 +288,8 @@ class E1Policy:
 
     def _setup_train(self):
         super()._setup_train()
-        if not self.amp or self.accumulate != 1 or self.args.epochs != 100:
-            raise RuntimeError("E1 requires AMP, one update per batch, and the original 100-epoch schedule")
+        if not self.amp or self.accumulate != 1 or self.args.epochs != self.required_schedule_epochs:
+            raise RuntimeError("The registered policy requires AMP, one update per batch, and its full schedule")
         if self.resume:
             state = torch.load(self.e1_output / "resume.pt", map_location="cpu", weights_only=False)
             if state["identity"] != self.e1["identity"] or state["epoch"] + 1 != self.start_epoch:
@@ -377,8 +380,12 @@ class E1Policy:
         count = sum(p.numel() for p in model.parameters() if p.requires_grad)
         if count != self.e1["parameters"]:
             raise ValueError(f"Parameter count changed: {count}")
-        if self.batch_size != 384 or self.args.workers != 4 or type(self.optimizer).__name__ != "AdamW":
-            raise ValueError("Resolved batch/workers/optimizer differs from E1")
+        if (
+            self.batch_size != self.required_global_batch
+            or self.args.workers != self.required_workers
+            or type(self.optimizer).__name__ != "AdamW"
+        ):
+            raise ValueError("Resolved batch/workers/optimizer differs from the registered policy")
         if any("teacher" in name.lower() or "dinov3" in name.lower() for name, _ in model.named_parameters()):
             raise ValueError("A Teacher unexpectedly entered the optimizer model")
         write_json(

@@ -1,0 +1,283 @@
+{
+  "schema_version": "d1-e2-cache-evidence-v1",
+  "status": "PASSED",
+  "e2_overall_complete": false,
+  "elapsed_seconds": 430.5814728997648,
+  "identity": {
+    "batch": 16,
+    "batch_policy": "sorted indices modulo world_size; replay original batches including tails on resume",
+    "code_commit": "6878f3db9ee6f18914b41518c8c4560eb75ebd84",
+    "contract": {
+      "dtype": "float16",
+      "expected_shape": [
+        384,
+        40,
+        40
+      ],
+      "feature_names": [
+        "block4",
+        "block8",
+        "block12"
+      ],
+      "model_id": "facebook/dinov3-vits16-pretrain-lvd1689m",
+      "output_layers": [
+        4,
+        8,
+        12
+      ],
+      "preprocessing_sha256": "a7f5465a821e5a6088ed2214b33bd43300c1141ce39e68755b6a95639837e3c7",
+      "schema_version": "d1-cache-v1",
+      "teacher_weights_sha256": "4610ad75edef83e75afdebf162d148dc628045ea6cbb83d67d4708c709c4f91d"
+    },
+    "data_manifest_sha256": "03093a46f25f9af6aca320bc8427b8f21fcfcc91e6ad1f6bdbff21bbe15f35ea",
+    "devices": "0,1,2,3,4,5",
+    "schema_version": "d1-e2-cache-run-v1",
+    "seed": 0,
+    "target_shard_bytes": 2147483648,
+    "tf32": false,
+    "world_size": 6
+  },
+  "split_summaries": {
+    "train": {
+      "safetensors": {
+        "cache_bytes": 23864781392,
+        "content_sha256": "0e25f7c0a03bdb87a3f3c5ba2253d6b116879ad2472d76cb85bb8f904bc319cd",
+        "contract_sha256": "6bfda0e13bde01001c3f3f2d72631a2401fb9a77b146d6fb2794303e379e47a7",
+        "part_files": [],
+        "sample_count": 6471,
+        "schema_version": "d1-cache-v1",
+        "shard_count": 12,
+        "tensor_bytes": 23854694400,
+        "tensor_count": 19413
+      },
+      "npy": {
+        "contract": {
+          "dtype": "float16",
+          "expected_shape": [
+            384,
+            40,
+            40
+          ],
+          "feature_names": [
+            "block4",
+            "block8",
+            "block12"
+          ],
+          "model_id": "facebook/dinov3-vits16-pretrain-lvd1689m",
+          "output_layers": [
+            4,
+            8,
+            12
+          ],
+          "preprocessing_sha256": "a7f5465a821e5a6088ed2214b33bd43300c1141ce39e68755b6a95639837e3c7",
+          "schema_version": "d1-cache-v1",
+          "teacher_weights_sha256": "4610ad75edef83e75afdebf162d148dc628045ea6cbb83d67d4708c709c4f91d"
+        },
+        "contract_sha256": "6bfda0e13bde01001c3f3f2d72631a2401fb9a77b146d6fb2794303e379e47a7",
+        "dtype": "float16",
+        "feature_names": [
+          "block4",
+          "block8",
+          "block12"
+        ],
+        "npy_bytes": 23855522688,
+        "sample_count": 6471,
+        "samples_manifest": "visdrone-train-samples.jsonl",
+        "samples_manifest_sha256": "06166a909bf16dfe9d961c6fd3be55f1436b0fb15202a09839f9dd9b518737d6",
+        "schema_version": "d1-npy-cache-v1",
+        "shape": [
+          3,
+          384,
+          40,
+          40
+        ],
+        "source_content_sha256": "0e25f7c0a03bdb87a3f3c5ba2253d6b116879ad2472d76cb85bb8f904bc319cd",
+        "source_index_sha256": "29f69b3a272ce541aac3737db22721bcac2d601208a9b08b5903660a774e2343",
+        "split": "visdrone-train"
+      }
+    },
+    "val": {
+      "safetensors": {
+        "cache_bytes": 2020997584,
+        "content_sha256": "feae762f7d9d5ccc726fbbc279b1c0a459f3e796ee30d15e228d9a4808f70c6a",
+        "contract_sha256": "6bfda0e13bde01001c3f3f2d72631a2401fb9a77b146d6fb2794303e379e47a7",
+        "part_files": [],
+        "sample_count": 548,
+        "schema_version": "d1-cache-v1",
+        "shard_count": 6,
+        "tensor_bytes": 2020147200,
+        "tensor_count": 1644
+      },
+      "npy": {
+        "contract": {
+          "dtype": "float16",
+          "expected_shape": [
+            384,
+            40,
+            40
+          ],
+          "feature_names": [
+            "block4",
+            "block8",
+            "block12"
+          ],
+          "model_id": "facebook/dinov3-vits16-pretrain-lvd1689m",
+          "output_layers": [
+            4,
+            8,
+            12
+          ],
+          "preprocessing_sha256": "a7f5465a821e5a6088ed2214b33bd43300c1141ce39e68755b6a95639837e3c7",
+          "schema_version": "d1-cache-v1",
+          "teacher_weights_sha256": "4610ad75edef83e75afdebf162d148dc628045ea6cbb83d67d4708c709c4f91d"
+        },
+        "contract_sha256": "6bfda0e13bde01001c3f3f2d72631a2401fb9a77b146d6fb2794303e379e47a7",
+        "dtype": "float16",
+        "feature_names": [
+          "block4",
+          "block8",
+          "block12"
+        ],
+        "npy_bytes": 2020217344,
+        "sample_count": 548,
+        "samples_manifest": "visdrone-val-samples.jsonl",
+        "samples_manifest_sha256": "0722b04c53a516a3db7d2a77397b75902b57ced50d50471d95b5c7747137e69f",
+        "schema_version": "d1-npy-cache-v1",
+        "shape": [
+          3,
+          384,
+          40,
+          40
+        ],
+        "source_content_sha256": "feae762f7d9d5ccc726fbbc279b1c0a459f3e796ee30d15e228d9a4808f70c6a",
+        "source_index_sha256": "2cb74b417a0b5ebf2cd260ddf27f35646af77f3e886188c95882b5c612538cd4",
+        "split": "visdrone-val"
+      }
+    }
+  },
+  "preflight_20260909": {
+    "train": {
+      "cache_bytes": 23855522688,
+      "content_sha256": "0e25f7c0a03bdb87a3f3c5ba2253d6b116879ad2472d76cb85bb8f904bc319cd",
+      "contract_sha256": "6bfda0e13bde01001c3f3f2d72631a2401fb9a77b146d6fb2794303e379e47a7",
+      "conversion_receipts": 12,
+      "format": "d1-npy-cache-v1",
+      "index_sha256": "4fccd194acf54d7df356c21e8c1a8c96a714002e70d0cc0ec4308eccb66c06dc",
+      "preflight_hashed_samples": [
+        "visdrone-train/0000002_00005_d_0000014",
+        "visdrone-train/0000135_00828_d_0000150",
+        "visdrone-train/0000195_01418_d_0000133",
+        "visdrone-train/0000239_06950_d_0000018",
+        "visdrone-train/0000281_00201_d_0000630",
+        "visdrone-train/0000325_05601_d_0000690",
+        "visdrone-train/0000352_00981_d_0000544",
+        "visdrone-train/9999937_00000_d_0000129",
+        "visdrone-train/9999942_00000_d_0000009",
+        "visdrone-train/9999942_00000_d_0000218",
+        "visdrone-train/9999945_00000_d_0000065",
+        "visdrone-train/9999950_00000_d_0000053",
+        "visdrone-train/9999951_00000_d_0000172",
+        "visdrone-train/9999953_00000_d_0000047",
+        "visdrone-train/9999955_00000_d_0000022",
+        "visdrone-train/9999955_00000_d_0000231",
+        "visdrone-train/9999956_00000_d_0000006",
+        "visdrone-train/9999960_00000_d_0000097",
+        "visdrone-train/9999962_00000_d_0000120",
+        "visdrone-train/9999965_00000_d_0000079",
+        "visdrone-train/9999969_00000_d_0000002",
+        "visdrone-train/9999972_00000_d_0000093",
+        "visdrone-train/9999977_00000_d_0000049",
+        "visdrone-train/9999981_00000_d_0000157",
+        "visdrone-train/9999982_00000_d_0000209",
+        "visdrone-train/9999984_00000_d_0000160",
+        "visdrone-train/9999990_00000_d_0000032",
+        "visdrone-train/9999997_00000_d_0000008",
+        "visdrone-train/9999998_00207_d_0000164",
+        "visdrone-train/9999998_00427_d_0000379",
+        "visdrone-train/9999999_00446_d_0000198",
+        "visdrone-train/9999999_00887_d_0000407"
+      ],
+      "report": "summary.json",
+      "sample_count": 6471,
+      "samples_manifest_sha256": "06166a909bf16dfe9d961c6fd3be55f1436b0fb15202a09839f9dd9b518737d6",
+      "shard_count": 0,
+      "split": "visdrone-train",
+      "teacher_weights_sha256": "4610ad75edef83e75afdebf162d148dc628045ea6cbb83d67d4708c709c4f91d",
+      "verification_scope": "all conversion receipts and file sizes; up to 32 spread-out sample hashes"
+    },
+    "val": {
+      "cache_bytes": 2020217344,
+      "content_sha256": "feae762f7d9d5ccc726fbbc279b1c0a459f3e796ee30d15e228d9a4808f70c6a",
+      "contract_sha256": "6bfda0e13bde01001c3f3f2d72631a2401fb9a77b146d6fb2794303e379e47a7",
+      "conversion_receipts": 6,
+      "format": "d1-npy-cache-v1",
+      "index_sha256": "d9f746b1aa8036ea75f1aa56d9f77275d4ee847b141ff251d5139050fcd92e28",
+      "preflight_hashed_samples": [
+        "visdrone-val/0000001_02999_d_0000005",
+        "visdrone-val/0000023_00300_d_0000009",
+        "visdrone-val/0000055_00000_d_0000109",
+        "visdrone-val/0000103_00180_d_0000026",
+        "visdrone-val/0000117_01326_d_0000088",
+        "visdrone-val/0000155_00401_d_0000001",
+        "visdrone-val/0000193_02029_d_0000114",
+        "visdrone-val/0000213_04405_d_0000244",
+        "visdrone-val/0000242_00500_d_0000002",
+        "visdrone-val/0000244_00001_d_0000001",
+        "visdrone-val/0000249_01514_d_0000005",
+        "visdrone-val/0000271_00801_d_0000378",
+        "visdrone-val/0000271_06401_d_0000404",
+        "visdrone-val/0000276_02801_d_0000521",
+        "visdrone-val/0000277_00401_d_0000541",
+        "visdrone-val/0000280_00201_d_0000613",
+        "visdrone-val/0000283_00601_d_0000677",
+        "visdrone-val/0000287_02801_d_0000773",
+        "visdrone-val/0000289_02601_d_0000824",
+        "visdrone-val/0000289_06401_d_0000843",
+        "visdrone-val/0000291_02601_d_0000881",
+        "visdrone-val/0000295_01600_d_0000029",
+        "visdrone-val/0000312_01001_d_0000419",
+        "visdrone-val/0000316_01601_d_0000527",
+        "visdrone-val/0000327_03401_d_0000728",
+        "visdrone-val/0000330_03001_d_0000815",
+        "visdrone-val/0000333_03725_d_0000020",
+        "visdrone-val/0000335_05097_d_0000069",
+        "visdrone-val/0000356_01961_d_0000639",
+        "visdrone-val/0000359_00785_d_0000703",
+        "visdrone-val/0000360_03137_d_0000729",
+        "visdrone-val/0000364_01765_d_0000782"
+      ],
+      "report": "summary.json",
+      "sample_count": 548,
+      "samples_manifest_sha256": "0722b04c53a516a3db7d2a77397b75902b57ced50d50471d95b5c7747137e69f",
+      "shard_count": 0,
+      "split": "visdrone-val",
+      "teacher_weights_sha256": "4610ad75edef83e75afdebf162d148dc628045ea6cbb83d67d4708c709c4f91d",
+      "verification_scope": "all conversion receipts and file sizes; up to 32 spread-out sample hashes"
+    }
+  },
+  "online_parity": {
+    "samples": 299,
+    "layer_comparisons": 897,
+    "max_abs": 0.0,
+    "rtol": 0.001,
+    "atol": 0.001,
+    "scope": "Original rank first and tail batch contexts"
+  },
+  "source_sha256": {
+    "cache-summary.json": "51aa1dcedd5a339994965443e78926b74500d978ec7fd4ae4bf83e54d017449f",
+    "visdrone-train-r00.json": "e76c837c14a6e7d8aa4bb23aa9326701fdacb78bb82795d3ffa29bdec2c86660",
+    "visdrone-train-r01.json": "45c6d7e22b7dc4b8bebb8506a668ac05f49bb4c361960eb6e2521146d171ff2b",
+    "visdrone-train-r02.json": "55f893ac6d3e100fc547951c9ede8033fd0fd8c5349af994932986ee0fa8abe4",
+    "visdrone-train-r03.json": "abe6777d4f572946f03e69028c6e68d4df76687a26440e73a090120355c602aa",
+    "visdrone-train-r04.json": "c43d41ab7b1a8f09372de4eae54f5558c9e7479c63e19911d450d798ddfb48e2",
+    "visdrone-train-r05.json": "d9cf31e2a96930fcbf6948db8d3bcd04eadfca8326cef326225a7bccf00988d9",
+    "visdrone-val-r00.json": "a2ee6128aabe23c3bb0026e52320fd52d51a8887829a2746dee986ee97c266ed",
+    "visdrone-val-r01.json": "e30e40a4e807ba303aa1cfdcc96f027fe0f52fdd86b5a8daada6e4443d37b26a",
+    "visdrone-val-r02.json": "dcea75deebcd00a31a07410fc62d0c426bbdd93c835e18764780c45839872f1e",
+    "visdrone-val-r03.json": "fef3e27610807aac73dfd39a2a0a9529634a544741b8acf4d1befed6b354d25e",
+    "visdrone-val-r04.json": "8abc063a9b15e28e6c7c8d4fb2bec6eef6350f6c8e0a5b27bc905dec8aa12e0e",
+    "visdrone-val-r05.json": "7edec8b5199d23d6521184b92a99a8a34214cafe0a0ae5a4beaac95f58efa109"
+  },
+  "test_dev_extracted": false,
+  "source_safetensors_preserved": true
+}
