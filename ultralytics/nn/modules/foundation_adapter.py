@@ -86,6 +86,31 @@ def _p5_projection(
     )
 
 
+def _double_axis(x: torch.Tensor, axis: int) -> torch.Tensor:
+    x = x.movedim(axis, -1)
+    previous = torch.cat((x[..., :1], x[..., :-1]), dim=-1)
+    following = torch.cat((x[..., 1:], x[..., -1:]), dim=-1)
+    # Preserve PyTorch's lerp order and align_corners=False endpoint replication.
+    even = previous + (x - previous) * 0.75
+    odd = x + (following - x) * 0.25
+    return torch.stack((even, odd), dim=-1).flatten(-2).movedim(-1, axis)
+
+
+class SeparableBilinear2x(nn.Module):
+    """Parameter-free deterministic BCHW bilinear 2x interpolation with align_corners=False."""
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Interpolate width then height without the deterministic index-put backward path."""
+        if x.ndim != 4 or not x.is_floating_point():
+            raise TypeError("Expected a floating-point BCHW tensor.")
+        if min(x.shape) <= 0:
+            raise ValueError("All input dimensions must be positive.")
+        work = x.float() if x.dtype in (torch.float16, torch.bfloat16) else x
+        result = _double_axis(_double_axis(work, -1), -2).to(x.dtype)
+        channels_last = x.is_contiguous(memory_format=torch.channels_last) and x.shape[1] >= 16
+        return result.contiguous(memory_format=torch.channels_last if channels_last else torch.contiguous_format)
+
+
 class DINOFeaturePyramidAdapter(nn.Module):
     """Convert aligned DINO transformer blocks into P3/P4/P5 candidate groups.
 
@@ -105,6 +130,7 @@ class DINOFeaturePyramidAdapter(nn.Module):
         norm_groups: int = 8,
         p5_mode: str = "conv",
         p5_bottleneck_channels: int | None = None,
+        p3_upsample_mode: str = "bilinear",
     ) -> None:
         super().__init__()
         self.in_channels = _positive_int("in_channels", in_channels)
@@ -121,6 +147,9 @@ class DINOFeaturePyramidAdapter(nn.Module):
             raise ValueError("p5_bottleneck_channels is only valid with p5_mode='bottleneck'.")
         self.p5_mode = p5_mode
         self.p5_bottleneck_channels = p5_bottleneck_channels
+        if not isinstance(p3_upsample_mode, str) or p3_upsample_mode not in {"bilinear", "separable_bilinear2x"}:
+            raise ValueError("p3_upsample_mode must be 'bilinear' or 'separable_bilinear2x'.")
+        self.p3_upsample_mode = p3_upsample_mode
 
         p3_channels, p4_channels, p5_channels = self.out_channels
         self.branches = nn.ModuleDict(
@@ -135,7 +164,9 @@ class DINOFeaturePyramidAdapter(nn.Module):
                                 stride=1,
                                 norm_groups=self.norm_groups,
                             ),
-                            nn.Upsample(scale_factor=2.0, mode="bilinear", align_corners=False),
+                            SeparableBilinear2x()
+                            if p3_upsample_mode == "separable_bilinear2x"
+                            else nn.Upsample(scale_factor=2.0, mode="bilinear", align_corners=False),
                         )
                         for name in self.source_names
                     }
@@ -219,4 +250,4 @@ class DINOFeaturePyramidAdapter(nn.Module):
         }
 
 
-__all__ = ["DINOFeaturePyramidAdapter"]
+__all__ = ["DINOFeaturePyramidAdapter", "SeparableBilinear2x"]

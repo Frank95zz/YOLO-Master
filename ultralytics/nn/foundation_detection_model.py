@@ -130,7 +130,7 @@ class D1FoundationDetectionModel(BaseModel):
         if unexpected_mixture:
             raise ValueError(f"unsupported latent_mixture keys: {unexpected_mixture}.")
         unexpected_adapter = sorted(
-            set(adapter_cfg) - {"pyramid_channels", "norm_groups", "p5_mode", "p5_bottleneck_channels"}
+            set(adapter_cfg) - {"pyramid_channels", "norm_groups", "p5_mode", "p5_bottleneck_channels", "p3_upsample_mode"}
         )
         if unexpected_adapter:
             raise ValueError(f"unsupported adapter keys: {unexpected_adapter}.")
@@ -142,6 +142,7 @@ class D1FoundationDetectionModel(BaseModel):
             norm_groups=adapter_cfg.get("norm_groups", 8),
             p5_mode=adapter_cfg.get("p5_mode", "conv"),
             p5_bottleneck_channels=adapter_cfg.get("p5_bottleneck_channels"),
+            p3_upsample_mode=adapter_cfg.get("p3_upsample_mode", "bilinear"),
         )
         strides = tuple(detect_cfg.get("strides", ()))
         if strides != _REQUIRED_STRIDES or strides != adapter.strides:

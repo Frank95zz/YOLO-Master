@@ -55,7 +55,9 @@ def load_contract(path=CONFIG):
     return value
 
 
-def model_config(variant):
+def model_config(variant, p3_upsample_mode="bilinear"):
+    if not isinstance(p3_upsample_mode, str) or p3_upsample_mode not in {"bilinear", "separable_bilinear2x"}:
+        raise ValueError("Unknown registered P3 upsample implementation")
     if variant not in VARIANTS:
         raise ValueError("Unknown P5 variant")
     expected = e1.model_config("B")
@@ -66,14 +68,15 @@ def model_config(variant):
         actual = YAML.load(MODEL_FILES[variant])
         if actual != expected:
             raise ValueError(f"{variant} changes fields outside its registered P5 architecture")
-        return actual
+    if p3_upsample_mode != "bilinear":
+        expected["adapter"]["p3_upsample_mode"] = p3_upsample_mode
     return expected
 
 
-def construct_model(variant):
+def construct_model(variant, p3_upsample_mode="bilinear"):
     with torch.random.fork_rng(devices=[]):
         torch.manual_seed(0)
-        model = D1FoundationDetectionModel(model_config(variant))
+        model = D1FoundationDetectionModel(model_config(variant, p3_upsample_mode))
         initialize_mixture_loss_ema_buffer(model)
     expected = VARIANTS[variant]
     if sum(p.numel() for p in model.parameters()) != expected["downstream_parameters"]:
@@ -116,21 +119,23 @@ def identity():
     return source
 
 
-def inspect():
+def inspect(p3_upsample_mode="bilinear"):
     load_contract()
     result = {}
     for variant in VARIANTS:
-        model = construct_model(variant)
+        model = construct_model(variant, p3_upsample_mode)
         result[variant] = {
             **VARIANTS[variant], "adapter_parameters": sum(p.numel() for p in model.adapter.parameters()),
             "feature_shapes": {"p3": [64, 80, 80], "p4": [128, 40, 40], "p5": [256, 20, 20]},
             "candidates_per_scale": 3, "teacher_in_training_model": False,
         }
-    return {"status": "configuration_ready", "training_started": False, "variants": result}
+    return {"status": "configuration_ready", "training_started": False,
+            "p3_upsample_mode": p3_upsample_mode, "variants": result}
 
 
-def prepare(source_workspace, workspace):
+def prepare(source_workspace, workspace, p3_upsample_mode="bilinear"):
     contract = load_contract()
+    model_config("BASE", p3_upsample_mode)
     current = identity()
     source_workspace, workspace = source_workspace.resolve(), workspace.resolve()
     if workspace == source_workspace or ROOT in workspace.parents or workspace == ROOT:
@@ -143,11 +148,11 @@ def prepare(source_workspace, workspace):
     inputs.mkdir(parents=True, exist_ok=False)
     models = {}
     for variant in VARIANTS:
-        model = construct_model(variant)
+        model = construct_model(variant, p3_upsample_mode)
         initial = paired_initial_state(model, tensors, variant)
         atomic_torch(inputs / f"initial-{variant}.pt", initial)
         path = inputs / f"model-{variant}.yaml"
-        YAML.save(path, model_config(variant))
+        YAML.save(path, model_config(variant, p3_upsample_mode))
         models[variant] = str(path)
     matrix = {
         "schema_version": SCHEMA, "identity": current, "contract": contract, "workspace": str(workspace),
@@ -159,6 +164,7 @@ def prepare(source_workspace, workspace):
         "parameters": {k: v["downstream_parameters"] for k, v in VARIANTS.items()},
         "input_hashes": {p.name: sha256_file(p) for p in inputs.iterdir() if p.is_file()},
         "training_started": False,
+        "p3_upsample_mode": p3_upsample_mode,
     }
     write_json(workspace / "matrix.json", matrix)
     return matrix
@@ -188,7 +194,9 @@ def load_matrix(workspace):
             raise ValueError(f"P5 prepared input changed: {name}")
     for variant in VARIANTS:
         path = workspace / "inputs" / f"model-{variant}.yaml"
-        if matrix["models"][variant] != str(path) or YAML.load(path) != model_config(variant):
+        if matrix["models"][variant] != str(path) or YAML.load(path) != model_config(
+            variant, matrix.get("p3_upsample_mode", "bilinear")
+        ):
             raise ValueError(f"P5 model registration changed: {variant}")
         if matrix["parameters"][variant] != VARIANTS[variant]["downstream_parameters"]:
             raise ValueError("P5 parameter registration changed")
@@ -267,7 +275,8 @@ def evaluate(args):
         raise ValueError("Unknown registered P5 run-id")
     variant = run_ids[args.run_id]
     spec = spec_for(matrix, variant)
-    return e1.evaluate_registered(args, matrix, spec, construct_model(variant), overrides_for(matrix, spec))
+    model = construct_model(variant, matrix.get("p3_upsample_mode", "bilinear"))
+    return e1.evaluate_registered(args, matrix, spec, model, overrides_for(matrix, spec))
 
 
 def main(argv=None):
@@ -281,7 +290,10 @@ def main(argv=None):
     parser.add_argument("--output", type=Path)
     parser.add_argument("--approved", action="store_true")
     parser.add_argument("--resume", action="store_true")
+    parser.add_argument("--p3-upsample-mode", choices=("bilinear", "separable_bilinear2x"))
     args = parser.parse_args(argv)
+    if args.p3_upsample_mode and args.command not in {"inspect", "prepare"}:
+        parser.error("P3 implementation is fixed during prepare; train/evaluate read the registered matrix")
     if args.command == "train" and not args.approved:
         parser.error("Explicit --approved is required; inspection/preparation never authorizes training")
     required = {
@@ -294,9 +306,9 @@ def main(argv=None):
     if args.workspace:
         args.workspace = args.workspace.resolve()
     if args.command == "inspect":
-        result = inspect()
+        result = inspect(args.p3_upsample_mode or "bilinear")
     elif args.command == "prepare":
-        result = prepare(args.source_workspace, args.workspace)
+        result = prepare(args.source_workspace, args.workspace, args.p3_upsample_mode or "bilinear")
     elif args.command == "train":
         result = train(args)
     else:

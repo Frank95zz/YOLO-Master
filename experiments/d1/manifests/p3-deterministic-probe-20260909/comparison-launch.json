@@ -1,0 +1,26 @@
+{
+  "batch_per_rank": 64,
+  "code_commit": "3dfe0f6e72022b62a2f169e693b4996ac0361f7e",
+  "deterministic": true,
+  "formal_training_resumed": false,
+  "measured_steps": 24,
+  "modes": [
+    "live",
+    "resident"
+  ],
+  "protected_hashes": {
+    "P1_P2_EXPERIMENT_PLAN.md": "fb96ca82b48e92b27aee413c4932343347911506a2f8827a57ad096bc5513047",
+    "P5-DW/resume.pt": "c7f08c3d98032f259c4be79e7d716bbbbf5f5e573ba44da7ff79596702907088",
+    "P5-DW/last.pt": "1343acb2798cccd97d4538576efec06e76475229c077e5087888b0616c18ce98"
+  },
+  "source_hashes": {
+    "bilinear2x_probe.py": "2d2033ba5ac425c1f8ae097116b1669f069b30ba143b76f97a048b9316a32b35",
+    "profile_p3_runtime.py": "9ff77222a4eb576a49037f57e66c5cacede04e0973f22f5ce8ed617e333d4277",
+    "run_p3_comparison.py": "7777cf937e68d008e8525fb3cf0b2c769f497ae9d97ff8ec363a3a39e0d878b1",
+    "test_bilinear2x_probe.py": "1e0a7af6f2865f19e93c139b29ec16f4d9740ed0f20818ffc6fe84776939c75c"
+  },
+  "publication_note": "Only protected artifact path prefixes were removed; measurements and hashes are unchanged.",
+  "started_unix": 1788894562.913464,
+  "warmup_steps": 6,
+  "world_size": 6
+}

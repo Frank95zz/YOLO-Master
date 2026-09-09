@@ -1,0 +1,56 @@
+{
+  "BASE": {
+    "live": {
+      "reference_ms": 441.9127553701401,
+      "reference_train_epoch_seconds_estimate": 136.55104140937328,
+      "separable_ms": 334.76720564067364,
+      "separable_train_epoch_seconds_estimate": 103.44306654296815,
+      "speedup": 1.320059874217406,
+      "time_reduction_percent": 24.245860393806197
+    },
+    "resident": {
+      "reference_ms": 424.1720363497734,
+      "reference_train_epoch_seconds_estimate": 131.06915923207998,
+      "separable_ms": 310.2673627436161,
+      "separable_train_epoch_seconds_estimate": 95.87261508777738,
+      "speedup": 1.367117806394224,
+      "time_reduction_percent": 26.853414144498487
+    }
+  },
+  "BN64": {
+    "live": {
+      "reference_ms": 435.4362189769745,
+      "reference_train_epoch_seconds_estimate": 134.54979166388512,
+      "separable_ms": 336.5815859287977,
+      "separable_train_epoch_seconds_estimate": 104.0037100519985,
+      "speedup": 1.2937018457958334,
+      "time_reduction_percent": 22.70243694482478
+    },
+    "resident": {
+      "reference_ms": 418.2884730398655,
+      "reference_train_epoch_seconds_estimate": 129.25113816931844,
+      "separable_ms": 311.88904121518135,
+      "separable_train_epoch_seconds_estimate": 96.37371373549104,
+      "speedup": 1.341145143831059,
+      "time_reduction_percent": 25.436854869903048
+    }
+  },
+  "DW": {
+    "live": {
+      "reference_ms": 437.0296970009804,
+      "reference_train_epoch_seconds_estimate": 135.04217637330294,
+      "separable_ms": 339.6338075399399,
+      "separable_train_epoch_seconds_estimate": 104.94684652984142,
+      "speedup": 1.2867673573679412,
+      "time_reduction_percent": 22.285874422126973
+    },
+    "resident": {
+      "reference_ms": 421.2692528963089,
+      "reference_train_epoch_seconds_estimate": 130.17219914495945,
+      "separable_ms": 313.4742695838213,
+      "separable_train_epoch_seconds_estimate": 96.86354930140078,
+      "speedup": 1.3438718701078711,
+      "time_reduction_percent": 25.588144060212304
+    }
+  }
+}

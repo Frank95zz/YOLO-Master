@@ -1,0 +1,34 @@
+[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[33ms[0m[32m.[0m[32m.[0m[32m.[0m[33ms[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[33ms[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[33ms[0m[33ms[0m[32m [ 75%]
+[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m.[0m[32m                                                 [100%][0m
+============================= slowest 30 durations =============================
+2.17s call     tests/test_d1_p5_ablation.py::test_prepare_and_provenance_checks
+2.03s call     tests/test_d1_p5_ablation.py::test_paired_initialization_copies_all_unchanged_tensors
+1.06s call     tests/test_d1_p5_ablation.py::test_detection_loss_optimizer_and_strict_checkpoint_round_trip[DW]
+0.66s call     tests/test_latent_mixture.py::test_yolo26_latent_model_deepcopy_after_stride_probe
+0.64s call     tests/test_latent_mixture.py::test_latent_detection_model_load_skips_non_tensor_extra_state
+0.40s call     tests/test_latent_mixture.py::test_yolo26_latent_yaml_builds_and_runs
+0.37s call     tests/test_latent_mixture.py::test_yolo26_latent_initperturb_lowtemp_yaml_builds_and_runs
+0.32s call     tests/test_d1_p5_ablation.py::test_detection_loss_optimizer_and_strict_checkpoint_round_trip[BN64]
+0.28s call     tests/test_latent_mixture.py::test_yolo26_latent_initperturb_anneal_yaml_builds_and_runs
+0.26s call     tests/test_latent_mixture.py::test_yolo26_latent_initperturb_yaml_builds_and_runs
+0.24s call     tests/test_d1_wp3_foundation_adapter.py::test_candidates_feed_three_single_scale_latent_mixtures
+0.24s call     tests/test_d1_p5_ablation.py::test_invalid_initial_state_rejected[shape]
+0.23s call     tests/test_d1_wp6_latent_aux.py::test_disabled_latent_aux_is_exact_graph_connected_zero
+0.23s call     tests/test_d1_wp4_foundation_detection_model.py::test_native_e2e_loss_and_composite_aux_backward
+0.20s call     tests/test_d1_wp3_foundation_adapter.py::test_formal_shapes_keys_and_candidate_order
+0.19s call     tests/test_d1_wp4_foundation_detection_model.py::test_checkpoint_contains_only_downstream_state_and_strictly_round_trips
+0.18s call     tests/test_d1_wp3_foundation_adapter.py::test_all_branches_and_inputs_receive_gradients
+0.16s call     tests/test_d1_p5_ablation.py::test_trainer_model_factory_preserves_new_architecture_and_resume[BN64]
+0.16s call     tests/test_d1_wp6_latent_aux.py::test_zero_global_latent_gain_disables_only_the_applied_aux
+0.16s call     tests/test_d1_p5_ablation.py::test_formal_shapes_and_all_branch_gradients[BN64]
+0.15s call     tests/test_d1_wp3_foundation_adapter.py::test_forward_is_deterministic_and_state_dict_round_trips
+0.15s call     tests/test_d1_p5_ablation.py::test_trainer_model_factory_preserves_new_architecture_and_resume[DW]
+0.15s call     tests/test_d1_p5_ablation.py::test_invalid_initial_state_rejected[nonfinite]
+0.14s call     tests/test_d1_p5_ablation.py::test_formal_shapes_and_all_branch_gradients[DW]
+0.13s call     tests/test_d1_p5_ablation.py::test_invalid_initial_state_rejected[missing]
+0.13s call     tests/test_d1_wp6_latent_aux.py::test_enabled_latent_aux_reaches_every_router
+0.11s call     tests/test_d1_p5_ablation.py::test_inspect_never_launches_training
+0.10s call     tests/test_d1_wp6_latent_aux.py::test_new_forward_step_replaces_publications_without_accumulation
+0.09s call     tests/test_d1_wp4_foundation_detection_model.py::test_eval_forward_decodes_with_explicit_strides
+0.08s call     tests/test_d1_wp4_foundation_detection_model.py::test_training_forward_connects_adapter_mixtures_and_detect
+[32m[32m[1m91 passed[0m, [33m5 skipped[0m[32m in 13.10s[0m[0m
