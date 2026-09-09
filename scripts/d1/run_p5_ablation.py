@@ -11,7 +11,8 @@ from pathlib import Path
 import torch
 
 from scripts.d1 import run_p1p2 as e1
-from scripts.d1.p1p2_runtime import E1FrozenTrainer, atomic_torch, load_initial_tensors
+from scripts.d1.ema import EMA_IMPLEMENTATIONS, configure_d1_ema, validate_ema_implementation
+from scripts.d1.p1p2_runtime import E1FrozenTrainer, atomic_torch, load_initial_tensors, rank_buffer_policy
 from scripts.d1.run_wp8_p1_control import LOCKED_TRAIN, write_json
 from ultralytics.nn.foundation.cache import sha256_file
 from ultralytics.nn.foundation_detection_model import D1FoundationDetectionModel
@@ -119,7 +120,8 @@ def identity():
     return source
 
 
-def inspect(p3_upsample_mode="bilinear"):
+def inspect(p3_upsample_mode="bilinear", ema_implementation="scalar-v1"):
+    validate_ema_implementation(ema_implementation)
     load_contract()
     result = {}
     for variant in VARIANTS:
@@ -130,10 +132,11 @@ def inspect(p3_upsample_mode="bilinear"):
             "candidates_per_scale": 3, "teacher_in_training_model": False,
         }
     return {"status": "configuration_ready", "training_started": False,
-            "p3_upsample_mode": p3_upsample_mode, "variants": result}
+            "p3_upsample_mode": p3_upsample_mode, "ema_implementation": ema_implementation, "variants": result}
 
 
-def prepare(source_workspace, workspace, p3_upsample_mode="bilinear"):
+def prepare(source_workspace, workspace, p3_upsample_mode="bilinear", ema_implementation="scalar-v1"):
+    validate_ema_implementation(ema_implementation)
     contract = load_contract()
     model_config("BASE", p3_upsample_mode)
     current = identity()
@@ -165,6 +168,9 @@ def prepare(source_workspace, workspace, p3_upsample_mode="bilinear"):
         "input_hashes": {p.name: sha256_file(p) for p in inputs.iterdir() if p.is_file()},
         "training_started": False,
         "p3_upsample_mode": p3_upsample_mode,
+        "ema_implementation": ema_implementation,
+        "resume_temperature_policy": "epoch-boundary-v1",
+        "resume_rank_buffers": True,
     }
     write_json(workspace / "matrix.json", matrix)
     return matrix
@@ -173,6 +179,11 @@ def prepare(source_workspace, workspace, p3_upsample_mode="bilinear"):
 def load_matrix(workspace):
     workspace = workspace.resolve()
     matrix = e1.read_json(workspace / "matrix.json")
+    validate_ema_implementation(matrix.get("ema_implementation", "scalar-v1"))
+    if type(matrix.get("resume_rank_buffers", False)) is not bool:
+        raise ValueError("P5 per-rank resume buffer policy must be boolean")
+    if matrix.get("resume_temperature_policy", "legacy") not in ("legacy", "epoch-boundary-v1"):
+        raise ValueError("Unknown P5 resume temperature policy")
     if matrix["schema_version"] != SCHEMA or matrix["contract"] != load_contract():
         raise ValueError("P5 contract changed")
     e1.verify_source_identity(matrix["identity"], identity())
@@ -208,7 +219,8 @@ def spec_for(matrix, variant):
         raise ValueError("Unknown P5 variant")
     workspace = Path(matrix["workspace"])
     run_id = f"P5-{variant}"
-    return {
+    implementation = validate_ema_implementation(matrix.get("ema_implementation", "scalar-v1"))
+    spec = {
         "identity": {
             "source": matrix["identity"], "run_id": run_id, "variant": variant,
             "data_receipt_sha256": matrix["data_receipt_sha256"],
@@ -220,6 +232,23 @@ def spec_for(matrix, variant):
         "output": str(workspace / "reports" / run_id),
         "initial_state": str(workspace / "inputs" / f"initial-{variant}.pt"),
     }
+    # Absent fields in old matrices retain their original scalar resume identity.
+    if "ema_implementation" in matrix:
+        spec["identity"]["ema_implementation"] = implementation
+    spec["ema_implementation"] = implementation
+    policy = matrix.get("resume_temperature_policy", "legacy")
+    if policy not in ("legacy", "epoch-boundary-v1"):
+        raise ValueError("Unknown P5 resume temperature policy")
+    spec["resume_temperature_policy"] = policy
+    buffers = matrix.get("resume_rank_buffers", False)
+    if type(buffers) is not bool:
+        raise ValueError("P5 per-rank resume buffer policy must be boolean")
+    spec["resume_rank_buffers"] = buffers
+    if "resume_rank_buffers" in matrix:
+        spec["identity"]["resume_rank_buffers"] = buffers
+    if "resume_temperature_policy" in matrix:
+        spec["identity"]["resume_temperature_policy"] = policy
+    return spec
 
 
 def overrides_for(matrix, spec):
@@ -235,6 +264,23 @@ class P5FrozenTrainer(E1FrozenTrainer):
     """Use unchanged finite-update, AMP, scheduling, telemetry and exact-resume policies."""
 
     evaluation_module = "scripts.d1.run_p5_ablation"
+
+    def _setup_train(self):
+        rank_buffer_policy(self.e1)
+        implementation = validate_ema_implementation(self.e1.get("ema_implementation", "scalar-v1"))
+        recorded = self.e1["identity"].get("ema_implementation", "scalar-v1")
+        if implementation != recorded:
+            raise ValueError("D1 EMA implementation differs from the registered run identity")
+        policy = self.e1.get("resume_temperature_policy", "legacy")
+        if policy not in ("legacy", "epoch-boundary-v1") or policy != self.e1["identity"].get(
+            "resume_temperature_policy", "legacy"
+        ):
+            raise ValueError("P5 resume temperature policy differs from the registered run identity")
+        super()._setup_train()
+        self.ema = configure_d1_ema(self.ema, self.model, implementation)
+        if policy == "epoch-boundary-v1" and self.resume and self.start_epoch > 0:
+            # The shared controller skips annealing when epoch == start_epoch, including on resume.
+            self.mixture_controller.anneal_temperature()
 
 
 def train(args):
@@ -291,7 +337,10 @@ def main(argv=None):
     parser.add_argument("--approved", action="store_true")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--p3-upsample-mode", choices=("bilinear", "separable_bilinear2x"))
+    parser.add_argument("--ema-implementation", choices=EMA_IMPLEMENTATIONS)
     args = parser.parse_args(argv)
+    if args.ema_implementation and args.command not in {"inspect", "prepare"}:
+        parser.error("EMA implementation is fixed during prepare; train/evaluate read the registered matrix")
     if args.p3_upsample_mode and args.command not in {"inspect", "prepare"}:
         parser.error("P3 implementation is fixed during prepare; train/evaluate read the registered matrix")
     if args.command == "train" and not args.approved:
@@ -306,9 +355,10 @@ def main(argv=None):
     if args.workspace:
         args.workspace = args.workspace.resolve()
     if args.command == "inspect":
-        result = inspect(args.p3_upsample_mode or "bilinear")
+        result = inspect(args.p3_upsample_mode or "bilinear", args.ema_implementation or "scalar-v1")
     elif args.command == "prepare":
-        result = prepare(args.source_workspace, args.workspace, args.p3_upsample_mode or "bilinear")
+        result = prepare(args.source_workspace, args.workspace, args.p3_upsample_mode or "bilinear",
+                         args.ema_implementation or "scalar-v1")
     elif args.command == "train":
         result = train(args)
     else:

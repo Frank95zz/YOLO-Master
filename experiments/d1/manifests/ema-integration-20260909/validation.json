@@ -1,0 +1,58 @@
+{
+  "schema": "d1-ema-validation-v1",
+  "date": "2026-09-09",
+  "record_type": "summary_of_observed_command_results",
+  "base_commit": "6f88a422f426b5fe9bd013aa25a7ef6a95570231",
+  "tested_worktree_changes_committed": false,
+  "formal_training_started": false,
+  "regression": {
+    "command": "CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 python -m pytest tests/test_d1*.py tests/test_latent_mixture.py tests/test_foundation_checkpoint.py tests/test_ddp_checkpoint_coordination.py tests/test_checkpoint_compat.py -q --tb=short --color=no",
+    "passed": 520,
+    "skipped": 58,
+    "failed": 0,
+    "seconds": 52.58
+  },
+  "cuda_unit_tests": {
+    "command": "CUDA_VISIBLE_DEVICES=5 OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 python -m pytest tests/test_d1_ema.py -q --tb=short --color=no",
+    "passed": 34,
+    "skipped": 0,
+    "failed": 0,
+    "seconds": 9.31,
+    "overflow_test_scope": "Actual optimizer/scaler guard with a single-rank finite-flag stub, not multi-rank fault injection"
+  },
+  "static_checks": {
+    "py_compile": "passed for all five implementation/entry/test files",
+    "ruff_check": "passed for all five implementation/entry/test files",
+    "ruff_format": "passed for the three new Python files; unrelated existing formatting preserved",
+    "codespell": "passed for the three new Python files with the domain acronym mot allowed",
+    "git_diff_check": "passed"
+  },
+  "runtime_environment": {
+    "python": "3.11.15",
+    "torch": "2.6.0+cu124",
+    "ultralytics": "8.4.101",
+    "gpu": "6 x NVIDIA A40",
+    "cpu_count": 128,
+    "requested_workers_per_rank": 4,
+    "effective_workers_per_rank_in_subset": 2
+  },
+  "repository_static_baseline_comparison": {
+    "base_commit": "6f88a422f426b5fe9bd013aa25a7ef6a95570231",
+    "ruff_errors": {"baseline": 8, "current": 8},
+    "files_requiring_formatting": {"baseline": 27, "current": 27},
+    "codespell_output_lines": {"baseline": 85, "current": 85},
+    "full_repository_checks_clean": false,
+    "unrelated_files_modified_to_fix_lint": false
+  },
+  "protected_file_sha256": {
+    "existing_P1_P2_EXPERIMENT_PLAN.md": "fb96ca82b48e92b27aee413c4932343347911506a2f8827a57ad096bc5513047",
+    "old_P5_DW_last.pt": "1343acb2798cccd97d4538576efec06e76475229c077e5087888b0616c18ce98",
+    "old_P5_DW_resume.pt": "c7f08c3d98032f259c4be79e7d716bbbbf5f5e573ba44da7ff79596702907088"
+  },
+  "limitations": [
+    "Small-subset complete loops, not complete COCO epochs or an AP result",
+    "EMA is exact between implementations for matched continuous and resumed execution paths",
+    "Cross-process resume differs from continuous training by the same amount for both EMA implementations",
+    "No new production throughput, ETA or P1 GPU-hours reduction claim"
+  ]
+}

@@ -78,6 +78,36 @@ def load_resume_tensors(model, state, *, variant):
     model.load_state_dict(state, strict=True)
 
 
+def rank_buffer_policy(spec):
+    """Preserve legacy checkpoints unless per-rank buffer restoration was explicitly registered."""
+    enabled = spec.get("resume_rank_buffers", False)
+    recorded = spec["identity"].get("resume_rank_buffers", False)
+    if type(enabled) is not bool or type(recorded) is not bool or enabled != recorded:
+        raise ValueError("Per-rank resume buffer policy differs from the registered run identity")
+    return enabled
+
+
+def rank_buffer_state(model):
+    """Keep rank-local statistics when DDP deliberately does not broadcast buffers."""
+    return {name: value.detach().cpu().clone() for name, value in model.named_buffers()}
+
+
+def restore_rank_buffers(model, state):
+    """Validate the entire snapshot before copying any rank-local buffer."""
+    buffers = dict(model.named_buffers())
+    if not isinstance(state, dict) or state.keys() != buffers.keys():
+        raise ValueError("Per-rank resume buffer keys differ")
+    for name, target in buffers.items():
+        source = state[name]
+        if not isinstance(source, torch.Tensor) or source.shape != target.shape or source.dtype != target.dtype:
+            raise ValueError(f"Per-rank resume buffer metadata differs: {name}")
+        if not bool(torch.isfinite(source).all()):
+            raise ValueError(f"Non-finite per-rank resume buffer: {name}")
+    with torch.no_grad():
+        for name, target in buffers.items():
+            target.copy_(state[name])
+
+
 def clean_child_env() -> dict:
     """A single-GPU evaluator must not inherit its parent's torchrun rank."""
     env = os.environ.copy()
@@ -287,6 +317,7 @@ class E1Policy:
         return model
 
     def _setup_train(self):
+        restore_local_buffers = rank_buffer_policy(self.e1)
         super()._setup_train()
         if not self.amp or self.accumulate != 1 or self.args.epochs != self.required_schedule_epochs:
             raise RuntimeError("The registered policy requires AMP, one update per batch, and its full schedule")
@@ -307,6 +338,9 @@ class E1Policy:
             for name, value in state["criterion"].items():
                 setattr(native, name, value)
             rank_state = state["ranks"][self.e1_rank]
+            if restore_local_buffers:
+                restore_rank_buffers(model, rank_state.get("model_buffers"))
+                restore_rank_buffers(self.ema.ema, rank_state.get("ema_buffers"))
             restore_rng(rank_state["rng"], self.device)
             generator = getattr(self.train_loader, "generator", None)
             if generator is not None and rank_state["loader_generator"] is not None:
@@ -513,6 +547,9 @@ class E1Policy:
             "rng": rng_state(self.device),
             "loader_generator": generator.get_state() if generator is not None else None,
         }
+        if rank_buffer_policy(self.e1):
+            local["model_buffers"] = rank_buffer_state(unwrap_model(self.model))
+            local["ema_buffers"] = rank_buffer_state(self.ema.ema)
         ranks = [None] * self.world_size
         dist.all_gather_object(ranks, local)
         error = None

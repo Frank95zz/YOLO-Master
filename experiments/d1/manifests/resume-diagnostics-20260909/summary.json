@@ -1,0 +1,202 @@
+{
+  "base_commit": "6f88a422f426b5fe9bd013aa25a7ef6a95570231",
+  "conclusion": "Per-rank buffer restoration fixed; identical first local gradients diverge only after DDP/NCCL reduction. Strict bitwise resume remains unproven and fails this diagnostic.",
+  "formal_training_started": false,
+  "github_pushed": false,
+  "priming_control": {
+    "adopted_in_formal_runner": false,
+    "final_rank0_model_max_abs": 0.0005830642767250538,
+    "first_reduced_different_tensors_rank0": 160,
+    "optimizer_updates_during_priming": 0,
+    "reduced_gradients_exact": false,
+    "state_preserved": true,
+    "workspace_basename": "resume-diagnostics-20260909-c"
+  },
+  "recipe": {
+    "amp_scale": 16,
+    "ema": "foreach-v1",
+    "epochs_executed": 2,
+    "global_batch": 384,
+    "per_rank_batch": 64,
+    "resume_rank_buffers": true,
+    "resume_temperature_policy": "epoch-boundary-v1",
+    "schedule_epochs": 100,
+    "seed": 0,
+    "train_images": 389,
+    "val_images": 13,
+    "workers_effective_per_rank": 2,
+    "workers_requested_per_rank": 4,
+    "world_size": 6
+  },
+  "schema": "d1-resume-diagnostics-summary-v1",
+  "source_hashes": {
+    "scripts/d1/check_ema_runtime.py": "73e7a0d415240d04484702b57da2070858a8e9ddd6c5f8e769bcb1e8daeeecbd",
+    "scripts/d1/diagnose_resume.py": "f4bc30042373d6a5a46ac9e26d3632349574cd38ec8ef80f896906923169619b",
+    "scripts/d1/ema.py": "d62824608416e8ed0780a1442e0ffde72b3576030a9f0c6a7a5b7bb302cfe828",
+    "scripts/d1/p1p2_runtime.py": "272eef73856984bdd3046ff4cbcc492d4fc191872470da20c34e0c5d96262b1d",
+    "scripts/d1/run_p5_ablation.py": "b3954428cc9efe3d4c26ed22999053845a12c681279165c23eef65a5d31c9b4a",
+    "tests/test_d1_resume_diagnostics.py": "b19659a17bb83893f9632f98ad9a81e64027848b0d54dba33c67fbac549bbcfc"
+  },
+  "unchanged_continuous_control": {
+    "all_exact": true,
+    "batches": 2,
+    "ranks": 6,
+    "reference_workspace": "resume-diagnostics-20260909-a",
+    "state_fields": [
+      "model",
+      "optimizer",
+      "scaler",
+      "scheduler",
+      "ema",
+      "ema_updates",
+      "optimizer_steps",
+      "criterion",
+      "training"
+    ],
+    "variant": "BASE"
+  },
+  "variants": {
+    "BASE": {
+      "checkpoints": {
+        "continuous": {
+          "ema_updates": 4,
+          "epoch": 2,
+          "sha256": "ba06be55d17b0cdf8e825a97c281a0a94b4012b1a9a73f70ec5e7b30e86aac31",
+          "strict_load": true,
+          "teacher_absent": true
+        },
+        "resume": {
+          "ema_updates": 4,
+          "epoch": 2,
+          "sha256": "b038ce93b9b15b2916739d49d41b3b58b0dffff22e214e92e8c23cd350ae0c83",
+          "strict_load": true,
+          "teacher_absent": true
+        },
+        "stop": {
+          "ema_updates": 2,
+          "epoch": 1,
+          "sha256": "a46602188f349f0a03eeef40ce41ac4307e681a732125ae55a9a69f59a4e5c9a",
+          "strict_load": true,
+          "teacher_absent": true
+        }
+      },
+      "diagnostics_sha256": "696a4457cbc4f4cbcb88c4ea8250f8cdcad488c7171444270169349aa9199cb8",
+      "epoch2_after_two_updates_rank0_floating_model_max_abs": 0.0009742714464664459,
+      "epoch2_after_two_updates_rank0_floating_model_relative_l2": 8.729077439510312e-06,
+      "first_batch_all_rank_before_exact": true,
+      "first_batch_all_rank_forward_exact": true,
+      "first_batch_all_rank_input_exact": true,
+      "first_batch_all_rank_local_gradients_exact": true,
+      "first_difference_by_rank": {
+        "0": "reduced_gradients",
+        "1": "reduced_gradients",
+        "2": "reduced_gradients",
+        "3": "reduced_gradients",
+        "4": "reduced_gradients",
+        "5": "reduced_gradients"
+      },
+      "first_scaled_gradient_max_abs": 6.103515625e-05,
+      "first_unscaled_gradient_max_abs": 3.814697265625e-06,
+      "strict_continuous_resume_equal": false,
+      "workspace_basename": "resume-diagnostics-20260909-d-base"
+    },
+    "BN64": {
+      "checkpoints": {
+        "continuous": {
+          "ema_updates": 4,
+          "epoch": 2,
+          "sha256": "c5d80c644b8de753b12c6df7f4c81a107d2fc083ee89d9091950b3234a0a63f3",
+          "strict_load": true,
+          "teacher_absent": true
+        },
+        "resume": {
+          "ema_updates": 4,
+          "epoch": 2,
+          "sha256": "32a83a2fc82706f10580f79ad9bb48607eedd4ae1e2fda272d031520e71ce12e",
+          "strict_load": true,
+          "teacher_absent": true
+        },
+        "stop": {
+          "ema_updates": 2,
+          "epoch": 1,
+          "sha256": "fadc58764e27ffebedf5aceb07863605779ab8bbf2328729e6da2c6c9323d50a",
+          "strict_load": true,
+          "teacher_absent": true
+        }
+      },
+      "diagnostics_sha256": "8a743008b239eb08f800cd29ea56c2fe4a31589bdf3e539f9fbcf6540e21c8d7",
+      "epoch2_after_two_updates_rank0_floating_model_max_abs": 0.0007362670148722827,
+      "epoch2_after_two_updates_rank0_floating_model_relative_l2": 8.128546433308814e-06,
+      "first_batch_all_rank_before_exact": true,
+      "first_batch_all_rank_forward_exact": true,
+      "first_batch_all_rank_input_exact": true,
+      "first_batch_all_rank_local_gradients_exact": true,
+      "first_difference_by_rank": {
+        "0": "reduced_gradients",
+        "1": "reduced_gradients",
+        "2": "reduced_gradients",
+        "3": "reduced_gradients",
+        "4": "reduced_gradients",
+        "5": "reduced_gradients"
+      },
+      "first_scaled_gradient_max_abs": 3.0517578125e-05,
+      "first_unscaled_gradient_max_abs": 1.9073486328125e-06,
+      "strict_continuous_resume_equal": false,
+      "workspace_basename": "resume-diagnostics-20260909-d-bn64"
+    },
+    "DW": {
+      "checkpoints": {
+        "continuous": {
+          "ema_updates": 4,
+          "epoch": 2,
+          "sha256": "21c500d08bfc09457d0442f7dd82e2b0e9986364011456491249cedda8823429",
+          "strict_load": true,
+          "teacher_absent": true
+        },
+        "resume": {
+          "ema_updates": 4,
+          "epoch": 2,
+          "sha256": "12b00c5860ebe2a99f0a29649beb9afa40f7508df14fc1d3129a32a4341273a0",
+          "strict_load": true,
+          "teacher_absent": true
+        },
+        "stop": {
+          "ema_updates": 2,
+          "epoch": 1,
+          "sha256": "b15556cd7e524b56e2602ed478660f59819b2e4d3751e3f6a736e7c430396e69",
+          "strict_load": true,
+          "teacher_absent": true
+        }
+      },
+      "diagnostics_sha256": "298a8d39322d432539a22ab83d19c240596ae2f346553c8c808c1057741b60f0",
+      "epoch2_after_two_updates_rank0_floating_model_max_abs": 0.0016008168458938599,
+      "epoch2_after_two_updates_rank0_floating_model_relative_l2": 1.4440242402838459e-05,
+      "first_batch_all_rank_before_exact": true,
+      "first_batch_all_rank_forward_exact": true,
+      "first_batch_all_rank_input_exact": true,
+      "first_batch_all_rank_local_gradients_exact": true,
+      "first_difference_by_rank": {
+        "0": "reduced_gradients",
+        "1": "reduced_gradients",
+        "2": "reduced_gradients",
+        "3": "reduced_gradients",
+        "4": "reduced_gradients",
+        "5": "reduced_gradients"
+      },
+      "first_scaled_gradient_max_abs": 1.52587890625e-05,
+      "first_unscaled_gradient_max_abs": 9.5367431640625e-07,
+      "strict_continuous_resume_equal": false,
+      "workspace_basename": "resume-diagnostics-20260909-d-dw"
+    }
+  },
+  "versions": {
+    "cuda": "12.4",
+    "nccl": [
+      2,
+      21,
+      5
+    ],
+    "torch": "2.6.0+cu124"
+  },
+  "working_tree_clean": false
+}

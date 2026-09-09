@@ -159,6 +159,9 @@ def test_suite_order_and_no_overwrite(tmp_path, monkeypatch):
     matrix = {
         "identity": {"commit": "fixed"},
         "p3_upsample_mode": MODE,
+        "ema_implementation": "foreach-v1",
+        "resume_temperature_policy": "epoch-boundary-v1",
+        "resume_rank_buffers": True,
         "parameters": {v: p5.VARIANTS[v]["downstream_parameters"] for v in suite.ORDER},
         "contract": p5.load_contract(),
     }
@@ -202,6 +205,10 @@ def test_suite_order_and_no_overwrite(tmp_path, monkeypatch):
     monkeypatch.setattr(suite.P5Pipeline, "child_run", fake_child)
     pipeline = suite.P5Pipeline(SimpleNamespace(workspace=tmp_path, approved=True))
     pipeline.execute()
+    launch = suite.e1.read_json(tmp_path / "suite-launch.json")
+    assert launch["ema_implementation"] == "foreach-v1"
+    assert launch["resume_temperature_policy"] == "epoch-boundary-v1"
+    assert launch["resume_rank_buffers"] is True
     assert labels == [
         name for v in suite.ORDER for name in (f"P5-{v}", f"P5-{v}-final-last", f"P5-{v}-final-standard-best")
     ]

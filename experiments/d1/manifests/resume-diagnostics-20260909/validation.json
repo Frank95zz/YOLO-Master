@@ -1,0 +1,59 @@
+{
+  "d1_processes": [],
+  "diagnostic_epochs": {
+    "amp_retries_max": 0,
+    "completed_optimizer_steps_max": 4,
+    "rank_epoch_files": 72
+  },
+  "formal_launch_marker_exists": false,
+  "github_pushed": false,
+  "gpu_at_end": [
+    "0, 266 MiB, 10 %",
+    "1, 266 MiB, 10 %",
+    "2, 266 MiB, 10 %",
+    "3, 266 MiB, 10 %",
+    "4, 266 MiB, 10 %",
+    "5, 266 MiB, 10 %"
+  ],
+  "protected": {
+    "experiment_plan": {
+      "sha256": "fb96ca82b48e92b27aee413c4932343347911506a2f8827a57ad096bc5513047",
+      "unchanged": true
+    },
+    "historical_dw_last": {
+      "sha256": "1343acb2798cccd97d4538576efec06e76475229c077e5087888b0616c18ce98",
+      "unchanged": true
+    },
+    "historical_dw_resume": {
+      "sha256": "c7f08c3d98032f259c4be79e7d716bbbbf5f5e573ba44da7ff79596702907088",
+      "unchanged": true
+    }
+  },
+  "schema": "d1-resume-diagnostics-validation-v1",
+  "static_checks": {
+    "codespell_changed_python": "passed",
+    "git_diff_check": "passed",
+    "py_compile": "passed",
+    "ruff_check_changed_python": "passed",
+    "ruff_format_new_python": "passed",
+    "whole_repo_baseline_lint_not_repaired": true
+  },
+  "tests": {
+    "cuda-unit": {
+      "errors": 0,
+      "failures": 0,
+      "junit_sha256": "dcfc96319a39a6711306e8a2c2129732469dc1959df1350ee3a4ad8b36c7103f",
+      "passed": 63,
+      "skipped": 0,
+      "tests": 63
+    },
+    "regression": {
+      "errors": 0,
+      "failures": 0,
+      "junit_sha256": "0cd713dfdb495a72f981125abb5d07f937dd0e176c4bb82f492f29e405a24939",
+      "passed": 549,
+      "skipped": 58,
+      "tests": 607
+    }
+  }
+}

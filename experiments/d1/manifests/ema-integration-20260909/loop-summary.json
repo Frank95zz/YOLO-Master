@@ -1,0 +1,116 @@
+{
+  "formal_training": false,
+  "results": {
+    "BASE": {
+      "amp_retries": 0,
+      "continuous_vs_resumed": {
+        "foreach-v1": {
+          "bitwise_equal": false,
+          "model_max_abs": 0.0009742714464664459,
+          "model_relative_l2": 8.729077439510312e-06
+        },
+        "scalar-v1": {
+          "bitwise_equal": false,
+          "model_max_abs": 0.0009742714464664459,
+          "model_relative_l2": 8.729077439510312e-06
+        }
+      },
+      "ema_continuous_exact": true,
+      "ema_resumed_exact": true,
+      "ema_updates": 4,
+      "epochs": 2,
+      "exact_fields": [
+        "model",
+        "ema",
+        "optimizer",
+        "scaler",
+        "scheduler",
+        "ema_updates",
+        "optimizer_steps",
+        "criterion"
+      ],
+      "optimizer_steps_per_rank": 4,
+      "resume_epoch": 1,
+      "short_tail_batch_per_rank": 1,
+      "status": "passed",
+      "validation_images": 13
+    },
+    "BN64": {
+      "amp_retries": 0,
+      "continuous_vs_resumed": {
+        "foreach-v1": {
+          "bitwise_equal": false,
+          "model_max_abs": 0.0007362670148722827,
+          "model_relative_l2": 8.128546433308814e-06
+        },
+        "scalar-v1": {
+          "bitwise_equal": false,
+          "model_max_abs": 0.0007362670148722827,
+          "model_relative_l2": 8.128546433308814e-06
+        }
+      },
+      "ema_continuous_exact": true,
+      "ema_resumed_exact": true,
+      "ema_updates": 4,
+      "epochs": 2,
+      "exact_fields": [
+        "model",
+        "ema",
+        "optimizer",
+        "scaler",
+        "scheduler",
+        "ema_updates",
+        "optimizer_steps",
+        "criterion"
+      ],
+      "optimizer_steps_per_rank": 4,
+      "resume_epoch": 1,
+      "short_tail_batch_per_rank": 1,
+      "status": "passed",
+      "validation_images": 13
+    },
+    "DW": {
+      "amp_retries": 0,
+      "continuous_vs_resumed": {
+        "foreach-v1": {
+          "bitwise_equal": false,
+          "model_max_abs": 0.0016008168458938599,
+          "model_relative_l2": 1.4440242402838459e-05
+        },
+        "scalar-v1": {
+          "bitwise_equal": false,
+          "model_max_abs": 0.0016008168458938599,
+          "model_relative_l2": 1.4440242402838459e-05
+        }
+      },
+      "ema_continuous_exact": true,
+      "ema_resumed_exact": true,
+      "ema_updates": 4,
+      "epochs": 2,
+      "exact_fields": [
+        "model",
+        "ema",
+        "optimizer",
+        "scaler",
+        "scheduler",
+        "ema_updates",
+        "optimizer_steps",
+        "criterion"
+      ],
+      "optimizer_steps_per_rank": 4,
+      "resume_epoch": 1,
+      "short_tail_batch_per_rank": 1,
+      "status": "passed",
+      "validation_images": 13
+    }
+  },
+  "scope": "Six-rank small-subset full loops, not full-COCO epoch or AP equivalence",
+  "source_hashes": {
+    "scripts/d1/check_ema_runtime.py": "73e7a0d415240d04484702b57da2070858a8e9ddd6c5f8e769bcb1e8daeeecbd",
+    "scripts/d1/ema.py": "d62824608416e8ed0780a1442e0ffde72b3576030a9f0c6a7a5b7bb302cfe828",
+    "scripts/d1/p1p2_runtime.py": "31e32fddb08cb5b21c11a1f97bac1d4a9bd1e1c404d452091ccd1f3528b60dcb",
+    "scripts/d1/run_p5_ablation.py": "9fa7562025e170a1146640caef3db6f9f16d0e0bd950d12f9e69469d77b5b801",
+    "ultralytics/utils/torch_utils.py": "bb97ce3fb376db6542de2a4a42db7db237e485a51e9d7cf1d4b3f5e470ad601c"
+  },
+  "status": "ema_passed_with_resume_limitation"
+}
