@@ -397,12 +397,22 @@ def competing_job(argv):
         return None
     if any(Path(a).name == "tensorboard" for a in argv[:2]) or "tensorboard_data_server/bin/server" in argv[0]:
         return None
-    low = " ".join(argv).lower()
-    if "gpu_keeper" in low:
+    executable = argv[0].lower()
+    arguments = list(argv[1:])
+    while arguments and arguments[0] in ("-u", "-B", "-I", "-s", "-S"):
+        arguments.pop(0)
+    # Match executable/module/script identity, never arbitrary inline inspection text or log paths.
+    if arguments and arguments[0] in ("-c", "-lc", "-c\u0020"):
         return None
-    if "fins" in low and any(word in low for word in ("python", "unity", ".x86_64")):
+    entry = arguments[1] if len(arguments) > 1 and arguments[0] == "-m" else (arguments[0] if arguments else "")
+    identity_text = (executable + " " + entry).lower()
+    if "gpu_keeper" in identity_text:
+        return None
+    if "fins" in identity_text and any(word in executable for word in ("python", "unity", ".x86_64")):
         return "simulation"
-    if any(word in low for word in ("torch.distributed.run", "torchrun", "run_p5_suite", "run_e3 suite")):
+    if any(word in identity_text for word in ("torch.distributed.run", "torchrun", "run_p5_suite")):
+        return "training"
+    if entry in ("scripts.d1.run_e3", "scripts/d1/run_e3.py") and any(x in arguments for x in ("train", "suite")):
         return "training"
     return None
 

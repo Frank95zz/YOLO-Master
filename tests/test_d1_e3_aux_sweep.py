@@ -190,3 +190,15 @@ def test_official_report_rejects_internal_map():
 )
 def test_resource_check_distinguishes_viewers(argv, expected):
     assert e3.competing_job(argv) == expected
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["python", "-c", "inspect FinsSim python torchrun processes"],
+        ["bash", "-lc", "python check_fins_process.py"],
+        ["git", "fetch", "origin"],
+    ],
+)
+def test_inspection_text_is_not_a_training_identity(argv):
+    assert e3.competing_job(argv) is None
