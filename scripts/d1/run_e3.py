@@ -391,6 +391,55 @@ def evaluate(args):
     return report
 
 
+def evaluate_isolated(workspace, candidate, profile, epoch):
+    """Release evaluator DataLoader workers and CUDA context before checking idle resources."""
+    spec = spec_for(matrix(workspace), candidate, profile)
+    output = Path(spec["output"]) / "official" / f"epoch-{epoch:03d}"
+    output.mkdir(parents=True, exist_ok=True)
+    command = [
+        sys.executable,
+        "-u",
+        "-m",
+        "scripts.d1.run_e3",
+        "evaluate",
+        "--workspace",
+        str(workspace),
+        "--candidate",
+        key(candidate),
+        "--profile",
+        profile,
+        "--epoch",
+        str(epoch),
+    ]
+    started = time.monotonic()
+    with (output / "isolated-evaluation.log").open("a") as log:
+        subprocess.run(
+            command, cwd=ROOT, env=clean_child_env(), stdout=log, stderr=subprocess.STDOUT, check=True, timeout=1200
+        )
+    report = json.loads((output / "report.json").read_text())
+    expected_seen = 8 if spec["data_profile"] == "smoke" else 548
+    if (
+        report.get("status") != "PASSED"
+        or report.get("run_identity") != spec["identity"]
+        or report.get("checkpoint_epoch") != epoch
+        or report.get("seen") != expected_seen
+    ):
+        raise ValueError("Isolated evaluator returned incomplete or mismatched evidence")
+    if file_sha(output / "checkpoint.pt") != report["checkpoint_sha256"]:
+        raise ValueError("Isolated evaluation checkpoint checksum changed")
+    if file_sha(output / "predictions-txt/export.json") != report["prediction_export_sha256"]:
+        raise ValueError("Isolated evaluation prediction receipt changed")
+    write_json(
+        output / "isolated-cost.json",
+        {
+            "seconds": time.monotonic() - started,
+            "reserved_gpus": 1,
+            "scope": "Independent gate evaluator including process exit; no training ranks are reserved",
+        },
+    )
+    return report
+
+
 def competing_job(argv):
     """Recognize compute jobs without confusing a TensorBoard viewer with a learner."""
     if not argv:
@@ -602,6 +651,19 @@ def resume_comparison(workspace, candidate):
     return {"status": "PASSED", "rtol": 1e-5, "atol": 1e-6, "maximum_tensor_abs_error": worst}
 
 
+def ensure_gate_run(workspace, mat, candidate, profile):
+    """Resume only the same registered engineering run; never overwrite completed evidence."""
+    spec = spec_for(mat, candidate, profile)
+    if not completed(workspace, spec):
+        resume = (Path(spec["output"]) / "resume.pt").exists()
+        launch_train(workspace, candidate, profile, resume=resume)
+    validate_run(workspace, spec)
+    attempts = [json.loads(p.read_text()) for p in sorted((workspace / "jobs").glob(f"{spec['run_id']}-*.json"))]
+    if not attempts or any("seconds" not in a or a["identity"] != spec["identity"] for a in attempts):
+        raise ValueError("Engineering cost ledger is incomplete or belongs to another run")
+    return {"seconds": sum(a["seconds"] for a in attempts)}
+
+
 def gates(workspace):
     mat = matrix(workspace)
     receipt = workspace / "gates.json"
@@ -611,19 +673,19 @@ def gates(workspace):
             raise ValueError("Invalid existing gate receipt")
         return result
     default = candidates()[0]
-    launch_train(workspace, default, "smoke", window=1)
-    launch_train(workspace, default, "smoke", resume=True, window=2)
-    launch_train(workspace, default, "continuous")
+    smoke = spec_for(mat, default, "smoke")
+    if not completed(workspace, smoke):
+        if not (Path(smoke["output"]) / "resume.pt").exists():
+            launch_train(workspace, default, "smoke", window=1)
+        launch_train(workspace, default, "smoke", resume=True, window=2)
+    validate_run(workspace, smoke)
     for c in (default, {**default, "balance": 0.0, "z": 0.0}, {**default, "balance": 0.0}, {**default, "z": 0.0}):
-        spec = spec_for(mat, c, "continuous")
-        if not completed(workspace, spec):
-            launch_train(workspace, c, "continuous")
-        validate_run(workspace, spec)
+        ensure_gate_run(workspace, mat, c, "continuous")
     comparison = resume_comparison(workspace, default)
-    attempt = launch_train(workspace, default, "benchmark")
+    attempt = ensure_gate_run(workspace, mat, default, "benchmark")
     spec = spec_for(mat, default, "benchmark")
     validate_run(workspace, spec)
-    evaluation = evaluate(argparse.Namespace(workspace=workspace, candidate=key(default), profile="benchmark", epoch=3))
+    evaluation = evaluate_isolated(workspace, default, "benchmark", 3)
     times = [
         json.loads((Path(spec["output"]) / "validation" / f"epoch-{epoch:03d}.json").read_text())["epoch_wall_seconds"]
         for epoch in (2, 3)

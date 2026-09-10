@@ -202,3 +202,126 @@ def test_resource_check_distinguishes_viewers(argv, expected):
 )
 def test_inspection_text_is_not_a_training_identity(argv):
     assert e3.competing_job(argv) is None
+
+
+def isolated_fixture(tmp_path, monkeypatch):
+    mat = fake_matrix(tmp_path)
+    monkeypatch.setattr(e3, "matrix", lambda _: mat)
+    candidate = e3.candidates()[0]
+    spec = e3.spec_for(mat, candidate, "benchmark")
+    output = e3.Path(spec["output"]) / "official/epoch-003"
+    (output / "predictions-txt").mkdir(parents=True)
+    (output / "checkpoint.pt").write_bytes(b"checkpoint")
+    (output / "predictions-txt/export.json").write_bytes(b"{}")
+    report = {
+        "status": "PASSED",
+        "run_identity": spec["identity"],
+        "checkpoint_epoch": 3,
+        "seen": 548,
+        "checkpoint_sha256": e3.file_sha(output / "checkpoint.pt"),
+        "prediction_export_sha256": e3.file_sha(output / "predictions-txt/export.json"),
+    }
+    return mat, candidate, spec, output, report
+
+
+def test_gate_evaluation_runs_in_child_and_cleans_ddp_env(tmp_path, monkeypatch):
+    _, candidate, _, output, report = isolated_fixture(tmp_path, monkeypatch)
+    monkeypatch.setenv("RANK", "0")
+    monkeypatch.setenv("WORLD_SIZE", "6")
+    monkeypatch.setattr(e3, "evaluate", lambda *_: pytest.fail("Evaluator ran in the supervisor"))
+    calls = []
+
+    def child(command, **kwargs):
+        assert command[:5] == [e3.sys.executable, "-u", "-m", "scripts.d1.run_e3", "evaluate"]
+        assert "RANK" not in kwargs["env"] and "WORLD_SIZE" not in kwargs["env"]
+        assert kwargs["check"] and kwargs["timeout"] == 1200
+        e3.write_json(output / "report.json", report)
+        calls.append("child_exited")
+
+    monkeypatch.setattr(e3.subprocess, "run", child)
+    result = e3.evaluate_isolated(tmp_path, candidate, "benchmark", 3)
+    assert result == report and calls == ["child_exited"]
+    assert (output / "isolated-cost.json").is_file()
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("seen", 547),
+        ("checkpoint_epoch", 2),
+        ("status", "FAILED"),
+        ("run_identity", {}),
+        ("checkpoint_sha256", "bad"),
+        ("prediction_export_sha256", "bad"),
+    ],
+)
+def test_isolated_evaluation_rejects_wrong_evidence(tmp_path, monkeypatch, field, value):
+    _, candidate, _, output, report = isolated_fixture(tmp_path, monkeypatch)
+    report[field] = value
+    e3.write_json(output / "report.json", report)
+    monkeypatch.setattr(e3.subprocess, "run", lambda *a, **kw: None)
+    with pytest.raises(ValueError):
+        e3.evaluate_isolated(tmp_path, candidate, "benchmark", 3)
+    assert not (output / "isolated-cost.json").exists()
+
+
+def test_child_failure_cannot_reuse_stale_success_report(tmp_path, monkeypatch):
+    _, candidate, _, output, report = isolated_fixture(tmp_path, monkeypatch)
+    e3.write_json(output / "report.json", report)
+
+    def fail(command, **kwargs):
+        raise e3.subprocess.CalledProcessError(1, command)
+
+    monkeypatch.setattr(e3.subprocess, "run", fail)
+    with pytest.raises(e3.subprocess.CalledProcessError):
+        e3.evaluate_isolated(tmp_path, candidate, "benchmark", 3)
+
+
+@pytest.mark.parametrize("complete,resume", [(True, False), (False, False), (False, True)])
+def test_gate_recovery_skips_finished_and_resumes_partial(tmp_path, monkeypatch, complete, resume):
+    mat = fake_matrix(tmp_path)
+    candidate = e3.candidates()[0]
+    spec = e3.spec_for(mat, candidate, "benchmark")
+    root = e3.Path(spec["output"])
+    root.mkdir(parents=True)
+    if resume:
+        (root / "resume.pt").touch()
+    e3.write_json(tmp_path / "jobs" / f"{spec['run_id']}-001.json", {"identity": spec["identity"], "seconds": 60})
+    monkeypatch.setattr(e3, "completed", lambda *a: complete)
+    monkeypatch.setattr(e3, "validate_run", lambda *a: True)
+    calls = []
+    monkeypatch.setattr(e3, "launch_train", lambda *a, **kw: calls.append(kw))
+    result = e3.ensure_gate_run(tmp_path, mat, candidate, "benchmark")
+    assert calls == ([] if complete else [{"resume": resume}])
+    assert result["seconds"] == 60
+
+
+def test_idle_resource_gate_is_after_child_exit(tmp_path, monkeypatch):
+    mat = fake_matrix(tmp_path)
+    c = e3.candidates()[0]
+    root = e3.Path(e3.spec_for(mat, c, "benchmark")["output"])
+    for epoch in (2, 3):
+        e3.write_json(root / "validation" / f"epoch-{epoch:03d}.json", {"epoch_wall_seconds": 15})
+        for rank in range(6):
+            e3.write_json(root / "mechanism" / f"rank-{rank}-epoch-{epoch:03d}.json", {"seconds": 0.5})
+    monkeypatch.setattr(e3, "matrix", lambda *a: mat)
+    monkeypatch.setattr(e3, "completed", lambda *a: True)
+    monkeypatch.setattr(e3, "validate_run", lambda *a: True)
+    monkeypatch.setattr(e3, "ensure_gate_run", lambda *a: {"seconds": 60})
+    monkeypatch.setattr(e3, "resume_comparison", lambda *a: {"status": "PASSED"})
+    monkeypatch.setattr(e3, "evaluate", lambda *a: pytest.fail("In-process evaluator must not be used"))
+    events = []
+
+    def isolated(*args):
+        events.append("child_exited")
+        return {"seconds": 8}
+
+    def idle(*args):
+        assert events == ["child_exited"]
+        events.append("idle_checked")
+        return {"conflicting_jobs": []}
+
+    monkeypatch.setattr(e3, "evaluate_isolated", isolated)
+    monkeypatch.setattr(e3, "check_resources", idle)
+    assert e3.gates(tmp_path)["status"] == "PASSED"
+    assert events == ["child_exited", "idle_checked"]
