@@ -4,6 +4,10 @@
   "training_code_commit": "7a0ad4dc32cd90222d37be0b3c24ed18a8e53c37",
   "source_workspace_name": "p5-fast-ema-20260909",
   "files": {
+    "nonoverlap-timing.json": {
+      "bytes": 73812,
+      "sha256": "cbe72f60a85664a19808ab9dc4d5823b54eb09069bae17f07cedd37a6302abae"
+    },
     "BASE-results.csv": {
       "bytes": 9668,
       "sha256": "ddedf15b4f741e1fca0bd3fae5cbb84f92d95b8fef4250a6fa72df0d230d06ab"

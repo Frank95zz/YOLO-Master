@@ -153,3 +153,76 @@ def test_report_links_and_archive_portability():
         assert '/root/' not in content and '/data/yingxi/' not in content and '/localssd/' not in content
         assert 'PRIVATE KEY' not in content
         assert not re.search(r'gh[pousr]_[A-Za-z0-9]{20,}', content)
+
+
+def test_nonoverlap_selection_uses_time_windows_not_speed():
+    timing = read('nonoverlap-timing.json')
+    overlap = ARCHIVE / 'resource-overlap.json'
+    assert timing['overlap_source_sha256'] == hashlib.sha256(overlap.read_bytes()).hexdigest()
+    assert timing['source_code_commit'] == CODE_COMMIT
+    rows = timing['variants']['BN64']['rows']
+    excluded = []
+    guarded = []
+    for row in rows:
+        hits = [i for i, (start, end) in enumerate(timing['fins_windows'])
+                if row['start_unix'] < end and row['train_end_mtime_unix'] > start]
+        assert row['overlap'] == hits
+        if hits:
+            excluded.append(row['epoch'])
+        if any(row['start_unix'] < end + 1 and row['train_end_mtime_unix'] > start - 1
+               for start, end in timing['fins_windows']):
+            guarded.append(row['epoch'])
+    assert excluded == timing['excluded_epochs'] == [23, 24, 25, 27, 28, 29, 30, 31]
+    assert guarded == timing['method']['excluded_with_guard'] == excluded
+    included = [epoch for epoch in range(1, 51) if epoch not in excluded]
+    assert included == timing['included_epochs'] and len(included) == 42
+    assert [epoch for epoch in included if epoch > 3] == timing['post_warmup_included_epochs']
+
+
+@pytest.mark.parametrize('variant', VARIANTS)
+def test_nonoverlap_statistics_recompute_from_all_recorded_epochs(variant):
+    import statistics
+
+    timing = read('nonoverlap-timing.json')
+    source = timing['variants'][variant]
+    assert source['source_file_count'] == 350
+    assert re.fullmatch('[0-9a-f]{64}', source['source_concat_sha256'])
+    rows = source['rows']
+    assert [r['epoch'] for r in rows] == list(range(1, 51))
+    assert all(r['start_unix'] < r['train_end_mtime_unix'] <= r['fit_end_unix'] for r in rows)
+    assert all(r['fit_wall_s'] == pytest.approx(r['fit_end_unix'] - r['start_unix']) for r in rows)
+    selections = {
+        'all_epochs': list(range(1, 51)),
+        'matched_nonoverlap': timing['included_epochs'],
+        'matched_nonoverlap_post_warmup': timing['post_warmup_included_epochs'],
+        'excluded_epochs': timing['excluded_epochs'],
+    }
+    functions = {'mean': statistics.mean, 'median': statistics.median,
+                 'minimum': min, 'maximum': max, 'sample_std': statistics.stdev}
+    for label, epoch_ids in selections.items():
+        selected = [r for r in rows if r['epoch'] in epoch_ids]
+        summary = timing['summaries'][variant][label]
+        assert summary['count'] == len(selected)
+        for metric in ('step_s', 'wait_s', 'max_rank_loop_s', 'fit_wall_s'):
+            values = [r[metric] for r in selected]
+            assert all(math.isfinite(v) and v >= 0 for v in values)
+            for name, function in functions.items():
+                assert summary[metric][name] == pytest.approx(function(values))
+    rank_records = read('training-integrity.json')['variants'][variant]['ranks']
+    assert statistics.mean(r['mean_step_seconds'] for r in rank_records) == pytest.approx(
+        timing['summaries'][variant]['all_epochs']['step_s']['mean']
+    )
+
+
+def test_nonoverlap_report_table_is_matched_and_does_not_replace_original_cost():
+    timing = read('nonoverlap-timing.json')
+    text = (DOCS / 'P5_FAST_RUN_20260909.md').read_text(encoding='utf-8')
+    for variant in VARIANTS:
+        row = timing['summaries'][variant]['matched_nonoverlap']
+        values = [row['max_rank_loop_s']['mean'], row['max_rank_loop_s']['median'],
+                  row['wait_s']['mean'], row['fit_wall_s']['mean']]
+        line = '| ' + variant + ' | ' + ' | '.join(f'{value:.3f}' for value in values) + ' |'
+        assert line in text
+    original = read('suite-summary.json')['results']['BN64']
+    assert original['active_job_GPUh'] == pytest.approx(10.424189264914022)
+    assert read('suite-summary.json')['comparison']['BN64']['retained'] is False
