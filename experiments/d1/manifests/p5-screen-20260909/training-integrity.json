@@ -1,0 +1,608 @@
+{
+  "schema_version": "d1-p5-training-integrity-v1",
+  "identity": {
+    "commit": "7a0ad4dc32cd90222d37be0b3c24ed18a8e53c37",
+    "contract_sha256": "0aa202a5e12e9c5cdf2ed367c514f9376b262a53d6b3f473890e34b09b7a937e",
+    "source_sha256": "6018233dc05ce3dc8db2aac46a65c9dbe553b83a22e51cfb68e6054644673b1e"
+  },
+  "verified_at": "2026-09-10T20:34:45+0800",
+  "variants": {
+    "BASE": {
+      "csv_rows": 50,
+      "csv_numeric_finite": true,
+      "ranks": [
+        {
+          "rank": 0,
+          "epochs": 50,
+          "final_optimizer_steps": 15450,
+          "max_amp_retries": 0,
+          "sum_data_wait_seconds": 10.463658422231674,
+          "mean_data_wait_seconds": 0.20927316844463348,
+          "mean_step_seconds": 105.43513631366193,
+          "epoch31_step_seconds": 103.91313795372844,
+          "peak_allocated_bytes": 8180835328,
+          "peak_reserved_bytes": 12389974016,
+          "final_routing_finite": true
+        },
+        {
+          "rank": 1,
+          "epochs": 50,
+          "final_optimizer_steps": 15450,
+          "max_amp_retries": 0,
+          "sum_data_wait_seconds": 9.179078679531813,
+          "mean_data_wait_seconds": 0.18358157359063626,
+          "mean_step_seconds": 105.45214814156294,
+          "epoch31_step_seconds": 103.97162805870175,
+          "peak_allocated_bytes": 7820271104,
+          "peak_reserved_bytes": 12599689216,
+          "final_routing_finite": true
+        },
+        {
+          "rank": 2,
+          "epochs": 50,
+          "final_optimizer_steps": 15450,
+          "max_amp_retries": 0,
+          "sum_data_wait_seconds": 10.518021117895842,
+          "mean_data_wait_seconds": 0.21036042235791683,
+          "mean_step_seconds": 105.42568544574083,
+          "epoch31_step_seconds": 103.94249344617128,
+          "peak_allocated_bytes": 7820683776,
+          "peak_reserved_bytes": 12899581952,
+          "final_routing_finite": true
+        },
+        {
+          "rank": 3,
+          "epochs": 50,
+          "final_optimizer_steps": 15450,
+          "max_amp_retries": 0,
+          "sum_data_wait_seconds": 10.955709908157587,
+          "mean_data_wait_seconds": 0.21911419816315175,
+          "mean_step_seconds": 105.39415696375072,
+          "epoch31_step_seconds": 103.95593247935176,
+          "peak_allocated_bytes": 7821014016,
+          "peak_reserved_bytes": 12415139840,
+          "final_routing_finite": true
+        },
+        {
+          "rank": 4,
+          "epochs": 50,
+          "final_optimizer_steps": 15450,
+          "max_amp_retries": 0,
+          "sum_data_wait_seconds": 9.366792745888233,
+          "mean_data_wait_seconds": 0.18733585491776467,
+          "mean_step_seconds": 105.42280822031199,
+          "epoch31_step_seconds": 103.97302836552262,
+          "peak_allocated_bytes": 7820240384,
+          "peak_reserved_bytes": 12545163264,
+          "final_routing_finite": true
+        },
+        {
+          "rank": 5,
+          "epochs": 50,
+          "final_optimizer_steps": 15450,
+          "max_amp_retries": 0,
+          "sum_data_wait_seconds": 9.53176947683096,
+          "mean_data_wait_seconds": 0.19063538953661918,
+          "mean_step_seconds": 105.4198942887038,
+          "epoch31_step_seconds": 103.96410212293267,
+          "peak_allocated_bytes": 7822319104,
+          "peak_reserved_bytes": 12354322432,
+          "final_routing_finite": true
+        }
+      ],
+      "checkpoints_verified": {
+        "last": {
+          "bytes": 29216137,
+          "sha256": "43c9ed12814221064bcec35e541245546f7412eb6c295bf8a6a23ad5bf4ac942"
+        },
+        "standard-best": {
+          "bytes": 29212297,
+          "sha256": "57e3dfed85c51809da84cc14c9d222fdea075bb83928aba1823cfb2359d794f0"
+        }
+      },
+      "resume_verified": {
+        "bytes": 58001639,
+        "sha256": "ace071052fcfa0e1f29cfc558fd606571f565a1ba317d61bc1ef7d477054d273"
+      }
+    },
+    "DW": {
+      "csv_rows": 50,
+      "csv_numeric_finite": true,
+      "ranks": [
+        {
+          "rank": 0,
+          "epochs": 50,
+          "final_optimizer_steps": 15450,
+          "max_amp_retries": 0,
+          "sum_data_wait_seconds": 11.906795989722013,
+          "mean_data_wait_seconds": 0.23813591979444027,
+          "mean_step_seconds": 106.20991643980146,
+          "epoch31_step_seconds": 104.40723755955696,
+          "peak_allocated_bytes": 8342176768,
+          "peak_reserved_bytes": 12652118016,
+          "final_routing_finite": true
+        },
+        {
+          "rank": 1,
+          "epochs": 50,
+          "final_optimizer_steps": 15450,
+          "max_amp_retries": 0,
+          "sum_data_wait_seconds": 9.714143056422472,
+          "mean_data_wait_seconds": 0.19428286112844945,
+          "mean_step_seconds": 106.27117666266858,
+          "epoch31_step_seconds": 104.38489542528987,
+          "peak_allocated_bytes": 8073161216,
+          "peak_reserved_bytes": 12687769600,
+          "final_routing_finite": true
+        },
+        {
+          "rank": 2,
+          "epochs": 50,
+          "final_optimizer_steps": 15450,
+          "max_amp_retries": 0,
+          "sum_data_wait_seconds": 8.585828438401222,
+          "mean_data_wait_seconds": 0.17171656876802444,
+          "mean_step_seconds": 106.27310673855246,
+          "epoch31_step_seconds": 104.40244187414646,
+          "peak_allocated_bytes": 8073796608,
+          "peak_reserved_bytes": 13161725952,
+          "final_routing_finite": true
+        },
+        {
+          "rank": 3,
+          "epochs": 50,
+          "final_optimizer_steps": 15450,
+          "max_amp_retries": 0,
+          "sum_data_wait_seconds": 8.410595964640379,
+          "mean_data_wait_seconds": 0.16821191929280757,
+          "mean_step_seconds": 106.26187830097973,
+          "epoch31_step_seconds": 104.40010288357735,
+          "peak_allocated_bytes": 8073510912,
+          "peak_reserved_bytes": 12503220224,
+          "final_routing_finite": true
+        },
+        {
+          "rank": 4,
+          "epochs": 50,
+          "final_optimizer_steps": 15450,
+          "max_amp_retries": 0,
+          "sum_data_wait_seconds": 11.127879593521357,
+          "mean_data_wait_seconds": 0.22255759187042712,
+          "mean_step_seconds": 106.19141959488393,
+          "epoch31_step_seconds": 104.27041025459766,
+          "peak_allocated_bytes": 8073128960,
+          "peak_reserved_bytes": 12633243648,
+          "final_routing_finite": true
+        },
+        {
+          "rank": 5,
+          "epochs": 50,
+          "final_optimizer_steps": 15450,
+          "max_amp_retries": 0,
+          "sum_data_wait_seconds": 9.836225677281618,
+          "mean_data_wait_seconds": 0.19672451354563236,
+          "mean_step_seconds": 106.20413440339267,
+          "epoch31_step_seconds": 104.4004219993949,
+          "peak_allocated_bytes": 8072940032,
+          "peak_reserved_bytes": 12616466432,
+          "final_routing_finite": true
+        }
+      ],
+      "checkpoints_verified": {
+        "last": {
+          "bytes": 10457253,
+          "sha256": "01018602d41d24eea30c44bc1ac758a61854275614ae37d3600030a6e06307d6"
+        },
+        "standard-best": {
+          "bytes": 10456293,
+          "sha256": "5b9045d68692492aa13b8355ad5b5101876bbf41ea914c60eb6bd077b3397ac5"
+        }
+      },
+      "resume_verified": {
+        "bytes": 20469268,
+        "sha256": "d96c3b8b59a6ce08ac46571f491f9243dcbab1d03af291147447f6f61625c636"
+      }
+    },
+    "BN64": {
+      "csv_rows": 50,
+      "csv_numeric_finite": true,
+      "ranks": [
+        {
+          "rank": 0,
+          "epochs": 50,
+          "final_optimizer_steps": 15450,
+          "max_amp_retries": 0,
+          "sum_data_wait_seconds": 10.748367104679346,
+          "mean_data_wait_seconds": 0.21496734209358692,
+          "mean_step_seconds": 106.94523951269686,
+          "epoch31_step_seconds": 123.78700811415911,
+          "peak_allocated_bytes": 8258373120,
+          "peak_reserved_bytes": 12547260416,
+          "final_routing_finite": true
+        },
+        {
+          "rank": 1,
+          "epochs": 50,
+          "final_optimizer_steps": 15450,
+          "max_amp_retries": 0,
+          "sum_data_wait_seconds": 12.284297805279493,
+          "mean_data_wait_seconds": 0.24568595610558985,
+          "mean_step_seconds": 106.91297580115497,
+          "epoch31_step_seconds": 122.11376798152924,
+          "peak_allocated_bytes": 7983288320,
+          "peak_reserved_bytes": 12612272128,
+          "final_routing_finite": true
+        },
+        {
+          "rank": 2,
+          "epochs": 50,
+          "final_optimizer_steps": 15450,
+          "max_amp_retries": 0,
+          "sum_data_wait_seconds": 9.673236928880215,
+          "mean_data_wait_seconds": 0.1934647385776043,
+          "mean_step_seconds": 106.96366858646273,
+          "epoch31_step_seconds": 123.97761100158095,
+          "peak_allocated_bytes": 7984194048,
+          "peak_reserved_bytes": 13086228480,
+          "final_routing_finite": true
+        },
+        {
+          "rank": 3,
+          "epochs": 50,
+          "final_optimizer_steps": 15450,
+          "max_amp_retries": 0,
+          "sum_data_wait_seconds": 11.328568395227194,
+          "mean_data_wait_seconds": 0.22657136790454388,
+          "mean_step_seconds": 106.92966696247458,
+          "epoch31_step_seconds": 123.51705560833216,
+          "peak_allocated_bytes": 7983638016,
+          "peak_reserved_bytes": 12601786368,
+          "final_routing_finite": true
+        },
+        {
+          "rank": 4,
+          "epochs": 50,
+          "final_optimizer_steps": 15450,
+          "max_amp_retries": 0,
+          "sum_data_wait_seconds": 9.73073697462678,
+          "mean_data_wait_seconds": 0.1946147394925356,
+          "mean_step_seconds": 106.96154793195427,
+          "epoch31_step_seconds": 124.16862823441625,
+          "peak_allocated_bytes": 7983616512,
+          "peak_reserved_bytes": 12557746176,
+          "final_routing_finite": true
+        },
+        {
+          "rank": 5,
+          "epochs": 50,
+          "final_optimizer_steps": 15450,
+          "max_amp_retries": 0,
+          "sum_data_wait_seconds": 9.399018347263336,
+          "mean_data_wait_seconds": 0.18798036694526674,
+          "mean_step_seconds": 106.95217922657729,
+          "epoch31_step_seconds": 124.0929551422596,
+          "peak_allocated_bytes": 7983067136,
+          "peak_reserved_bytes": 12540968960,
+          "final_routing_finite": true
+        }
+      ],
+      "checkpoints_verified": {
+        "last": {
+          "bytes": 12128421,
+          "sha256": "dc403f7601050fd232b4f8d9b17fa4fc04c510912df19f6c984d3beeec2501bf"
+        },
+        "standard-best": {
+          "bytes": 12125541,
+          "sha256": "2497b4760ccff8c579fbae0a0326637d5f2e15caf7b99b48d94bdbce94039795"
+        }
+      },
+      "resume_verified": {
+        "bytes": 23811540,
+        "sha256": "af87f6c56a6864f85c068ccb5e0af1f0a93e8e1d2852c68bb8578aedd93725a1"
+      }
+    }
+  },
+  "source_files": {
+    "runs/P5-BASE/weights/last.pt": {
+      "bytes": 29216137,
+      "sha256": "43c9ed12814221064bcec35e541245546f7412eb6c295bf8a6a23ad5bf4ac942"
+    },
+    "runs/P5-BASE/weights/standard-best.pt": {
+      "bytes": 29212297,
+      "sha256": "57e3dfed85c51809da84cc14c9d222fdea075bb83928aba1823cfb2359d794f0"
+    },
+    "reports/P5-BASE/resume.pt": {
+      "bytes": 58001639,
+      "sha256": "ace071052fcfa0e1f29cfc558fd606571f565a1ba317d61bc1ef7d477054d273"
+    },
+    "reports/P5-BASE/final/last/predictions.json": {
+      "bytes": 141807443,
+      "sha256": "03024567789d87c6b59991d317cbc72369a6f29d617bc9437361a515489169d6"
+    },
+    "reports/P5-BASE/final/last/report.json": {
+      "bytes": 1514,
+      "sha256": "25fa427f0f9737aa3a67692b420fae045b27006c51da03b67c7f3fac51021b7b"
+    },
+    "reports/P5-BASE/final/standard-best/predictions.json": {
+      "bytes": 146905073,
+      "sha256": "737cb150c1a65d3384b043d756aa72736d89078c506f06fe18af96fb5625ff8c"
+    },
+    "reports/P5-BASE/final/standard-best/report.json": {
+      "bytes": 1515,
+      "sha256": "e508a0514eb64f79b1f71b7fedc8db2697c3b8d4069837517934d952879dfbf6"
+    },
+    "runs/P5-BASE/results.csv": {
+      "bytes": 9668,
+      "sha256": "ddedf15b4f741e1fca0bd3fae5cbb84f92d95b8fef4250a6fa72df0d230d06ab"
+    },
+    "reports/P5-BASE/completed-summary.json": {
+      "bytes": 4230,
+      "sha256": "cd7d0971cc49d24822ae178f789421fe2fe858f51cffad10651802e5d3f90f7b"
+    },
+    "reports/P5-BASE/epochs/rank-0-epoch-050.json": {
+      "bytes": 5606,
+      "sha256": "bb48200f2df60529b9df05820c848ba20512c2915be3f416a862d92b82f36a15"
+    },
+    "reports/P5-BASE/runtime-rank-0.json": {
+      "bytes": 841,
+      "sha256": "2836feb1ac04cee764c93f0173a19ed632f0e3471cb244b4a5788e10c4422d9d"
+    },
+    "reports/P5-BASE/epochs/rank-1-epoch-050.json": {
+      "bytes": 5606,
+      "sha256": "8b0682b9ab932f18466163d7ea5720807271f20b92f83972fbb0f9264c00691b"
+    },
+    "reports/P5-BASE/runtime-rank-1.json": {
+      "bytes": 841,
+      "sha256": "2836feb1ac04cee764c93f0173a19ed632f0e3471cb244b4a5788e10c4422d9d"
+    },
+    "reports/P5-BASE/epochs/rank-2-epoch-050.json": {
+      "bytes": 5607,
+      "sha256": "34f2e9a71739bbb973dca3d94b4f9ba45f97fc3a7c999e5eac11fa16b6ddc37f"
+    },
+    "reports/P5-BASE/runtime-rank-2.json": {
+      "bytes": 841,
+      "sha256": "2836feb1ac04cee764c93f0173a19ed632f0e3471cb244b4a5788e10c4422d9d"
+    },
+    "reports/P5-BASE/epochs/rank-3-epoch-050.json": {
+      "bytes": 5604,
+      "sha256": "90db2d35adf18cc81ca4df19810978937e0f5496cd8eca5dba1858e22a9cda71"
+    },
+    "reports/P5-BASE/runtime-rank-3.json": {
+      "bytes": 841,
+      "sha256": "2836feb1ac04cee764c93f0173a19ed632f0e3471cb244b4a5788e10c4422d9d"
+    },
+    "reports/P5-BASE/epochs/rank-4-epoch-050.json": {
+      "bytes": 5607,
+      "sha256": "a4ca43d758fd38b46e11adc8e4749dea5f61e2a7e6310f8e41f59459783240bd"
+    },
+    "reports/P5-BASE/runtime-rank-4.json": {
+      "bytes": 841,
+      "sha256": "2836feb1ac04cee764c93f0173a19ed632f0e3471cb244b4a5788e10c4422d9d"
+    },
+    "reports/P5-BASE/epochs/rank-5-epoch-050.json": {
+      "bytes": 5617,
+      "sha256": "4dae639de94bfb503b00b3024127ffcc4f79f74aa3696df453110742ec1ef184"
+    },
+    "reports/P5-BASE/runtime-rank-5.json": {
+      "bytes": 841,
+      "sha256": "2836feb1ac04cee764c93f0173a19ed632f0e3471cb244b4a5788e10c4422d9d"
+    },
+    "runs/P5-DW/weights/last.pt": {
+      "bytes": 10457253,
+      "sha256": "01018602d41d24eea30c44bc1ac758a61854275614ae37d3600030a6e06307d6"
+    },
+    "runs/P5-DW/weights/standard-best.pt": {
+      "bytes": 10456293,
+      "sha256": "5b9045d68692492aa13b8355ad5b5101876bbf41ea914c60eb6bd077b3397ac5"
+    },
+    "reports/P5-DW/resume.pt": {
+      "bytes": 20469268,
+      "sha256": "d96c3b8b59a6ce08ac46571f491f9243dcbab1d03af291147447f6f61625c636"
+    },
+    "reports/P5-DW/final/last/predictions.json": {
+      "bytes": 148008970,
+      "sha256": "74b9025bb8b8a5a8429a75c4823fdfb5db35502aae836602d58396474be3a030"
+    },
+    "reports/P5-DW/final/last/report.json": {
+      "bytes": 1513,
+      "sha256": "b11f476aace90ac23ec13f758117790074d07a5ea48643455056deeb7e939f06"
+    },
+    "reports/P5-DW/final/standard-best/predictions.json": {
+      "bytes": 149026991,
+      "sha256": "fd702c269f6a04f41758789e839dcec579706325986d7eb7a4823ddae69055b2"
+    },
+    "reports/P5-DW/final/standard-best/report.json": {
+      "bytes": 1513,
+      "sha256": "69d832ac931ff27b306c5538bc3228632d64f70c4462aebae6acfa57334676cc"
+    },
+    "runs/P5-DW/results.csv": {
+      "bytes": 9657,
+      "sha256": "a79b7b1bdd850e077e866e4bc99019655a787588ab1e852bbdeba95fb57e68a4"
+    },
+    "reports/P5-DW/completed-summary.json": {
+      "bytes": 4229,
+      "sha256": "2bce6cd1c60c1250bb5422b9042b32be4735c6a1905896d0a91e8f9d5fc4093f"
+    },
+    "reports/P5-DW/epochs/rank-0-epoch-050.json": {
+      "bytes": 5614,
+      "sha256": "c0264a26bd128536d7b125da18d903bd7283abf645ba149472e1eb4e8b10031b"
+    },
+    "reports/P5-DW/runtime-rank-0.json": {
+      "bytes": 841,
+      "sha256": "116b44b13027c385c3c9bddd0a1fd3436e721b6bb2d6c1187bd4f5f1014a7214"
+    },
+    "reports/P5-DW/epochs/rank-1-epoch-050.json": {
+      "bytes": 5613,
+      "sha256": "96e54317a6104424d1cc1c7a4e45e8dd41f8abdf481560f6889f9736ad790c7e"
+    },
+    "reports/P5-DW/runtime-rank-1.json": {
+      "bytes": 841,
+      "sha256": "116b44b13027c385c3c9bddd0a1fd3436e721b6bb2d6c1187bd4f5f1014a7214"
+    },
+    "reports/P5-DW/epochs/rank-2-epoch-050.json": {
+      "bytes": 5608,
+      "sha256": "966b3ae34103e00da6aa6c65b2a9903b0534722ac587f2febb96ab358245935e"
+    },
+    "reports/P5-DW/runtime-rank-2.json": {
+      "bytes": 841,
+      "sha256": "116b44b13027c385c3c9bddd0a1fd3436e721b6bb2d6c1187bd4f5f1014a7214"
+    },
+    "reports/P5-DW/epochs/rank-3-epoch-050.json": {
+      "bytes": 5611,
+      "sha256": "104c065c3af1c07832e02e7552ef862e8feec74ba11f0961d8c07dfe878063f8"
+    },
+    "reports/P5-DW/runtime-rank-3.json": {
+      "bytes": 841,
+      "sha256": "116b44b13027c385c3c9bddd0a1fd3436e721b6bb2d6c1187bd4f5f1014a7214"
+    },
+    "reports/P5-DW/epochs/rank-4-epoch-050.json": {
+      "bytes": 5617,
+      "sha256": "33552f0c8c246844255b2b7c73fc06f6ea12ed528232af2fdfda57f47c958fb6"
+    },
+    "reports/P5-DW/runtime-rank-4.json": {
+      "bytes": 841,
+      "sha256": "116b44b13027c385c3c9bddd0a1fd3436e721b6bb2d6c1187bd4f5f1014a7214"
+    },
+    "reports/P5-DW/epochs/rank-5-epoch-050.json": {
+      "bytes": 5615,
+      "sha256": "75f3a908a53f4be4e2aa89fcd0e151ca37118aab405200b6eac6ff96fafc3cb9"
+    },
+    "reports/P5-DW/runtime-rank-5.json": {
+      "bytes": 841,
+      "sha256": "116b44b13027c385c3c9bddd0a1fd3436e721b6bb2d6c1187bd4f5f1014a7214"
+    },
+    "runs/P5-BN64/weights/last.pt": {
+      "bytes": 12128421,
+      "sha256": "dc403f7601050fd232b4f8d9b17fa4fc04c510912df19f6c984d3beeec2501bf"
+    },
+    "runs/P5-BN64/weights/standard-best.pt": {
+      "bytes": 12125541,
+      "sha256": "2497b4760ccff8c579fbae0a0326637d5f2e15caf7b99b48d94bdbce94039795"
+    },
+    "reports/P5-BN64/resume.pt": {
+      "bytes": 23811540,
+      "sha256": "af87f6c56a6864f85c068ccb5e0af1f0a93e8e1d2852c68bb8578aedd93725a1"
+    },
+    "reports/P5-BN64/final/last/predictions.json": {
+      "bytes": 146499690,
+      "sha256": "d5e9d67a8af4596228ad5e8910d0ebceb635a2bd686715195ff79f28addcf63d"
+    },
+    "reports/P5-BN64/final/last/report.json": {
+      "bytes": 1515,
+      "sha256": "bd380e318dee454551bc21c2f298a3936390af6a5b2c941e09c6f73b9faa4c7b"
+    },
+    "reports/P5-BN64/final/standard-best/predictions.json": {
+      "bytes": 149390269,
+      "sha256": "4112ac64bcbf6a6d8e1d509f3717f15e796e6d2edc1ec402fe52598965556856"
+    },
+    "reports/P5-BN64/final/standard-best/report.json": {
+      "bytes": 1512,
+      "sha256": "0e0169fee8844fc147bcb855d9da0422f0b0d402b5a012867b2bbe4c8ac93ef0"
+    },
+    "runs/P5-BN64/results.csv": {
+      "bytes": 9666,
+      "sha256": "7fe4a59812fcb3386bd2ac4df6fd3cebf22bcd7ce3135ae29e1a79cc18a51609"
+    },
+    "reports/P5-BN64/completed-summary.json": {
+      "bytes": 4229,
+      "sha256": "c2d0d2d2e1366db98b525f0b7dae0785b47985564c33fd51fa9565e841e92fd5"
+    },
+    "reports/P5-BN64/epochs/rank-0-epoch-050.json": {
+      "bytes": 5607,
+      "sha256": "e1217b5a6d3c9dbcb9bb5d847da1afdf622b4a042a91623e4ccb082763ebb5a9"
+    },
+    "reports/P5-BN64/runtime-rank-0.json": {
+      "bytes": 841,
+      "sha256": "171f2c86f5ffe073c1b6d78fa8a18cc9fd093a28211f818b84f72ebe56c9b474"
+    },
+    "reports/P5-BN64/epochs/rank-1-epoch-050.json": {
+      "bytes": 5601,
+      "sha256": "d129a5066ccf63ca2a07ebec8c067ef747de4b3228269093956d11ac44219951"
+    },
+    "reports/P5-BN64/runtime-rank-1.json": {
+      "bytes": 841,
+      "sha256": "171f2c86f5ffe073c1b6d78fa8a18cc9fd093a28211f818b84f72ebe56c9b474"
+    },
+    "reports/P5-BN64/epochs/rank-2-epoch-050.json": {
+      "bytes": 5609,
+      "sha256": "5354c06185af3d0a52c5ef31a8eec63c63351f3c46a5552ea1dd7aa40d0ac075"
+    },
+    "reports/P5-BN64/runtime-rank-2.json": {
+      "bytes": 841,
+      "sha256": "171f2c86f5ffe073c1b6d78fa8a18cc9fd093a28211f818b84f72ebe56c9b474"
+    },
+    "reports/P5-BN64/epochs/rank-3-epoch-050.json": {
+      "bytes": 5609,
+      "sha256": "ddc97e4671d5530bd8b7175ced048283c073ce70d509038901ed0cc47e76b5fc"
+    },
+    "reports/P5-BN64/runtime-rank-3.json": {
+      "bytes": 841,
+      "sha256": "171f2c86f5ffe073c1b6d78fa8a18cc9fd093a28211f818b84f72ebe56c9b474"
+    },
+    "reports/P5-BN64/epochs/rank-4-epoch-050.json": {
+      "bytes": 5598,
+      "sha256": "ad0c5372ed5e487914e5c73062cc336323ae8cca810906d87617c76a2c39a12e"
+    },
+    "reports/P5-BN64/runtime-rank-4.json": {
+      "bytes": 841,
+      "sha256": "171f2c86f5ffe073c1b6d78fa8a18cc9fd093a28211f818b84f72ebe56c9b474"
+    },
+    "reports/P5-BN64/epochs/rank-5-epoch-050.json": {
+      "bytes": 5598,
+      "sha256": "1c93b44b856b99cf5b108d5827d944631bb16a9054bc461948657918f86895a1"
+    },
+    "reports/P5-BN64/runtime-rank-5.json": {
+      "bytes": 841,
+      "sha256": "171f2c86f5ffe073c1b6d78fa8a18cc9fd093a28211f818b84f72ebe56c9b474"
+    },
+    "inputs/model-BASE.yaml": {
+      "bytes": 980,
+      "sha256": "1e40c4945a6eacc80b592b1657a4d0bccdb027247358d5c1fc78524fbbe906f8"
+    },
+    "inputs/model-BN64.yaml": {
+      "bytes": 1015,
+      "sha256": "894c22e86b830adc43899cac89914a63b4ad7bea43d39e3cdfc52d084d4c7d58"
+    },
+    "inputs/model-DW.yaml": {
+      "bytes": 985,
+      "sha256": "bff28028abc7e02e9cea1cac46e3434c6fb7af27d55aafcd758a302477138431"
+    },
+    "jobs/P5-BASE-1788944154039664866.json": {
+      "bytes": 417,
+      "sha256": "3347d81c64c7b567f2c05eae3a20a7cd4f218440f643403b24457c76a16fd5fb"
+    },
+    "jobs/P5-BASE-final-last-1788950303480439758.json": {
+      "bytes": 429,
+      "sha256": "f3dce6b43697d2e8900323b55cac2ecbc9df886d0a0861e2382e1218b340d169"
+    },
+    "jobs/P5-BASE-final-standard-best-1788950356228224652.json": {
+      "bytes": 439,
+      "sha256": "bf82efdbf9ecbdf4bbe4b3092f946d242962f57985cb773e1f7029b6be04d56c"
+    },
+    "jobs/P5-BN64-1788956719212779409.json": {
+      "bytes": 417,
+      "sha256": "5bcb7a7e6a32fe8cd495feb52f727d060e614056412506bb074fed3de3902000"
+    },
+    "jobs/P5-BN64-final-last-1788962955893477019.json": {
+      "bytes": 429,
+      "sha256": "685a3164973fb153870a3b350c28005104c3b13b201531285f906b231fba5494"
+    },
+    "jobs/P5-BN64-final-standard-best-1788963009355287680.json": {
+      "bytes": 438,
+      "sha256": "3e48185ab0129f9dce3f2ddafbf80d7cd490db4f7c93aa62491add7bd03bcfbf"
+    },
+    "jobs/P5-DW-1788950409946085997.json": {
+      "bytes": 416,
+      "sha256": "2f7be71dc91a18b860ece51f79d655d171d72c326ad29630fb9cbd5915687c8a"
+    },
+    "jobs/P5-DW-final-last-1788956609934881957.json": {
+      "bytes": 428,
+      "sha256": "c257564294be9152c5b38a1aebfff421902c02d1efddb08307bc07cc6666a17d"
+    },
+    "jobs/P5-DW-final-standard-best-1788956665788991339.json": {
+      "bytes": 437,
+      "sha256": "71989ca9755c6fde24039040b70db0ee0c73fa4cc8ff7a9f5119788740cd0844"
+    }
+  },
+  "inspection_scope": "Read-only digest and recorded-budget verification, no retraining or fresh GPU evaluation during archival."
+}

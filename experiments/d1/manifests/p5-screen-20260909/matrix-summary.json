@@ -1,0 +1,61 @@
+{
+  "contract": {
+    "base_contract": "ultralytics/cfg/experiments/d1/p1p2/e1-coco2017.yaml",
+    "base_variant": "B",
+    "maximum_runs": 3,
+    "schedule_epochs": 100,
+    "schema_version": "d1-p5-ablation-v1",
+    "screen_epochs": 50,
+    "seed": 0,
+    "selection": {
+      "max_ap75_drop_points": 1,
+      "max_ap_drop_points": 0.5,
+      "max_ap_large_drop_points": 1,
+      "require_lower_measured_gpu_hours": true
+    },
+    "variants": {
+      "BASE": {
+        "downstream_parameters": 3542567,
+        "p5_mode": "conv",
+        "p5_parameters": 2655744
+      },
+      "BN64": {
+        "downstream_parameters": 1404839,
+        "p5_bottleneck_channels": 64,
+        "p5_mode": "bottleneck",
+        "p5_parameters": 518016
+      },
+      "DW": {
+        "downstream_parameters": 1195943,
+        "p5_mode": "depthwise",
+        "p5_parameters": 309120
+      }
+    }
+  },
+  "identity": {
+    "commit": "7a0ad4dc32cd90222d37be0b3c24ed18a8e53c37",
+    "contract_sha256": "0aa202a5e12e9c5cdf2ed367c514f9376b262a53d6b3f473890e34b09b7a937e",
+    "source_sha256": "6018233dc05ce3dc8db2aac46a65c9dbe553b83a22e51cfb68e6054644673b1e"
+  },
+  "data_receipt_sha256": "44153a724d4f1906f5ae74a85f850043c60673520fd38cc75f434cafb9a032fd",
+  "input_hashes": {
+    "initial-BASE.pt": "6cc90c4cf046668d273119b762ca492262cc2fa31bf2f4a14f6cdf40d6facdec",
+    "initial-BN64.pt": "43d7de2af033220461bbc4911fb931c91b8f2110d8768612287a1717749b109b",
+    "initial-DW.pt": "66b29992b7fe4ca51b05a4deb20022d8e83b01e521a95673fe66fd40f33d8383",
+    "model-BASE.yaml": "1e40c4945a6eacc80b592b1657a4d0bccdb027247358d5c1fc78524fbbe906f8",
+    "model-BN64.yaml": "894c22e86b830adc43899cac89914a63b4ad7bea43d39e3cdfc52d084d4c7d58",
+    "model-DW.yaml": "bff28028abc7e02e9cea1cac46e3434c6fb7af27d55aafcd758a302477138431"
+  },
+  "parameters": {
+    "BASE": 3542567,
+    "BN64": 1404839,
+    "DW": 1195943
+  },
+  "source_matrix_sha256": "343313d0156bd9ebc0efce705a885c096a577d3d59903c35f644ef2f51798f96",
+  "schema_version": "d1-p5-ablation-v1",
+  "ema_implementation": "foreach-v1",
+  "p3_upsample_mode": "separable_bilinear2x",
+  "resume_rank_buffers": true,
+  "resume_temperature_policy": "epoch-boundary-v1",
+  "scope": "Paths are supplied by the operator; initial tensors and caches remain external. Original matrix training_started is a preparation snapshot, not current suite status."
+}

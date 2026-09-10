@@ -1,0 +1,85 @@
+{
+  "schema_version": "d1-p5-archive-v1",
+  "archived_on": "2026-09-10",
+  "training_code_commit": "7a0ad4dc32cd90222d37be0b3c24ed18a8e53c37",
+  "source_workspace_name": "p5-fast-ema-20260909",
+  "files": {
+    "BASE-results.csv": {
+      "bytes": 9668,
+      "sha256": "ddedf15b4f741e1fca0bd3fae5cbb84f92d95b8fef4250a6fa72df0d230d06ab"
+    },
+    "BN64-results.csv": {
+      "bytes": 9666,
+      "sha256": "7fe4a59812fcb3386bd2ac4df6fd3cebf22bcd7ce3135ae29e1a79cc18a51609"
+    },
+    "DW-results.csv": {
+      "bytes": 9657,
+      "sha256": "a79b7b1bdd850e077e866e4bc99019655a787588ab1e852bbdeba95fb57e68a4"
+    },
+    "matrix-summary.json": {
+      "bytes": 2367,
+      "sha256": "48135a33fc6476e52fd7fdd4860917a36ea17f22dc4f7e26efad2dcac7e385ab"
+    },
+    "resource-overlap.json": {
+      "bytes": 6905,
+      "sha256": "816d6c22356d010ac300e670b3b128d4fab2f3930f7d85209d0538a2a7eb9afc"
+    },
+    "suite-launch.json": {
+      "bytes": 760,
+      "sha256": "586a4aae0b9f1bef0f161f696e42b7b6b9d0060fa7c0d0fd95312c4f94c46166"
+    },
+    "suite-summary.json": {
+      "bytes": 15924,
+      "sha256": "2623cc9e158d6f295535f60e6e0ec612f582ee81c6a1152649be492b0fca2c43"
+    },
+    "training-integrity.json": {
+      "bytes": 23033,
+      "sha256": "56f894696b932122a4fb6e8f947fc418eb8c2a13395c4c4e8e1ca5adef1ccc08"
+    }
+  },
+  "original_sources": {
+    "suite-summary.json": {
+      "sha256": "2623cc9e158d6f295535f60e6e0ec612f582ee81c6a1152649be492b0fca2c43",
+      "bytes": 15924
+    },
+    "matrix.json": {
+      "sha256": "6cf09d4783205e3fa2bb406fac5fabe39b169f7860575b1a52155dff1c7087d8",
+      "bytes": 3161
+    },
+    "suite-launch.json": {
+      "sha256": "586a4aae0b9f1bef0f161f696e42b7b6b9d0060fa7c0d0fd95312c4f94c46166",
+      "bytes": 760
+    },
+    "launch-receipt.json": {
+      "sha256": "77af2c0f8c772efe4e4aaf337d8098ca2bc0b04a39d723a73a2ebb49d67618af",
+      "bytes": 4009
+    },
+    "postrun-cleanup.json": {
+      "sha256": "7484c12a96211fd1577518926d01f11fed5b59dd47c2eeed1c20aa3fca2c217b",
+      "bytes": 983
+    },
+    "status.json": {
+      "sha256": "ef8c3eca6f27f45f6abd521ed92f6d5e6c5602626c252b2a523386903a47ca6d",
+      "bytes": 174
+    }
+  },
+  "postrun_cleanup": {
+    "status": "passed",
+    "child_returncode": 0,
+    "files_advised": 123287,
+    "estimated_released_bytes": 69708161024,
+    "memory_after": {
+      "cache_bytes": 10240110592,
+      "cgroup_version": 1,
+      "kernel_bytes": 1935224832,
+      "limit_bytes": 188978561024,
+      "rss_bytes": 5922308096,
+      "usage_bytes": 18100367360
+    }
+  },
+  "limitations": [
+    "Only small result evidence is published. Checkpoints, initial weights, datasets, caches and large predictions remain outside Git.",
+    "The original training code commit is immutable and is distinct from later documentation commits.",
+    "This index excludes itself to avoid a self-referential checksum."
+  ]
+}

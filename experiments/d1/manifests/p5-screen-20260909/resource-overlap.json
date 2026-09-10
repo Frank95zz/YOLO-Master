@@ -1,0 +1,182 @@
+{
+  "schema_version": "d1-p5-resource-overlap-v1",
+  "timezone": "Asia/Shanghai",
+  "audited_on": "2026-09-10",
+  "jobs": [
+    {
+      "ended_unix": 1788950303.365672,
+      "execution_identity": {
+        "commit": "7a0ad4dc32cd90222d37be0b3c24ed18a8e53c37",
+        "contract_sha256": "0aa202a5e12e9c5cdf2ed367c514f9376b262a53d6b3f473890e34b09b7a937e",
+        "source_sha256": "6018233dc05ce3dc8db2aac46a65c9dbe553b83a22e51cfb68e6054644673b1e"
+      },
+      "label": "P5-BASE",
+      "returncode": 0,
+      "seconds": 6149.326014820486,
+      "started_unix": 1788944154.0396614
+    },
+    {
+      "ended_unix": 1788950356.1924117,
+      "execution_identity": {
+        "commit": "7a0ad4dc32cd90222d37be0b3c24ed18a8e53c37",
+        "contract_sha256": "0aa202a5e12e9c5cdf2ed367c514f9376b262a53d6b3f473890e34b09b7a937e",
+        "source_sha256": "6018233dc05ce3dc8db2aac46a65c9dbe553b83a22e51cfb68e6054644673b1e"
+      },
+      "label": "P5-BASE-final-last",
+      "returncode": 0,
+      "seconds": 52.71198055893183,
+      "started_unix": 1788950303.4804351
+    },
+    {
+      "ended_unix": 1788950409.9075408,
+      "execution_identity": {
+        "commit": "7a0ad4dc32cd90222d37be0b3c24ed18a8e53c37",
+        "contract_sha256": "0aa202a5e12e9c5cdf2ed367c514f9376b262a53d6b3f473890e34b09b7a937e",
+        "source_sha256": "6018233dc05ce3dc8db2aac46a65c9dbe553b83a22e51cfb68e6054644673b1e"
+      },
+      "label": "P5-BASE-final-standard-best",
+      "returncode": 0,
+      "seconds": 53.679325729608536,
+      "started_unix": 1788950356.2282207
+    },
+    {
+      "ended_unix": 1788962955.8486807,
+      "execution_identity": {
+        "commit": "7a0ad4dc32cd90222d37be0b3c24ed18a8e53c37",
+        "contract_sha256": "0aa202a5e12e9c5cdf2ed367c514f9376b262a53d6b3f473890e34b09b7a937e",
+        "source_sha256": "6018233dc05ce3dc8db2aac46a65c9dbe553b83a22e51cfb68e6054644673b1e"
+      },
+      "label": "P5-BN64",
+      "returncode": 0,
+      "seconds": 6236.635909378529,
+      "started_unix": 1788956719.212776
+    },
+    {
+      "ended_unix": 1788963009.3232374,
+      "execution_identity": {
+        "commit": "7a0ad4dc32cd90222d37be0b3c24ed18a8e53c37",
+        "contract_sha256": "0aa202a5e12e9c5cdf2ed367c514f9376b262a53d6b3f473890e34b09b7a937e",
+        "source_sha256": "6018233dc05ce3dc8db2aac46a65c9dbe553b83a22e51cfb68e6054644673b1e"
+      },
+      "label": "P5-BN64-final-last",
+      "returncode": 0,
+      "seconds": 53.42976923659444,
+      "started_unix": 1788962955.8934734
+    },
+    {
+      "ended_unix": 1788963063.1855316,
+      "execution_identity": {
+        "commit": "7a0ad4dc32cd90222d37be0b3c24ed18a8e53c37",
+        "contract_sha256": "0aa202a5e12e9c5cdf2ed367c514f9376b262a53d6b3f473890e34b09b7a937e",
+        "source_sha256": "6018233dc05ce3dc8db2aac46a65c9dbe553b83a22e51cfb68e6054644673b1e"
+      },
+      "label": "P5-BN64-final-standard-best",
+      "returncode": 0,
+      "seconds": 53.83025174960494,
+      "started_unix": 1788963009.3552835
+    },
+    {
+      "ended_unix": 1788956609.8745084,
+      "execution_identity": {
+        "commit": "7a0ad4dc32cd90222d37be0b3c24ed18a8e53c37",
+        "contract_sha256": "0aa202a5e12e9c5cdf2ed367c514f9376b262a53d6b3f473890e34b09b7a937e",
+        "source_sha256": "6018233dc05ce3dc8db2aac46a65c9dbe553b83a22e51cfb68e6054644673b1e"
+      },
+      "label": "P5-DW",
+      "returncode": 0,
+      "seconds": 6199.928430702537,
+      "started_unix": 1788950409.9460819
+    },
+    {
+      "ended_unix": 1788956665.7629318,
+      "execution_identity": {
+        "commit": "7a0ad4dc32cd90222d37be0b3c24ed18a8e53c37",
+        "contract_sha256": "0aa202a5e12e9c5cdf2ed367c514f9376b262a53d6b3f473890e34b09b7a937e",
+        "source_sha256": "6018233dc05ce3dc8db2aac46a65c9dbe553b83a22e51cfb68e6054644673b1e"
+      },
+      "label": "P5-DW-final-last",
+      "returncode": 0,
+      "seconds": 55.828057542443275,
+      "started_unix": 1788956609.9348788
+    },
+    {
+      "ended_unix": 1788956719.1960797,
+      "execution_identity": {
+        "commit": "7a0ad4dc32cd90222d37be0b3c24ed18a8e53c37",
+        "contract_sha256": "0aa202a5e12e9c5cdf2ed367c514f9376b262a53d6b3f473890e34b09b7a937e",
+        "source_sha256": "6018233dc05ce3dc8db2aac46a65c9dbe553b83a22e51cfb68e6054644673b1e"
+      },
+      "label": "P5-DW-final-standard-best",
+      "returncode": 0,
+      "seconds": 53.407097551971674,
+      "started_unix": 1788956665.7889874
+    }
+  ],
+  "other_workload": "FinsSim short engineering tests",
+  "interval_method": "GNU stat birth timestamp (whole seconds) through final log modification; task window includes startup and shutdown, not continuous full CPU load.",
+  "logs": [
+    {
+      "source_id": "t2_dwp2_nodr_cloud_smoke_20260909_211142",
+      "sha256": "44aa352d805eef7a8c0767223617497534b1255945dc964a42a3d1309cb993b0",
+      "bytes": 8825,
+      "start_unix": 1788959502,
+      "end_unix": 1788959625.772286,
+      "one_parallel_environment": true,
+      "exit_code": 1
+    },
+    {
+      "source_id": "t2_dwp2_dr_cloud_smoke_20260909_211345",
+      "sha256": "7342396a24edbed3ee6bf0a4e940dcaf2e31dd7d86edc2d6e5dc98a528e26bd9",
+      "bytes": 8809,
+      "start_unix": 1788959625,
+      "end_unix": 1788959746.9531846,
+      "one_parallel_environment": true,
+      "exit_code": 1
+    },
+    {
+      "source_id": "t2_dwp2_nodr_cloud_smoke_postshimmy_20260909_212048",
+      "sha256": "c496ecdd4e541f0356f1d92fa1bef5c503a48479c2092e4017739a8be4a8832f",
+      "bytes": 22218,
+      "start_unix": 1788960048,
+      "end_unix": 1788960311.7815034,
+      "one_parallel_environment": true,
+      "exit_code": 0
+    },
+    {
+      "source_id": "t2_dwp2_dr_cloud_smoke_postshimmy_20260909_212511",
+      "sha256": "3ef117b00fa24d54d646aa8860cefd6c9c603312346dc72207916679270b3dd0",
+      "bytes": 22146,
+      "start_unix": 1788960311,
+      "end_unix": 1788960574.612923,
+      "one_parallel_environment": true,
+      "exit_code": 0
+    }
+  ],
+  "merged_task_windows": [
+    [
+      1788959502,
+      1788959746.9531846
+    ],
+    [
+      1788960048,
+      1788960574.612923
+    ]
+  ],
+  "task_window_union_seconds": 771.5661075115204,
+  "affected_variant": "BN64",
+  "bn64_epoch31_step_seconds_by_rank": [
+    123.78700811415911,
+    122.11376798152924,
+    123.97761100158095,
+    123.51705560833216,
+    124.16862823441625,
+    124.0929551422596
+  ],
+  "limitations": [
+    "Thirty-minute instantaneous monitoring can miss short jobs; no claim of continuous isolation for BASE or DW.",
+    "BN64 wall time is an observed shared-resource cost, not an isolated architecture benchmark.",
+    "No measured counterfactual duration is available; do not subtract the overlapping task duration from D1 cost.",
+    "All ranks completed the planned updates; this does not prove exact accuracy equality to a contention-free run.",
+    "Do not substitute later FinsSim process start times for the earlier short-task windows."
+  ]
+}

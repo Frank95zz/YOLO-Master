@@ -19,7 +19,8 @@
 | 文档 | 内容与状态 |
 | --- | --- |
 | [BIWEEKLY_20260907.md](BIWEEKLY_20260907.md) | 已发布双周报告；对应 [Tencent/YOLO-Master Issue #266](https://github.com/Tencent/YOLO-Master/issues/266)，归档正文与发布内容一致 |
-| [P1_P2_EXPERIMENT_PLAN.md](P1_P2_EXPERIMENT_PLAN.md) | P1 双数据集同参对照与成本验证、P2 aux 扫描和底座尺寸对照；实施方案，尚未启动新实验 |
+| [P1_P2_EXPERIMENT_PLAN.md](P1_P2_EXPERIMENT_PLAN.md) | E1 和三架构筛选已完成、E2 工程验收已完成；E3-E6 后续实验仍须单独确认 |
+| [P5_FAST_RUN_20260909.md](P5_FAST_RUN_20260909.md) | BASE/DW/BN64 提速版本的固定合同、最终精度/成本、资源干扰说明和小型证据 |
 
 Issue 正文归档于 2026-09-08，UTF-8/LF 文件 SHA256：
 `d0316140355f02da86d70389bfc645927b5c07be57f8c695311f08e27463dd3b`。

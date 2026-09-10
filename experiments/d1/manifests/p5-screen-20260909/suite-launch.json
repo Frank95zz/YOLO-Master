@@ -1,0 +1,25 @@
+{
+  "approved": true,
+  "ema_implementation": "foreach-v1",
+  "global_batch": 384,
+  "identity": {
+    "commit": "7a0ad4dc32cd90222d37be0b3c24ed18a8e53c37",
+    "contract_sha256": "0aa202a5e12e9c5cdf2ed367c514f9376b262a53d6b3f473890e34b09b7a937e",
+    "source_sha256": "6018233dc05ce3dc8db2aac46a65c9dbe553b83a22e51cfb68e6054644673b1e"
+  },
+  "p3_upsample_mode": "separable_bilinear2x",
+  "resume_rank_buffers": true,
+  "resume_temperature_policy": "epoch-boundary-v1",
+  "schedule_epochs": 100,
+  "scope": "Section 6.5 fresh paired screen; old E1 and paused P5 results are not reused",
+  "screen_epochs": 50,
+  "seed": 0,
+  "started_unix": 1788944154.0393026,
+  "variants": [
+    "BASE",
+    "DW",
+    "BN64"
+  ],
+  "workers_per_rank": 4,
+  "world_size": 6
+}
