@@ -1,0 +1,28 @@
+schema_version: d1-e3-bn64-aux-v1
+dataset: VisDrone2019-DET
+architecture: BN64
+nc: 10
+imgsz: 640
+schedule_epochs: 300
+screen_epochs: 60
+seeds: [0, 1, 2]
+world_size: 6
+global_batch: 96
+workers: 4
+prefetch_factor: 1
+p3_upsample_mode: separable_bilinear2x
+ema_implementation: foreach-v1
+resume_temperature_policy: epoch-boundary-v1
+resume_rank_buffers: true
+balance_candidates: [0.0, 0.01, 0.1]
+z_candidates: [0.0, 0.001, 0.01]
+stage1_gain: 0.1
+stage2_gains: [0.0, 0.03, 0.1, 0.3]
+mixture_aux_budget: 3.0
+evaluation_period: 5
+official_backend: official-matlab
+selection_epoch: 60
+max_det: 500
+conf: 0.001
+minimum_free_gib: 80
+maximum_cgroup_fraction: 0.75

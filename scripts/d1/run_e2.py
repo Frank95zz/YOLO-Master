@@ -299,18 +299,30 @@ def evaluate(workspace, profile):
     spec = run_spec(mat, profile)
     out = workspace / "evaluations" / spec["run_id"]
     checkpoint = workspace / "runs" / spec["run_id"] / "weights/last.pt"
-    saved = torch.load(checkpoint, map_location="cpu", weights_only=False)
     expected_epoch = 2 if profile == "smoke" else 3
+    return evaluate_registered(
+        mat,
+        {**spec, "evaluation_profile": profile},
+        construct_model(),
+        checkpoint,
+        out,
+        expected_epoch,
+        overrides(mat, spec),
+    )
+
+
+def evaluate_registered(mat, spec, model, checkpoint, out, expected_epoch, common):
+    """Strictly reload a registered VisDrone model and export for the pinned MATLAB scorer."""
+    saved = torch.load(checkpoint, map_location="cpu", weights_only=False)
     if saved["epoch"] + 1 != expected_epoch:
         raise ValueError("Checkpoint did not finish its bounded window")
-    model = construct_model()
     stored_model = saved.get("ema") if saved.get("ema") is not None else saved["model"]
     model.load_state_dict(stored_model.float().state_dict(), strict=True)
     if any(not torch.isfinite(value).all() for value in model.state_dict().values() if isinstance(value, torch.Tensor)):
         raise FloatingPointError("Nonfinite checkpoint state")
     if any("teacher" in name.lower() for name in model.state_dict()):
         raise ValueError("Teacher found in downstream checkpoint")
-    common = overrides(mat, spec)
+    common = deepcopy(common)
     common.update(device="0", batch=32, project=str(out), name="validator", save_json=True)
     cache = Path(mat["cache"])
     trainer = D1FoundationDetectionTrainer(
@@ -347,7 +359,7 @@ def evaluate(workspace, profile):
     report = {
         "status": "PASSED",
         "identity": mat["identity"],
-        "profile": profile,
+        "profile": spec.get("evaluation_profile", spec["profile"]),
         "checkpoint_epoch": expected_epoch,
         "checkpoint_sha256": file_sha(checkpoint),
         "strict_reload": True,
