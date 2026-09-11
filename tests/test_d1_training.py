@@ -694,7 +694,7 @@ def test_runtime_amp_policy_is_shared(tmp_path, monkeypatch):
     monkeypatch.setattr(_RuntimeBase, "_setup_train", amp_setup)
     monkeypatch.setattr(torch.amp, "GradScaler", lambda device, **kwargs: scaler("cpu", **kwargs))
     trainer = _runtime_trainer(tmp_path / "amp-policy")
-    assert trainer.scaler.get_scale() == 1
+    assert trainer.scaler.get_scale() == 0.0625
     assert trainer.scaler.state_dict()["growth_interval"] == 1_000_000
 
 
@@ -745,7 +745,7 @@ def test_runtime_setup_manifest(tmp_path):
     assert report["datasets"]["train"]["dataset_size"] == report["datasets"]["val"]["dataset_size"] == 16
     assert report["datasets"]["train"]["rank_batches"] == 4
     assert report["optimizer_groups"][0]["names"] == ["weight"]
-    assert report["amp"]["policy_init_scale"] == 1
+    assert report["amp"]["policy_init_scale"] == 0.0625
 
 
 def test_runtime_last_best_periodic_share_fp32_tensor_bits(tmp_path):
@@ -910,7 +910,7 @@ def test_runtime_amp_recipe_matches_policy():
     from ultralytics.utils import YAML
 
     runtime = YAML.load(RECIPE)["runtime"]
-    assert runtime["amp_init_scale"] == AMP_INIT_SCALE == 1
+    assert runtime["amp_init_scale"] == AMP_INIT_SCALE == 0.0625
     assert runtime["amp_growth_interval"] == AMP_GROWTH_INTERVAL == 1_000_000
 
 

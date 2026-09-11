@@ -49,5 +49,5 @@ model:
 runtime:
   max_open_feature_shards: 4
   feature_prefetch_factor: 1
-  amp_init_scale: 1
+  amp_init_scale: 0.0625
   amp_growth_interval: 1000000

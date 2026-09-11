@@ -157,7 +157,9 @@ coco-local.yaml 按仓库常规检测 YAML 指定本地 path、train、val、80 
 | COCO 2017 | 118,287 / 5,000 | 100 epochs | 0/1/2 | 64 / 384 | 6 |
 | VisDrone2019-DET | 6,471 / 548 | 300 epochs | 0/1/2 | 16 / 96 | 6 |
 
-每个运行独占六张A40，组间串行。两组输入几何固定640方形单次LetterBox，禁用增强、多尺度、矩形验证和RGB内存缓存；两组的RGB/NPY均放NVMe。优化器使用仓库共享AdamW参数分组，lr0=0.001、lrf=0.01、momentum=0.9、weight_decay=0.0005、cosine、warmup3。Router保留共享实现的半学习率分组，不另改优化器。nbs等于全局batch，每batch一次有效更新。两组统一使用AMP初始scale1、growth_interval=1000000，workers4/rank、prefetch1。该scale由Scratch真实六卡梯度有限性诊断确定，只调整数值缩放，不改变损失权重、学习率或batch；不允许静默跳过更新，失败时记录failed-update-rank-N.json并停止。Frozen使用foreach EMA和可分离P3；Scratch使用原生EMA，分别记录实现成本。
+每个运行独占六张A40，组间串行。两组输入几何固定640方形单次LetterBox，禁用增强、多尺度、矩形验证和RGB内存缓存；两组的RGB/NPY均放NVMe。优化器使用仓库共享AdamW参数分组，lr0=0.001、lrf=0.01、momentum=0.9、weight_decay=0.0005、cosine、warmup3。Router保留共享实现的半学习率分组，不另改优化器。nbs等于全局batch，每batch一次有效更新。两组统一使用AMP初始scale0.0625、growth_interval=1000000，workers4/rank、prefetch1。该scale由Scratch真实六卡梯度有限性诊断确定，只调整数值缩放，不改变损失权重、学习率或batch；不允许静默跳过更新，失败时记录failed-update-rank-N.json并停止。Frozen使用foreach EMA和可分离P3；Scratch使用原生EMA，分别记录实现成本。
+
+AMP缩放校准使用完整COCO首批实际六rank输入和更新前权重，而非排序子集：scale1和0.5时rank0反向溢出，0.25/0.125/0.0625均有限，最大未缩放局部参数梯度约157,568。选择0.0625相对首个通过档0.25保留四倍缩放余量；各rank相对自身首个有限档的未缩放梯度L2偏差约0.40%-0.49%，仅是该批次FP16舍入诊断，不等于FP32精度验证或最终精度保证。每次重放均恢复同一权重、BN缓冲和RNG，不做优化器更新；新的公共缩放配置仍需通过全部恢复门禁和完整轮次短测。
 
 总参数统计包含21,596,544个冻结Teacher参数：COCO Frozen/Scratch为23,001,383/23,133,560；VisDrone为22,936,803/23,032,340。1%为项目工程匹配容差，不声称是官方规定。两个模型计算路径不同，本实验是系统对照而不是单因素同架构消融。
 
@@ -182,7 +184,7 @@ Linux入口要求新的外部输出目录、干净代码提交和明确批准。
 
 VisDrone官方预测导出由冻结模型和RGB对照共用同一实现：对原图坐标序列化后宽或高不大于零的无效框进行剔除，并在evaluation.json的degenerate_boxes_removed中记录数量；有效框的坐标、置信度和顺序保持不变，不取绝对值、不交换角点、不另加NMS。非有限值和越界置信度仍立即失败。内部验证指标与官方MATLAB评分继续分别报告。
 
-训练入口、恢复、AMP、注意力局部FP32及导出修复的相关回归测试为637 passed、56 skipped、2 deselected，耗时68.38秒；两项未纳入项为已有Foundation上游失败，条件性跳过不等于真实多卡验收通过。Attention新增覆盖默认及旧对象行为保持、FP16点积溢出、FP32前向与梯度有限、显式配置与严格重载；另以保存的真实失败权重和32张验证图确认局部FP32修复生效。公共block.py的三条既有静态告警单独排除（PLR0402/RUF022/B008），不改动无关代码。四个数据集/模型组合仍须分别完成真实多卡恢复门禁和完整轮次短基准。
+训练入口、恢复、AMP缩放校准、注意力局部FP32及导出修复的相关回归测试为637 passed、56 skipped、2 deselected，耗时69.20秒；两项未纳入项为已有Foundation上游失败，条件性跳过不等于真实多卡验收通过。Attention新增覆盖默认及旧对象行为保持、FP16点积溢出、FP32前向与梯度有限、显式配置与严格重载；另以保存的真实失败权重和32张验证图确认局部FP32修复生效。公共block.py的三条既有静态告警单独排除（PLR0402/RUF022/B008），不改动无关代码。四个数据集/模型组合仍须分别完成真实多卡恢复门禁和完整轮次短基准。
 
 正式实验结果尚待上述门禁和完整运行，不因启动队列就提前标记P1通过；不自动追加其他Teacher或新的消融。
 

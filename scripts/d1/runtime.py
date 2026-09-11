@@ -24,7 +24,7 @@ from ultralytics.engine.extensions.recovery import TrainingRecoveryController
 from ultralytics.engine.trainer import BaseTrainer
 from ultralytics.utils.torch_utils import torch_distributed_zero_first, unwrap_model
 
-AMP_INIT_SCALE = 1.0
+AMP_INIT_SCALE = 0.0625
 AMP_GROWTH_INTERVAL = 1_000_000
 
 
