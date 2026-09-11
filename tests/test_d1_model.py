@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from copy import deepcopy
 import os
+from copy import deepcopy
 from pathlib import Path
+
 import pytest
 import torch
+
 from ultralytics.nn import D1FoundationDetectionModel
 from ultralytics.nn.foundation.cache import FeatureCacheReader
 from ultralytics.nn.mixture_loss import CompositeCriterion
@@ -169,7 +171,7 @@ def test_real_feature_cache_cuda_forward() -> None:
         pytest.skip("CUDA is unavailable")
 
     reader = FeatureCacheReader(Path(cache_value))
-    sample_id = sorted(reader.records)[0]
+    sample_id = min(reader.records)
     cached = reader.get(sample_id)
     features = {name: value.unsqueeze(0).cuda(non_blocking=True) for name, value in cached.items()}
     model = D1FoundationDetectionModel().cuda().eval()

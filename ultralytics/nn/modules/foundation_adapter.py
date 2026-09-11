@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 from .utils import get_safe_groups
 

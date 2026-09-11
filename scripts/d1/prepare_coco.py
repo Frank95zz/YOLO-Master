@@ -8,7 +8,8 @@ import hashlib
 import json
 from pathlib import Path
 
-from scripts.d1.artifacts import encoded, file_sha as sha256_file, immutable
+from scripts.d1.artifacts import encoded, immutable
+from scripts.d1.artifacts import file_sha as sha256_file
 
 ROOT = Path(__file__).resolve().parents[2]
 MANIFESTS = ROOT / "experiments/d1/manifests"

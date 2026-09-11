@@ -559,7 +559,7 @@ class DetectionModel(BaseModel):
                 from ultralytics.nn.modules.routing_protocol import reset_routing_runtime_state
 
                 reset_routing_runtime_state(self)
-            except Exception:
+            except Exception:  # noqa: BLE001, S110 - Preserve best-effort cleanup for external routing implementations.
                 pass
             self.stride = m.stride
             self.model.train()  # Set model back to training(default) mode

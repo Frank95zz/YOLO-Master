@@ -1,12 +1,14 @@
 """DINOv3 Teacher protocol with offline and opt-in local-weight integration tests."""
 
-from types import SimpleNamespace
-import pytest
-import torch
-import torch.nn as nn
-from ultralytics.nn.foundation import DINOv3Teacher
 import os
 from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+import torch
+from torch import nn
+
+from ultralytics.nn.foundation import DINOv3Teacher
 
 
 class DummyBackbone(nn.Module):

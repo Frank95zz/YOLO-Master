@@ -37,7 +37,7 @@ def convert_annotation(text, width, height):
         values = [float(v) for v in row]
         if not all(math.isfinite(v) for v in values):
             raise ValueError(f"Nonfinite annotation at row {number}")
-        x, y, w, h, score, category, truncation, occlusion = values
+        x, y, w, h, score, category, _truncation, _occlusion = values
         if w < 0 or h < 0 or any(v != int(v) for v in values[4:]):
             raise ValueError(f"Invalid box or flags at row {number}")
         if score not in (0, 1) or not 0 <= category <= 11:

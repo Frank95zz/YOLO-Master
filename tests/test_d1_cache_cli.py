@@ -2,10 +2,12 @@
 
 from pathlib import Path
 from types import SimpleNamespace
+
 import cv2
 import numpy as np
 import pytest
 import torch
+
 from scripts.d1 import cache_features as cache
 from scripts.d1.cache_features import cache_contract, load_image, make_letterbox, split_paths
 

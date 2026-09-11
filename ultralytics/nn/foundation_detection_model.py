@@ -8,15 +8,14 @@ from pathlib import Path
 from typing import Any
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 from ultralytics.cfg import get_cfg
 from ultralytics.nn.mixture_loss import build_composite_criterion, initialize_mixture_loss_ema_buffer
-from ultralytics.nn.modules import DINOFeaturePyramidAdapter, Detect, LatentMixture
+from ultralytics.nn.modules import Detect, DINOFeaturePyramidAdapter, LatentMixture
 from ultralytics.nn.tasks import BaseModel
 from ultralytics.utils import LOGGER, YAML
 from ultralytics.utils.loss import E2ELoss, v8DetectionLoss
-
 
 DEFAULT_D1_MODEL_CFG = Path(__file__).resolve().parents[1] / "cfg" / "models" / "26" / "yolo26-d1-dinov3-latent-n.yaml"
 CHECKPOINT_SCHEMA = "d1-downstream-v1"
@@ -227,7 +226,8 @@ class D1FoundationDetectionModel(BaseModel):
 
         diagnostics = getattr(self, "_mixture_aux_diagnostics", None)
         if not isinstance(diagnostics, dict):
-            raise RuntimeError("D1 training requires CompositeCriterion aux diagnostics.")
+            # This is a missing criterion lifecycle state, not a user argument type error.
+            raise RuntimeError("D1 training requires CompositeCriterion aux diagnostics.")  # noqa: TRY004
         counts = diagnostics.get("counts_by_kind", {})
         if counts.get("latent") != len(_PYRAMID_NAMES):
             raise RuntimeError(
@@ -280,7 +280,7 @@ class D1FoundationDetectionModel(BaseModel):
     def _reset_training_routing_state(self) -> None:
         if not self.training:
             return
-        from ultralytics.nn.modules.moe._common import MOE_LOSS_REGISTRY, _MOE_LOSS_REGISTRY_LOCK
+        from ultralytics.nn.modules.moe._common import _MOE_LOSS_REGISTRY_LOCK, MOE_LOSS_REGISTRY
         from ultralytics.nn.modules.routing_protocol import reset_routing_runtime_state
 
         with _MOE_LOSS_REGISTRY_LOCK:
@@ -347,7 +347,7 @@ class D1FoundationDetectionModel(BaseModel):
         payload: Mapping[str, Any],
         *,
         strict: bool = True,
-    ) -> "D1FoundationDetectionModel":
+    ) -> D1FoundationDetectionModel:
         """Construct and strictly restore a D1 downstream checkpoint payload."""
         data = _mapping(payload, "checkpoint payload")
         expected = {"schema_version", "state_dict", "config", "teacher_reference"}

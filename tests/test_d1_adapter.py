@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+
 import pytest
 import torch
-import torch.nn as nn
-from ultralytics.nn.foundation.cache import FeatureCacheReader
-from ultralytics.nn.modules import DINOFeaturePyramidAdapter, LatentMixture
 import torch.nn.functional as F
+from torch import nn
+
 from scripts.d1 import train as p5
+from ultralytics.nn.foundation.cache import FeatureCacheReader
 from ultralytics.nn.foundation_detection_model import D1FoundationDetectionModel
-from ultralytics.nn.modules import SeparableBilinear2x
+from ultralytics.nn.modules import DINOFeaturePyramidAdapter, LatentMixture, SeparableBilinear2x
 
 SOURCE_NAMES = ("block4", "block8", "block12")
 
@@ -213,7 +214,7 @@ def test_real_feature_cache_cuda_fp16() -> None:
         pytest.skip("CUDA is unavailable")
 
     reader = FeatureCacheReader(Path(cache_value))
-    sample_id = sorted(reader.records)[0]
+    sample_id = min(reader.records)
     cached = reader.get(sample_id)
     assert tuple(cached) == SOURCE_NAMES
     assert all(value.dtype == torch.float16 and tuple(value.shape) == (384, 40, 40) for value in cached.values())

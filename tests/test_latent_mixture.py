@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 import torch
-import torch.nn as nn
+from torch import nn
 
 from ultralytics.nn.mixture_loss import build_composite_criterion
 from ultralytics.nn.modules import LatentMixture, LatentRouter, MultiScaleLatentMixture
@@ -16,7 +16,6 @@ from ultralytics.nn.modules.routing_protocol import (
 )
 from ultralytics.nn.tasks import DetectionModel
 from ultralytics.utils.torch_utils import ModelEMA
-
 
 ROOT = Path(__file__).resolve().parents[1]
 

@@ -736,7 +736,7 @@ class ModelEMA:
             from ultralytics.nn.modules.routing_protocol import reset_routing_runtime_state
 
             reset_routing_runtime_state(source)
-        except Exception:
+        except Exception:  # noqa: BLE001, S110 - Optional routing cleanup must retain legacy EMA construction behavior.
             pass
         self.ema = deepcopy(source).eval()  # FP32 EMA
         if hasattr(self.ema, "teacher_model"):

@@ -13,7 +13,6 @@ from typing import Any
 
 import torch
 
-
 CACHE_SCHEMA_VERSION = "d1-cache-v1"
 DEFAULT_TARGET_SHARD_BYTES = 2 * 1024**3
 INDEX_FILENAME = "index.json"
@@ -547,7 +546,7 @@ class FeatureCacheReader:
     def __del__(self) -> None:
         try:
             self.close()
-        except Exception:
+        except Exception:  # noqa: BLE001, S110 - Destructors must tolerate partial construction and interpreter shutdown.
             pass
 
 

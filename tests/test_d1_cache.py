@@ -2,10 +2,23 @@
 
 from __future__ import annotations
 
+import copy
 import json
+import os
+import pickle
+import shutil
 from pathlib import Path
+from types import SimpleNamespace
+
+import cv2
+import numpy as np
 import pytest
 import torch
+from torch.utils.data._utils.pin_memory import pin_memory
+
+from ultralytics.data.d1_cache import D1FeatureCacheDataset, D1TrainingBatch
+from ultralytics.models.yolo.detect.foundation_train import D1FoundationDetectionTrainer
+from ultralytics.models.yolo.detect.train import DetectionTrainer
 from ultralytics.nn.foundation import cache as cache_module
 from ultralytics.nn.foundation.cache import (
     FeatureCacheReader,
@@ -13,20 +26,9 @@ from ultralytics.nn.foundation.cache import (
     build_cache_key,
     compare_feature_caches,
     sha256_bytes,
+    sha256_file,
     verify_feature_cache,
 )
-import copy
-import os
-import pickle
-import shutil
-from types import SimpleNamespace
-import cv2
-import numpy as np
-from torch.utils.data._utils.pin_memory import pin_memory
-from ultralytics.data.d1_cache import D1FeatureCacheDataset, D1TrainingBatch
-from ultralytics.models.yolo.detect.foundation_train import D1FoundationDetectionTrainer
-from ultralytics.models.yolo.detect.train import DetectionTrainer
-from ultralytics.nn.foundation.cache import sha256_file
 from ultralytics.nn.foundation.npy_cache import NpyFeatureCacheReader, open_feature_cache, validate_npy_evidence
 from ultralytics.utils import DEFAULT_CFG_DICT
 
@@ -555,6 +557,7 @@ def test_real_npy_model_backward_and_checkpoint(tmp_path):
 
 def test_npy_conversion_preserves_source_and_rejects_corruption(tmp_path):
     import torch
+
     from scripts.d1.convert_npy import convert_preserving_source
     from ultralytics.nn.foundation.cache import FeatureCacheWriter
     from ultralytics.nn.foundation.npy_cache import NpyFeatureCacheReader

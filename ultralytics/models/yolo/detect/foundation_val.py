@@ -106,11 +106,9 @@ class D1FoundationDetectionValidator(DetectionValidator):
 
     def plot_val_samples(self, batch: dict[str, Any], ni: int) -> None:
         """Cached features contain no displayable RGB image."""
-        return None
 
     def plot_predictions(self, batch: dict[str, Any], preds: list[dict[str, torch.Tensor]], ni: int) -> None:
         """Cached features contain no displayable RGB image."""
-        return None
 
 
 __all__ = ["D1FoundationDetectionValidator"]

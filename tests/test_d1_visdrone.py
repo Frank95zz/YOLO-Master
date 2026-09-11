@@ -2,8 +2,9 @@
 
 import pytest
 from PIL import Image
-from scripts.d1.prepare_visdrone import convert_annotation, prepare
+
 from scripts.d1.evaluate_visdrone import METRICS, TOOLKIT_COMMIT, export_predictions, validate_official_report
+from scripts.d1.prepare_visdrone import convert_annotation, prepare
 
 
 def test_annotation_flags_and_clipping():
@@ -106,8 +107,9 @@ def test_cross_split_duplicate_bytes_rejected(tmp_path):
 
 
 def test_default_preparation_does_not_require_test_dev(tmp_path, monkeypatch):
-    from scripts.d1 import prepare_visdrone
     import yaml
+
+    from scripts.d1 import prepare_visdrone
 
     source = make_dataset(tmp_path)
     monkeypatch.setattr(prepare_visdrone, "COUNTS", {"train": 1, "val": 1, "test-dev": 1610})
