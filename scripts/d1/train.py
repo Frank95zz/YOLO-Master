@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import os
 import subprocess
 import time
@@ -20,9 +19,8 @@ import torch
 
 from scripts.d1.artifacts import write_json
 from scripts.d1.ema import EMA_IMPLEMENTATIONS, configure_d1_ema, validate_ema_implementation
-from scripts.d1.rgb import ExportRGBValidator, ScratchTrainer, audit_model
+from scripts.d1.rgb import ExportMixin, ExportRGBValidator, ScratchTrainer, audit_model
 from scripts.d1.runtime import RunMixin
-from ultralytics.data.converter import coco80_to_coco91_class
 from ultralytics.models.yolo.detect.foundation_train import D1FoundationDetectionTrainer
 from ultralytics.models.yolo.detect.foundation_val import D1FoundationDetectionValidator
 from ultralytics.nn.foundation.cache import canonical_json_bytes, sha256_bytes, sha256_file
@@ -88,40 +86,8 @@ class RGBTrainer(RunMixin, ScratchTrainer):
     """Use the same measured run and recovery contract for the random RGB baseline."""
 
 
-class ExportValidator(D1FoundationDetectionValidator):
-    """Export original-image boxes with explicit COCO or VisDrone class mapping."""
-
-    def __init__(self, *args, dataset_kind, **kwargs):
-        self.dataset_kind = dataset_kind
-        self.degenerate_boxes_removed = 0
-        super().__init__(*args, **kwargs)
-
-    def init_metrics(self, model):
-        super().init_metrics(model)
-        self.is_coco = self.dataset_kind == "coco"
-        self.is_lvis = False
-        self.class_map = coco80_to_coco91_class() if self.is_coco else list(range(10))
-        self.args.save_json = True
-
-    def eval_json(self, stats):
-        # Official scoring is explicit, never inferred from a server's dataset path.
-        return stats
-
-    def pred_to_json(self, predn, pbatch):
-        start = len(self.jdict)
-        super().pred_to_json(predn, pbatch)
-        if self.dataset_kind == "visdrone":
-            exported = []
-            for row in self.jdict[start:]:
-                row["image_id"] = Path(pbatch["im_file"]).stem
-                if not all(math.isfinite(value) for value in (*row["bbox"], row["score"])):
-                    raise FloatingPointError("Nonfinite prediction in VisDrone export")
-                # Clipping padding-only predictions can produce zero-area boxes.
-                if row["bbox"][2] == 0 or row["bbox"][3] == 0:
-                    self.degenerate_boxes_removed += 1
-                else:
-                    exported.append(row)
-            self.jdict[start:] = exported
+class ExportValidator(ExportMixin, D1FoundationDetectionValidator):
+    """Use the same official export policy as the RGB control."""
 
 
 def strict_checkpoint(path, *, allow_scratch=False):

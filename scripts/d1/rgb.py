@@ -220,7 +220,10 @@ class ExportMixin:
                 row["image_id"] = Path(pbatch["im_file"]).stem
                 if not all(math.isfinite(value) for value in (*row["bbox"], row["score"])):
                     raise FloatingPointError("Nonfinite prediction in VisDrone export")
-                if row["bbox"][2] == 0 or row["bbox"][3] == 0:
+                if not 0 <= row["score"] <= 1:
+                    raise ValueError("Invalid confidence in VisDrone export")
+                # Early regression outputs or clipping can yield nonpositive boxes.
+                if row["bbox"][2] <= 0 or row["bbox"][3] <= 0:
                     self.degenerate_boxes_removed += 1
                 else:
                     exported.append(row)

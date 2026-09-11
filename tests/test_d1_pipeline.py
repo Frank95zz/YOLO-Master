@@ -682,7 +682,8 @@ def test_rgb_official_exports_match_cached_validator(tmp_path, dataset_kind):
     assert rgb.jdict == before
 
 
-def test_rgb_visdrone_rejects_nonfinite_export_and_invalid_dataset(tmp_path):
+@pytest.mark.parametrize("score", [float("nan"), float("inf"), -0.1, 1.1])
+def test_rgb_visdrone_rejects_nonfinite_export_and_invalid_dataset(tmp_path, score):
     from scripts.d1.rgb import ExportRGBValidator
 
     with pytest.raises(ValueError, match="dataset_kind"):
@@ -692,8 +693,47 @@ def test_rgb_visdrone_rejects_nonfinite_export_and_invalid_dataset(tmp_path):
     validator.init_metrics(SimpleNamespace(names=dict(enumerate(map(str, range(10)))), end2end=True))
     bad = {
         "bboxes": torch.tensor([[0.0, 0.0, 1.0, 1.0]]),
-        "conf": torch.tensor([float("nan")]),
+        "conf": torch.tensor([score]),
         "cls": torch.tensor([0.0]),
     }
-    with pytest.raises(FloatingPointError, match="Nonfinite prediction"):
+    with pytest.raises((FloatingPointError, ValueError), match="Nonfinite prediction|Invalid confidence"):
         validator.pred_to_json(bad, {"im_file": "000001.jpg"})
+
+
+@pytest.mark.parametrize(
+    "bad_box",
+    [
+        [493.523, 208.945, 492.187, 211.992],
+        [498.984, 246.984, 507.468, 245.906],
+        [10.0, 20.0, 10.0, 30.0],
+        [10.0, 20.0, 20.0, 20.0],
+        [10.0, 20.0, 10.0001, 30.0],
+    ],
+)
+def test_visdrone_export_filters_nonpositive_sizes_for_both_models(tmp_path, bad_box):
+    from scripts.d1.evaluate_visdrone import export_predictions
+    from scripts.d1.rgb import ExportRGBValidator
+    from scripts.d1.train import ExportValidator
+
+    _, split_file, cache_dir = build_fixture(tmp_path, count=1)
+    records = []
+    for kind, validator_type in (("rgb", ExportRGBValidator), ("cached", ExportValidator)):
+        options = {"feature_cache": cache_dir} if kind == "cached" else {}
+        validator = validator_type(save_dir=tmp_path / kind, args={"plots": False}, dataset_kind="visdrone", **options)
+        validator.data = {"val": str(split_file)}
+        model = SimpleNamespace(names=dict(enumerate(map(str, range(10)))), end2end=True)
+        validator.init_metrics(model)
+        prediction = {
+            "bboxes": torch.tensor([[1.0, 2.0, 11.0, 22.0], bad_box, [3.0, 4.0, 13.0, 24.0]]),
+            "conf": torch.tensor([0.9, 0.02, 0.8]),
+            "cls": torch.tensor([0.0, 9.0, 1.0]),
+        }
+        validator.pred_to_json(prediction, {"im_file": "000001.jpg"})
+        assert validator.degenerate_boxes_removed == 1
+        assert [row["bbox"] for row in validator.jdict] == [[1.0, 2.0, 10.0, 20.0], [3.0, 4.0, 10.0, 20.0]]
+        report = export_predictions(validator.jdict, ["000001"], tmp_path / (kind + "-txt"))
+        assert report["image_count"] == 1
+        records.append(validator.jdict)
+        validator.init_metrics(model)
+        assert validator.degenerate_boxes_removed == 0
+    assert records[0] == records[1]
