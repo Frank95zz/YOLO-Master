@@ -17,7 +17,7 @@ import numpy as np
 import torch
 
 from scripts.d1.artifacts import encoded, immutable, write_json
-from scripts.d1.prepare_wp0 import verify_model
+from scripts.d1.prepare_coco import verify_model
 from ultralytics.data.augment import LetterBox
 from ultralytics.nn.foundation import DINOv3Teacher
 from ultralytics.nn.foundation.cache import (
@@ -49,18 +49,18 @@ def git_commit(repo_root):
 
 def cache_contract(repo_root):
     manifests = repo_root / "experiments/d1/manifests"
-    p0 = load_json(manifests / "p0-experiment-contract.json")
+    experiment = load_json(manifests / "experiment-contract.json")
     teacher = load_json(manifests / "dinov3-vits16.json")
-    if p0["cache"]["schema_version"] != CACHE_SCHEMA_VERSION:
-        raise ValueError("WP0 and cache implementation schema versions differ")
+    if experiment["cache"]["schema_version"] != CACHE_SCHEMA_VERSION:
+        raise ValueError("Experiment contract and cache implementation schema versions differ")
     return {
         "schema_version": CACHE_SCHEMA_VERSION,
         "model_id": teacher["model_id"],
         "teacher_weights_sha256": teacher["files"]["model.safetensors"]["sha256"],
-        "preprocessing_sha256": sha256_bytes(canonical_json_bytes(p0["input"])),
+        "preprocessing_sha256": sha256_bytes(canonical_json_bytes(experiment["input"])),
         "output_layers": list(OUTPUT_LAYERS),
         "feature_names": list(FEATURE_NAMES),
-        "dtype": p0["cache"]["dtype"],
+        "dtype": experiment["cache"]["dtype"],
         "expected_shape": list(EXPECTED_SHAPE),
     }
 
@@ -283,7 +283,7 @@ def compare(args):
 
 
 def convert_npy(args):
-    from scripts.d1.npy import convert_preserving_source
+    from scripts.d1.convert_npy import convert_preserving_source
 
     return convert_preserving_source(args.cache_dir, args.output)
 

@@ -363,7 +363,7 @@ def test_real_dinov3_vits16_multilayer_640():
     if not weights_value:
         pytest.skip("set D1_DINOV3_WEIGHTS to a local Transformers model directory")
     if not torch.cuda.is_available():
-        pytest.skip("D1 WP1 real-weight integration test requires CUDA")
+        pytest.skip("DINOv3 real-weight integration test requires CUDA")
 
     weights = Path(weights_value)
     assert weights.is_dir(), f"D1_DINOV3_WEIGHTS is not a directory: {weights}"

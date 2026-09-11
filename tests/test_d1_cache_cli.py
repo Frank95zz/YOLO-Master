@@ -12,7 +12,7 @@ from scripts.d1.cache_features import cache_contract, load_image, make_letterbox
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_cache_contract_is_derived_from_tracked_wp0_manifests():
+def test_cache_contract_is_derived_from_tracked_manifests():
     value = cache_contract(REPO_ROOT)
 
     assert value["schema_version"] == "d1-cache-v1"
@@ -40,7 +40,7 @@ def test_fixed_100_paths_are_sorted_and_stable(tmp_path):
     assert first == paths
 
 
-def test_wp0_letterbox_is_deterministic_rgb_chw(tmp_path):
+def test_letterbox_is_deterministic_rgb_chw(tmp_path):
     image = np.zeros((10, 20, 3), dtype=np.uint8)
     image[:, :] = (10, 20, 30)
     path = tmp_path / "sample.png"

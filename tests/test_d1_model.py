@@ -161,7 +161,7 @@ def test_checkpoint_contains_only_downstream_state_and_strictly_round_trips() ->
         D1FoundationDetectionModel.from_checkpoint_payload(mismatched)
 
 
-def test_real_wp2_cache_cuda_forward() -> None:
+def test_real_feature_cache_cuda_forward() -> None:
     cache_value = os.environ.get("D1_WP2_CACHE")
     if not cache_value:
         pytest.skip("D1_WP2_CACHE is not configured")

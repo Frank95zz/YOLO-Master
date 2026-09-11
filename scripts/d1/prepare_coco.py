@@ -95,7 +95,7 @@ def verify_labels(coco_root, lists, expected):
 
 
 def verify_contract(repo):
-    contract = json.loads((repo / "experiments/d1/manifests/p0-experiment-contract.json").read_text())
+    contract = json.loads((repo / "experiments/d1/manifests/experiment-contract.json").read_text())
     if contract["teacher"]["model_id"] != MODEL_ID:
         raise ValueError("Contract teacher model changed")
     expected = [{"implementation_index": block - 1, "name": f"block{block}", "ordinal": block} for block in (4, 8, 12)]

@@ -57,7 +57,7 @@ export TEACHER_DIR="$D1_WORK/weights/dinov3-vits16"
 准备完毕后运行校验，生成两份完整、排序稳定的图片列表：
 
 ```bash
-python -m scripts.d1.prepare_wp0 --coco-root "$COCO_ROOT" \
+python -m scripts.d1.prepare_coco --coco-root "$COCO_ROOT" \
   --weights-dir "$TEACHER_DIR" --output "$D1_WORK/inputs"
 ```
 
@@ -66,13 +66,15 @@ python -m scripts.d1.prepare_wp0 --coco-root "$COCO_ROOT" \
 只需恢复列表时可以运行：
 
 ```bash
-python -m scripts.d1.prepare_wp0 --coco-root "$COCO_ROOT" \
+python -m scripts.d1.prepare_coco --coco-root "$COCO_ROOT" \
   --lists-only --output "$D1_WORK/inputs"
 ```
 
 COCO 列表数量固定为118,287/5,000，不进行重新随机划分。重跑时输出文件必须一致，否则报错，不覆盖已有证据。旧 --download/--workspace 参数已移出当前入口。
 
-来源与固定校验信息：[预处理合同](manifests/p0-experiment-contract.json)、[Teacher](manifests/dinov3-vits16.json)、[数据划分](manifests/coco2017-splits.json)、[许可来源](#数据与模型许可)。三个 JSON 是准备和抽取脚本的校验输入，不以 Markdown 表格替代。
+来源与固定校验信息：[预处理合同](manifests/experiment-contract.json)、[Teacher](manifests/dinov3-vits16.json)、[数据划分](manifests/coco2017-splits.json)、[许可来源](#数据与模型许可)。三个 JSON 是准备和抽取脚本的校验输入，不以 Markdown 表格替代。COCO 固定输入配方见 [dinov3-vits16-coco2017.yaml](../../ultralytics/cfg/experiments/d1/dinov3-vits16-coco2017.yaml)。
+
+公共文件按功能命名：`prepare_coco.py` 校验 COCO 和 Teacher 输入，`prepare_visdrone.py` 准备 VisDrone 标注，`cache_features.py` 提供缓存命令，`convert_npy.py` 实现无损 NPY 转换。合同 JSON 的历史 `schema_version` 保持不变，避免仅改名就改变已有校验依据；模型文件中的 P3/P4/P5 表示特征金字塔尺度，不是工作阶段。
 
 ## 缓存
 
@@ -96,7 +98,7 @@ python -m scripts.d1.cache_features to-npy \
 
 图片列表必须按字典序排序、无重复，且每行是 images/SPLIT/ID.jpg。自定义列表代表显式子集，不自动等同于完整官方数据。build 固定 seed0、确定性算法和 TF32 关闭，记录图片摘要、batch、设备和依赖版本；同目录并发写入、运行身份变化、遗留 .part 或多进程 torchrun 启动都会报错。中断后按原 batch 重放，不把剩余图片重新组 batch；已提交成员的 FP16 特征必须逐元素一致。
 
-保留相同命令即可续跑新入口生成的缓存。旧缓存缺少 build.json 身份时仍支持读取、校验和转换，但须用原提取器续写，不能静默改变 batch。独立的六卡调度器保留在研究归档，不进入本 PR。可选 --benchmark-read 会额外完整读取一次缓存，其吞吐不是训练吞吐。
+同一代码版本下保留相同命令即可续跑该入口生成的缓存。抽取器源码 SHA256 属于 build.json 身份的一部分；本次入口命名迁移也会改变该摘要。已完成缓存仍可读取、校验和转换，但旧版本的未完成缓存应在原提交下续写，不修改 build.json 绕过身份校验。缺少 build.json 的更早缓存同样须用原提取器续写，不能静默改变 batch。独立的六卡调度器保留在研究归档，不进入本 PR。可选 --benchmark-read 会额外完整读取一次缓存，其吞吐不是训练吞吐。
 
 VisDrone 使用已下载并解压的官方 DET train/val（6,471/548 张），源目录下应有 VisDrone2019-DET-train 与 VisDrone2019-DET-val，分别包含 images/annotations。转换标签时保留 ignore 原始信息，原始数据不删除：
 
@@ -235,9 +237,7 @@ git diff --check
 
 PR 不包含旧实验队列、内存回收、迁移删除脚本、巨型路径列表、权重、数据集、缓存、完整预测或逐阶段流水报告。研究分支保留全部原始工作与证据；这些内容没有被删除或覆写。
 
-代码验收提交为 [ab3ccc7](https://github.com/Frank95zz/YOLO-Master/commit/ab3ccc7f910e4361e45e23f8a8c322aba9d03c13)：**556 passed、56 skipped、2 deselected**，pytest 耗时52.87秒。测试重组前后的612个有效用例逐项对应，无遗漏或额外重复；136个迁移测试函数的断言与参数化定义经语法树核对保留。此次只调整测试组织和文档，模型、训练实现、scratch 配置及三个 JSON 合同未变。
-
-九个调整后的测试文件通过本机 Ruff 检查和格式检查，远端 py_compile、相对链接、研究结果表、回归命令及 git diff --check 通过。服务器未安装 Ruff，未为此更改环境；本轮未执行 codespell。没有运行真实权重/CUDA 集成或正式实验。完整日志保存在外部工作区，SHA256 为 `6d2a5968ef8d19ef2b56abb85343c1b5a5ccdaf9879e38699bb48988e33f6b60`，不增加过程性 JSON 到 PR。
+当前正在验证功能命名迁移；完成后在此记录对应代码提交、实际回归结果和日志摘要，不将历史测试数字作为当前版本结果。迁移只涉及文件名、导入、引用和说明，不修改模型结构、训练参数或数据协议。完整校验记录保存在外部工作区，不增加过程性 JSON 到 PR。
 
 ## 数据与模型许可
 

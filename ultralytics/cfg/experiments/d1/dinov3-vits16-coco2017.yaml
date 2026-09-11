@@ -1,4 +1,4 @@
-# D1 P0: frozen DINOv3 ViT-S/16 features with a trainable adapter, LatentMixture, and Detect head.
+# Frozen DINOv3 ViT-S/16 features with a trainable adapter, LatentMixture, and Detect head on COCO 2017.
 # Data and teacher weight paths are supplied at runtime; tracked configuration must remain host-independent.
 model: ultralytics/cfg/models/26/yolo26-d1-dinov3-latent-n.yaml
 data: coco.yaml
@@ -42,4 +42,4 @@ foundation_target_levels: [p3, p4, p5]
 foundation_cache_teacher_features: true
 
 # Block 4/8/12 (zero-based implementation indices 3/7/11), cache schema, and preprocessing details are locked in
-# experiments/d1/manifests/p0-experiment-contract.json until their runtime keys are introduced by later work packages.
+# experiments/d1/manifests/experiment-contract.json and consumed directly by the feature extraction entry.

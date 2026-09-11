@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import pytest
 import torch
-from scripts.d1 import prepare_wp0, train
+from scripts.d1 import prepare_coco, train
 from scripts.d1.cache_features import cache_contract
 from scripts.d1.ema import D1ModelEMA
 from ultralytics.models.yolo.detect.foundation_train import D1FoundationDetectionTrainer
@@ -201,7 +201,7 @@ def test_visdrone_export_preserves_ids_and_filters_only_zero_area():
 
 
 def test_coco_npy_conversion_preserves_source_and_is_repeatable(inputs):
-    from scripts.d1.npy import convert_preserving_source
+    from scripts.d1.convert_npy import convert_preserving_source
     from ultralytics.nn.foundation.npy_cache import NpyFeatureCacheReader
 
     source = inputs.train_cache
@@ -231,15 +231,15 @@ def test_preparation_keeps_published_manifest_unchanged(tmp_path, monkeypatch):
     original = {"coco2017-splits.json": train.canonical_json_bytes(published)}
     for name, data in original.items():
         (manifest / name).write_bytes(data)
-    monkeypatch.setattr(prepare_wp0, "verify_contract", lambda *a: None)
+    monkeypatch.setattr(prepare_coco, "verify_contract", lambda *a: None)
     monkeypatch.setattr(
-        prepare_wp0,
+        prepare_coco,
         "validated_splits",
         lambda *a: {split: [f"images/{split}/{split}.jpg"] for split in ("train2017", "val2017")},
     )
-    monkeypatch.setattr(prepare_wp0, "verify_labels", lambda *a: published["labels"])
-    monkeypatch.setattr(prepare_wp0, "verify_model", lambda *a: {"files": {}})
-    report = prepare_wp0.verify_inputs(workspace / "data", workspace / "weights", workspace, repo=repo)
+    monkeypatch.setattr(prepare_coco, "verify_labels", lambda *a: published["labels"])
+    monkeypatch.setattr(prepare_coco, "verify_model", lambda *a: {"files": {}})
+    report = prepare_coco.verify_inputs(workspace / "data", workspace / "weights", workspace, repo=repo)
     assert {p.name: p.read_bytes() for p in manifest.iterdir()} == original
     assert (workspace / "verification.json").is_file()
     assert report["source_archives_verified"] is False

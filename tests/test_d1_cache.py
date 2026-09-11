@@ -555,7 +555,7 @@ def test_real_npy_model_backward_and_checkpoint(tmp_path):
 
 def test_npy_conversion_preserves_source_and_rejects_corruption(tmp_path):
     import torch
-    from scripts.d1.npy import convert_preserving_source
+    from scripts.d1.convert_npy import convert_preserving_source
     from ultralytics.nn.foundation.cache import FeatureCacheWriter
     from ultralytics.nn.foundation.npy_cache import NpyFeatureCacheReader
 

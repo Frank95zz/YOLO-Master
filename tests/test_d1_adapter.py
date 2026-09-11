@@ -205,7 +205,7 @@ def test_candidates_feed_three_single_scale_latent_mixtures() -> None:
     assert all(any(parameter.grad is not None for parameter in mixtures[level].parameters()) for level in outputs)
 
 
-def test_real_wp2_cache_cuda_fp16() -> None:
+def test_real_feature_cache_cuda_fp16() -> None:
     cache_value = os.environ.get("D1_WP2_CACHE")
     if not cache_value:
         pytest.skip("D1_WP2_CACHE is not configured")

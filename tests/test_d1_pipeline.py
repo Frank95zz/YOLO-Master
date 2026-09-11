@@ -293,7 +293,7 @@ def test_feature_batch_rejects_bad_shape_dtype_or_keys() -> None:
         D1FeatureBatch(bad)
 
 
-def test_real_wp2_cache_dataset_trainer_and_model(tmp_path) -> None:
+def test_real_feature_cache_dataset_trainer_and_model(tmp_path) -> None:
     cache_value = os.environ.get("D1_WP2_CACHE")
     data_value = os.environ.get("D1_COCO_ROOT")
     if not cache_value or not data_value:
@@ -330,7 +330,7 @@ def test_real_wp2_cache_dataset_trainer_and_model(tmp_path) -> None:
     assert torch.isfinite(predictions).all()
 
 
-def test_real_wp2_cache_one_batch_train_and_validate(tmp_path) -> None:
+def test_real_feature_cache_one_batch_train_and_validate(tmp_path) -> None:
     cache_value = os.environ.get("D1_WP2_CACHE")
     data_value = os.environ.get("D1_COCO_ROOT")
     if not cache_value or not data_value:
@@ -358,7 +358,7 @@ def test_real_wp2_cache_one_batch_train_and_validate(tmp_path) -> None:
         },
     )
     repo_root = Path(__file__).resolve().parents[1]
-    experiment = YAML.load(repo_root / "ultralytics/cfg/experiments/d1/p0-dinov3-vits16-coco2017.yaml")
+    experiment = YAML.load(repo_root / "ultralytics/cfg/experiments/d1/dinov3-vits16-coco2017.yaml")
     trainer = D1FoundationDetectionTrainer(
         overrides={
             **experiment,
@@ -369,7 +369,7 @@ def test_real_wp2_cache_one_batch_train_and_validate(tmp_path) -> None:
             "device": 0,
             "amp": False,
             "project": str(tmp_path / "runs"),
-            "name": "wp5-one-batch",
+            "name": "cached-one-batch",
             "exist_ok": True,
             "plots": False,
             "save": False,

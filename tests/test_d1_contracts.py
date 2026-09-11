@@ -15,17 +15,17 @@ from ultralytics.utils import YAML
 ROOT = Path(__file__).resolve().parents[1]
 
 
-CONFIG = ROOT / "ultralytics/cfg/experiments/d1/p0-dinov3-vits16-coco2017.yaml"
+CONFIG = ROOT / "ultralytics/cfg/experiments/d1/dinov3-vits16-coco2017.yaml"
 
 
-CONTRACT = ROOT / "experiments/d1/manifests/p0-experiment-contract.json"
+CONTRACT = ROOT / "experiments/d1/manifests/experiment-contract.json"
 
 
-SCRIPT = ROOT / "scripts/d1/prepare_wp0.py"
+SCRIPT = ROOT / "scripts/d1/prepare_coco.py"
 
 
 def _load_script():
-    spec = importlib.util.spec_from_file_location("prepare_wp0", SCRIPT)
+    spec = importlib.util.spec_from_file_location("prepare_coco", SCRIPT)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -43,7 +43,7 @@ def _walk_strings(value):
             yield from _walk_strings(nested)
 
 
-def test_wp0_recipe_locks_full_coco_and_vits16_without_random_augmentation() -> None:
+def test_recipe_locks_full_coco_and_vits16_without_random_augmentation() -> None:
     recipe = yaml.safe_load(CONFIG.read_text(encoding="utf-8"))
 
     assert recipe["data"] == "coco.yaml"
@@ -81,7 +81,7 @@ def test_wp0_recipe_locks_full_coco_and_vits16_without_random_augmentation() -> 
     assert "/data/" not in tracked_text
 
 
-def test_wp0_contract_locks_preprocessing_blocks_and_cache_schema() -> None:
+def test_experiment_contract_locks_preprocessing_blocks_and_cache_schema() -> None:
     contract = json.loads(CONTRACT.read_text(encoding="utf-8"))
 
     assert contract["schema_version"] == "d1-p0-contract-v1"
