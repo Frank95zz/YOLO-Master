@@ -1,0 +1,99 @@
+{
+  "AUX_STAR": null,
+  "estimated_new_training_seconds": 10182.00144982338,
+  "estimated_reference_run_seconds": [
+    1128.8758187294006,
+    1130.2956490516663,
+    1134.829015493393
+  ],
+  "eta_scope": "Training, diagnostics, validation and GPU exports; MATLAB/transfer separate",
+  "execution_identity": {
+    "commit": "050737e79806a1d4a9ad0a16a5e76a64d311ba10",
+    "contract_sha256": "1b5b1ede7250b21c03f5ba7d6875e565f5fc39e3e4d2eba169d56848d1614e0e"
+  },
+  "gates_sha256": "662018d2fdf08553a821ab16ef1865f53b9587434d088441a303945fa0839103",
+  "identity": {
+    "commit": "993aee4d32168616fb96cedb2b524379c09d35fd",
+    "contract_sha256": "1b5b1ede7250b21c03f5ba7d6875e565f5fc39e3e4d2eba169d56848d1614e0e"
+  },
+  "initialization": "same-seed original fresh initialization, not stage1 trained weights",
+  "matrix_sha256": "47abdbccad9845164c4ae6c8f7ded8e6262f51794eb460971a5eedc5fb0d6cab",
+  "new_candidates": [
+    {
+      "balance": 0.1,
+      "gain": 0.0,
+      "seed": 0,
+      "z": 0.0
+    },
+    {
+      "balance": 0.1,
+      "gain": 0.0,
+      "seed": 1,
+      "z": 0.0
+    },
+    {
+      "balance": 0.1,
+      "gain": 0.0,
+      "seed": 2,
+      "z": 0.0
+    },
+    {
+      "balance": 0.1,
+      "gain": 0.03,
+      "seed": 0,
+      "z": 0.0
+    },
+    {
+      "balance": 0.1,
+      "gain": 0.03,
+      "seed": 1,
+      "z": 0.0
+    },
+    {
+      "balance": 0.1,
+      "gain": 0.03,
+      "seed": 2,
+      "z": 0.0
+    },
+    {
+      "balance": 0.1,
+      "gain": 0.3,
+      "seed": 0,
+      "z": 0.0
+    },
+    {
+      "balance": 0.1,
+      "gain": 0.3,
+      "seed": 1,
+      "z": 0.0
+    },
+    {
+      "balance": 0.1,
+      "gain": 0.3,
+      "seed": 2,
+      "z": 0.0
+    }
+  ],
+  "orchestrator_sha256": "4767cebd8ef5ad29f97800fb193e280f03c97bab4adf3d853d0a5cdbc873eb3f",
+  "reused_run_ids": [
+    "E3-screen-b0.1-z0-g0.1-s0",
+    "E3-screen-b0.1-z0-g0.1-s1",
+    "E3-screen-b0.1-z0-g0.1-s2"
+  ],
+  "schedule_epochs": 300,
+  "schema_version": "d1-e3-stage2-plan-v1",
+  "screen_epochs": 60,
+  "selected_nonzero": {
+    "AP_mean": 0.08131928487898465,
+    "AP_sample_std": 0.003512595939509621,
+    "AP_values": [
+      0.07726332129035565,
+      0.08333313302386548,
+      0.08336140032273281
+    ],
+    "balance": 0.1,
+    "gpu_hours_mean": 1.8855558240413666,
+    "z": 0.0
+  },
+  "stage1_summary_sha256": "6ab24475f4cbf4bb58472d3afe23139c29a9c9043cab9c403aa8f4e3fd7055d9"
+}
