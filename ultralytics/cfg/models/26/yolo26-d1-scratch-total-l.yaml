@@ -5,6 +5,8 @@
 nc: 80
 end2end: true
 reg_max: 1
+# Applied by the D1 Scratch factory; parameters and topology are unchanged.
+fp32_attention: true
 scale: l
 scales:
   l: [1.0, 0.9375, 512]

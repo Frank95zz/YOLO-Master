@@ -14,6 +14,7 @@ from ultralytics.data.converter import coco80_to_coco91_class
 from ultralytics.data.dataset import YOLODataset
 from ultralytics.models.yolo.detect.train import DetectionTrainer
 from ultralytics.models.yolo.detect.val import DetectionValidator
+from ultralytics.nn.modules.block import Attention
 from ultralytics.nn.tasks import DetectionModel
 from ultralytics.utils import LOGGER, YAML
 from ultralytics.utils.torch_utils import unwrap_model
@@ -39,6 +40,17 @@ def scratch_config(cfg=None, *, nc):
     return expected
 
 
+def build_model(cfg=None, *, nc, verbose=False):
+    """Apply the explicit Scratch precision policy without changing its native model class."""
+    config = scratch_config(cfg, nc=nc)
+    model = DetectionModel(config, nc=nc, ch=3, verbose=verbose)
+    for module in model.modules():
+        if isinstance(module, Attention):
+            module.fp32_attention = config["fp32_attention"]
+    audit_model(model)
+    return model
+
+
 def audit_model(model):
     """Check actual parameter sizes and the standard end-to-end detection head."""
     if type(model) is not DetectionModel:
@@ -51,7 +63,10 @@ def audit_model(model):
         raise ValueError(f"Scratch parameter sizes differ: {total} total / {trainable} trainable")
     if (head.reg_max, head.end2end) != (1, True) or tuple(model.stride.tolist()) != (8, 16, 32):
         raise ValueError("Scratch requires the registered YOLO26 detection head and strides")
-    return {"nc": head.nc, "total_parameters": total, "trainable_parameters": trainable}
+    attention = [module for module in model.modules() if isinstance(module, Attention)]
+    if len(attention) != 3 or any(getattr(module, "fp32_attention", False) is not True for module in attention):
+        raise ValueError("Scratch requires FP32 math in all three attention modules")
+    return {"nc": head.nc, "total_parameters": total, "trainable_parameters": trainable, "fp32_attention": True}
 
 
 class ScratchDataset(YOLODataset):
@@ -141,9 +156,7 @@ class ScratchTrainer(DetectionTrainer):
             raise ValueError("Pretrained weights are forbidden for the scratch control")
         if self.data.get("channels", 3) != 3:
             raise ValueError("Scratch requires three RGB channels")
-        config = scratch_config(cfg, nc=self.data["nc"])
-        model = DetectionModel(config, nc=self.data["nc"], ch=3, verbose=verbose)
-        audit_model(model)
+        model = build_model(cfg, nc=self.data["nc"], verbose=verbose)
         if weights is not None:
             if type(weights) is not DetectionModel:
                 raise TypeError("Scratch resume weights must contain a standard DetectionModel")

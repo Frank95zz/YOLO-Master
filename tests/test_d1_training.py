@@ -795,6 +795,61 @@ def test_runtime_atomic_snapshot_ignores_stale_attempt(tmp_path):
     assert stale.read_bytes() == b"interrupted"
 
 
+def test_attention_default_and_legacy_state_keep_original_math():
+    from ultralytics.nn.modules.block import Attention
+
+    module = Attention(8, num_heads=2).eval()
+    image = torch.randn(2, 8, 3, 3)
+    q, k, v = module.qkv(image).view(2, 2, 8, 9).split([2, 2, 4], dim=2)
+    weights = ((q * module.scale).transpose(-2, -1) @ k).softmax(dim=-1)
+    expected = module.proj((v @ weights.transpose(-2, -1)).view(2, 8, 3, 3) + module.pe(v.reshape(2, 8, 3, 3)))
+    torch.testing.assert_close(module(image), expected, rtol=0, atol=0)
+    del module.fp32_attention
+    torch.testing.assert_close(module(image), expected, rtol=0, atol=0)
+
+
+def test_fp32_attention_prevents_half_dot_product_overflow_and_preserves_gradients():
+    from ultralytics.nn.modules.block import Attention
+
+    module = Attention(8, num_heads=2).half()
+    module.qkv = torch.nn.Conv2d(8, 16, 1, bias=False).half()
+    module.pe = torch.nn.Conv2d(8, 8, 1, bias=False).half()
+    module.proj = torch.nn.Identity()
+    with torch.no_grad():
+        module.qkv.weight.zero_()
+        module.qkv.weight[:, 0] = 1000
+        module.pe.weight.zero_()
+    image = torch.ones(2, 8, 3, 3, dtype=torch.float16, requires_grad=True)
+    assert not torch.isfinite(module(image)).all()
+    reference = deepcopy(module).float()(image.detach().float())
+    keys = tuple(module.state_dict())
+    module.fp32_attention = True
+    actual = module(image)
+    assert actual.dtype == image.dtype and torch.isfinite(actual).all()
+    assert tuple(module.state_dict()) == keys
+    torch.testing.assert_close(actual.float(), reference, rtol=1e-3, atol=1e-3)
+    (actual.float().mean() / 1000).backward()
+    assert image.grad is not None and torch.isfinite(image.grad).all() and image.grad.abs().sum() > 0
+    assert all(parameter.grad is not None and torch.isfinite(parameter.grad).all() for parameter in module.parameters())
+
+
+def test_scratch_attention_policy_is_explicit_and_audited():
+    from scripts.d1.rgb import audit_model, scratch_config
+    from ultralytics.nn.modules.block import Attention
+
+    model = train.construct_model("SCRATCH", nc=10)
+    attention = [module for module in model.modules() if isinstance(module, Attention)]
+    assert len(attention) == 3 and all(module.fp32_attention is True for module in attention)
+    assert audit_model(model)["fp32_attention"] is True
+    attention[-1].fp32_attention = False
+    with pytest.raises(ValueError, match="FP32 math"):
+        audit_model(model)
+    config = scratch_config(nc=10)
+    config.pop("fp32_attention")
+    with pytest.raises(ValueError, match="exact registered"):
+        scratch_config(config, nc=10)
+
+
 def test_native_scratch_checkpoint_strict_reload(tmp_path):
     from scripts.d1.rgb import ScratchTrainer, scratch_config
 
@@ -808,6 +863,10 @@ def test_native_scratch_checkpoint_strict_reload(tmp_path):
     torch.save({"model": model, "epoch": 2}, checkpoint)
     restored, epoch = train.strict_checkpoint(checkpoint, allow_scratch=True)
     assert epoch == 2
+    from ultralytics.nn.modules.block import Attention
+
+    assert restored.yaml["fp32_attention"] is True
+    assert all(module.fp32_attention for module in restored.modules() if isinstance(module, Attention))
     for name, value in model.state_dict().items():
         if isinstance(value, torch.Tensor):
             torch.testing.assert_close(value, restored.state_dict()[name], rtol=0, atol=0)

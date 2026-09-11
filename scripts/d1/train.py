@@ -19,7 +19,7 @@ import torch
 
 from scripts.d1.artifacts import write_json
 from scripts.d1.ema import EMA_IMPLEMENTATIONS, configure_d1_ema, validate_ema_implementation
-from scripts.d1.rgb import ExportMixin, ExportRGBValidator, ScratchTrainer, audit_model
+from scripts.d1.rgb import ExportMixin, ExportRGBValidator, ScratchTrainer, audit_model, build_model
 from scripts.d1.runtime import AMP_GROWTH_INTERVAL, AMP_INIT_SCALE, RunMixin
 from ultralytics.models.yolo.detect.foundation_train import D1FoundationDetectionTrainer
 from ultralytics.models.yolo.detect.foundation_val import D1FoundationDetectionValidator
@@ -63,9 +63,7 @@ def construct_model(variant, p3_upsample_mode="bilinear", *, nc=80, seed=0):
     with torch.random.fork_rng(devices=[]):
         torch.manual_seed(seed)
         config = model_config(variant, p3_upsample_mode, nc=nc)
-        model = (
-            DetectionModel(config, nc=nc, verbose=False) if variant == "SCRATCH" else D1FoundationDetectionModel(config)
-        )
+        model = build_model(config, nc=nc) if variant == "SCRATCH" else D1FoundationDetectionModel(config)
         initialize_mixture_loss_ema_buffer(model)
     return model
 
@@ -99,7 +97,7 @@ def strict_checkpoint(path, *, allow_scratch=False):
     if isinstance(source, D1FoundationDetectionModel):
         model = D1FoundationDetectionModel(source.config_dict())
     elif allow_scratch and type(source) is DetectionModel:
-        model = DetectionModel(source.yaml, verbose=False)
+        model = build_model(source.yaml, nc=source.model[-1].nc)
     else:
         raise TypeError("Checkpoint must contain a D1FoundationDetectionModel")
     if isinstance(model, D1FoundationDetectionModel) or "_mixture_loss_ema_buf" in source.state_dict():
