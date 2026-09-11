@@ -11,7 +11,6 @@ import os
 import platform
 import shutil
 import subprocess
-import sys
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -404,6 +403,21 @@ def generate_manifests(workspace: Path, repo: Path, load_model: bool) -> None:
         write_json(workspace_manifest_root / filename, payload)
 
 
+def materialize_splits(coco_root: Path, repo: Path) -> None:
+    """Restore ignored split lists without changing published provenance or downloading data."""
+    output_root = repo / "experiments" / "d1" / "manifests"
+    expected = json.loads((output_root / "coco2017-splits.json").read_text(encoding="utf-8"))["splits"]
+    lists = {split: build_split_list(coco_root, split) for split in EXPECTED_SPLITS}
+    assert_disjoint_splits(lists["train2017"], lists["val2017"])
+    # Validate both splits before publishing either generated list.
+    for split, lines in lists.items():
+        digest = hashlib.sha256(("\n".join(lines) + "\n").encode("utf-8")).hexdigest()
+        if len(lines) != expected[split]["count"] or digest != expected[split]["sha256"]:
+            raise ValueError(f"{split}: generated paths do not match the published split contract")
+    for split, lines in lists.items():
+        write_lines(output_root / f"coco2017-{split}.txt", lines)
+
+
 def verify_contract(repo: Path) -> None:
     contract_path = repo / "experiments" / "d1" / "manifests" / "p0-experiment-contract.json"
     contract = json.loads(contract_path.read_text(encoding="utf-8"))
@@ -426,6 +440,11 @@ def parse_args() -> argparse.Namespace:
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--download", action="store_true", help="Download, extract, verify, and generate manifests")
     mode.add_argument("--verify-only", action="store_true", help="Verify existing artifacts and regenerate manifests")
+    mode.add_argument(
+        "--materialize-splits-from",
+        type=Path,
+        help="Restore ignored lists from an existing COCO root; check published count/SHA256 only",
+    )
     parser.add_argument(
         "--skip-model-load",
         action="store_true",
@@ -439,6 +458,10 @@ def main() -> int:
     workspace = args.workspace.resolve()
     repo = args.repo.resolve()
     verify_contract(repo)
+    if args.materialize_splits_from is not None:
+        materialize_splits(args.materialize_splits_from.resolve(), repo)
+        print("D1 canonical split lists restored; published manifests unchanged")
+        return 0
     if args.download:
         download_and_extract(workspace)
     generate_manifests(workspace, repo, load_model=not args.skip_model_load)

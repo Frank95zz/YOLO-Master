@@ -73,6 +73,11 @@ def cache_contract(repo_root: Path) -> dict[str, Any]:
 
 def split_paths(repo_root: Path, split: str, limit: int | None) -> tuple[list[str], str]:
     path = repo_root / "experiments" / "d1" / "manifests" / f"coco2017-{split}.txt"
+    if not path.is_file():
+        raise FileNotFoundError(
+            "COCO split list is generated, not checked into Git. Run scripts.d1.prepare_wp0 "
+            "with --materialize-splits-from COCO_ROOT (or --download) before extracting features."
+        )
     entries = [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
     if entries != sorted(entries):
         raise ValueError(f"split manifest is not sorted: {path}")

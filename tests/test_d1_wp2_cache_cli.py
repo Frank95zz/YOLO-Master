@@ -26,14 +26,20 @@ def test_cache_contract_is_derived_from_tracked_wp0_manifests():
     assert value["expected_shape"] == [384, 40, 40]
 
 
-def test_fixed_100_paths_are_sorted_and_stable():
-    first, first_sha256 = split_paths(REPO_ROOT, "train2017", 100)
-    second, second_sha256 = split_paths(REPO_ROOT, "train2017", 100)
+def test_fixed_100_paths_are_sorted_and_stable(tmp_path):
+    evidence = REPO_ROOT / "experiments/d1/manifests/wp2-cache-100-samples.jsonl"
+    paths = [json.loads(line)["image_path"] for line in evidence.read_text().splitlines()]
+    manifests = tmp_path / "experiments/d1/manifests"
+    manifests.mkdir(parents=True)
+    (manifests / "coco2017-train2017.txt").write_text("\n".join(paths) + "\n", encoding="utf-8")
+    first, first_sha256 = split_paths(tmp_path, "train2017", 100)
+    second, second_sha256 = split_paths(tmp_path, "train2017", 100)
 
     assert len(first) == 100
     assert first == sorted(first)
     assert first == second
     assert first_sha256 == second_sha256
+    assert first == paths
 
 
 def test_wp0_letterbox_is_deterministic_rgb_chw(tmp_path):

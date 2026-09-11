@@ -8,6 +8,7 @@ import zipfile
 from pathlib import Path
 
 import yaml
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -134,6 +135,45 @@ def test_split_list_is_sorted_stable_and_exact(tmp_path: Path) -> None:
         "images/train2017/000000000003.jpg",
     ]
     assert first == second
+
+
+@pytest.mark.parametrize("corrupt", [False, True])
+def test_materialize_splits_preserves_provenance_and_fails_closed(tmp_path, corrupt):
+    module = _load_script()
+    module.EXPECTED_SPLITS = {"train2017": 2, "val2017": 1}
+    data = tmp_path / "data"
+    repo = tmp_path / "repo"
+    manifests = repo / "experiments/d1/manifests"
+    manifests.mkdir(parents=True)
+    expected = {}
+    for split, ids in {"train2017": [1, 2], "val2017": [3]}.items():
+        directory = data / "images" / split
+        directory.mkdir(parents=True)
+        lines = []
+        for image_id in ids:
+            filename = f"{image_id:012d}.jpg"
+            (directory / filename).write_bytes(b"fixture")
+            lines.append(f"images/{split}/{filename}")
+        expected[split] = {
+            "count": len(lines),
+            "sha256": module.hashlib.sha256(("\n".join(lines) + "\n").encode()).hexdigest(),
+        }
+    if corrupt:
+        expected["val2017"]["sha256"] = "0" * 64
+    source = manifests / "coco2017-splits.json"
+    source.write_text(json.dumps({"splits": expected}))
+    original = source.read_bytes()
+    if corrupt:
+        with pytest.raises(ValueError, match="published split contract"):
+            module.materialize_splits(data, repo)
+        assert not list(manifests.glob("*.txt"))
+    else:
+        module.materialize_splits(data, repo)
+        first = {p.name: p.read_bytes() for p in manifests.glob("*.txt")}
+        module.materialize_splits(data, repo)
+        assert first == {p.name: p.read_bytes() for p in manifests.glob("*.txt")}
+        assert len(first) == 2
+    assert source.read_bytes() == original
 
 
 def test_split_overlap_is_compared_by_image_filename() -> None:
