@@ -397,10 +397,11 @@ def prepare(args) -> dict:
     contract = load_contract()
     torch.manual_seed(0)
     model = DetectionModel(ROOT / MODEL, nc=80, ch=3, verbose=False)
-    paths, evidence = read_splits(ROOT / "experiments/d1/manifests")
+    paths, evidence = ({}, {}) if args.model_only else read_splits(ROOT / "experiments/d1/manifests")
     report = {
         "schema_version": SCHEMA, "status": "model_ready_runtime_pending",
         "identity": code_identity(), "model": audit_model(model), "splits": evidence,
+        "split_lists_verified": not args.model_only,
         "schedule_epochs": 100, "window_epochs": 30,
         "base_lr_at_epoch30": 0.001 * one_cycle(1, 0.01, 100)(29),
         "formal_training_approved": False,

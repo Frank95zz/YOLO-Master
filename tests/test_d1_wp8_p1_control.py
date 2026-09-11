@@ -263,12 +263,15 @@ def test_prepare_model_only_never_reads_dataset_or_starts_training(tmp_path, mon
     def forbidden(*args, **kwargs):
         pytest.fail("Model-only preparation accessed data or training")
     monkeypatch.setattr(p1, "copy_ready", forbidden)
+    monkeypatch.setattr(p1, "read_splits", forbidden)
     monkeypatch.setattr(p1.ScratchTrainer, "train", forbidden)
     args = SimpleNamespace(model_only=True, output_dir=tmp_path, run_root=tmp_path / "unused",
                            data_root=None, copy_receipt=None, workers=4)
     report = p1.prepare(args)
     assert report["status"] == "model_ready_runtime_pending"
     assert report["formal_training_approved"] is False
+    assert report["split_lists_verified"] is False
+    assert report["splits"] == {}
     assert report["model"]["trainable_parameters"] == 3510624
     assert not args.run_root.exists()
     assert (tmp_path / "preparation.json").is_file()
