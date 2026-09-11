@@ -41,6 +41,8 @@ export TEACHER_DIR="$D1_WORK/weights/dinov3-vits16"
 - COCO：下载 train2017.zip、val2017.zip、annotations_trainval2017.zip、coco2017labels.zip。每个压缩包的官方 URL、已验证镜像 URL、大小和 SHA256 均在 [数据划分 manifest](manifests/coco2017-splits.json) 的 archives 中。
 - train/val 图片解压到 COCO_ROOT/images，官方标注解压到 COCO_ROOT/annotations；labels 压缩包包含 coco/labels，应解压到 D1_WORK/datasets。可保留压缩包供额外校验，但不是缓存读取的运行依赖。
 
+下载完成应先核对 manifest 中的 SHA256 再解压，不以文件大小或“下载成功”代替完整性校验。
+
 准备完毕后运行校验，生成两份完整、排序稳定的图片列表：
 
 ```bash
@@ -146,3 +148,5 @@ git diff --check
 后续正式实验继续使用获确认的研究合同；需记录执行提交，并核对与 PR 的核心实现一致，不能把默认示例参数冒充正式对照配方。
 
 上一轮精简的过程证据保留在 [历史提交](https://github.com/Frank95zz/YOLO-Master/blob/d6fe25ef0011294cf12014bbf6c4629291e7ab07/experiments/d1/manifests/pr-verification.json)，不再放入当前 PR 文件树。本轮验证结果见 REPORT；未启动真实训练或缓存抽取。scratch 总参数匹配配置及测试继续保留。
+
+当前代码验收提交为 a6d4b295fd7c7f14179c66eae124805d4e162da3：556项通过、56项跳过，另单列排除2项已确认的上游既有失败；模型结构和 scratch 配置未变。
