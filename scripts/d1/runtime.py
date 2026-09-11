@@ -24,6 +24,9 @@ from ultralytics.engine.extensions.recovery import TrainingRecoveryController
 from ultralytics.engine.trainer import BaseTrainer
 from ultralytics.utils.torch_utils import torch_distributed_zero_first, unwrap_model
 
+AMP_INIT_SCALE = 1.0
+AMP_GROWTH_INTERVAL = 1_000_000
+
 
 def detached_state(value):
     """Clone nested state onto CPU without rounding floating point tensors."""
@@ -249,7 +252,7 @@ class RunMixin:
         if self.args.amp and not self.amp:
             raise RuntimeError("Requested AMP was disabled")
         if self.amp:
-            self.scaler = torch.amp.GradScaler("cuda", init_scale=16, growth_interval=1_000_000)
+            self.scaler = torch.amp.GradScaler("cuda", init_scale=AMP_INIT_SCALE, growth_interval=AMP_GROWTH_INTERVAL)
         self._run_rank = dist.get_rank() if dist.is_initialized() else 0
         self._run_actual_steps = 0
         self.optimizer.register_step_post_hook(self._run_step_recorded)
@@ -349,8 +352,8 @@ class RunMixin:
             "optimizer_groups": groups,
             "amp": {
                 "enabled": bool(self.amp),
-                "policy_init_scale": 16,
-                "policy_growth_interval": 1_000_000,
+                "policy_init_scale": AMP_INIT_SCALE,
+                "policy_growth_interval": AMP_GROWTH_INTERVAL,
                 "current_scale": self.scaler.get_scale(),
             },
             "identity": self.run_identity,
@@ -382,6 +385,20 @@ class RunMixin:
         updated = BaseTrainer.optimizer_step(self)
         lost = not updated or self.optimizer_steps != before + 1 or self._run_actual_steps != actual + 1
         lost |= ema is not None and ema.updates != ema_before + 1
+        if lost or self.accumulate != 1:
+            write_json(
+                self.run_output / f"failed-update-rank-{self._run_rank}.json",
+                {
+                    "epoch": getattr(self, "epoch", -1) + 1,
+                    "updated": bool(updated),
+                    "gradient_nonfinite": bool(getattr(self, "_gradient_nonfinite", False)),
+                    "amp_scale": self.scaler.get_scale(),
+                    "accumulate": self.accumulate,
+                    "optimizer_steps": [before, self.optimizer_steps],
+                    "actual_steps": [actual, self._run_actual_steps],
+                    "ema_updates": [ema_before, ema.updates if ema is not None else None],
+                },
+            )
         self._run_fail(lost or self.accumulate != 1, "Missing/repeated optimizer update or AMP overflow")
         return True
 

@@ -694,7 +694,7 @@ def test_runtime_amp_policy_is_shared(tmp_path, monkeypatch):
     monkeypatch.setattr(_RuntimeBase, "_setup_train", amp_setup)
     monkeypatch.setattr(torch.amp, "GradScaler", lambda device, **kwargs: scaler("cpu", **kwargs))
     trainer = _runtime_trainer(tmp_path / "amp-policy")
-    assert trainer.scaler.get_scale() == 16
+    assert trainer.scaler.get_scale() == 1
     assert trainer.scaler.state_dict()["growth_interval"] == 1_000_000
 
 
@@ -745,7 +745,7 @@ def test_runtime_setup_manifest(tmp_path):
     assert report["datasets"]["train"]["dataset_size"] == report["datasets"]["val"]["dataset_size"] == 16
     assert report["datasets"]["train"]["rank_batches"] == 4
     assert report["optimizer_groups"][0]["names"] == ["weight"]
-    assert report["amp"]["policy_init_scale"] == 16
+    assert report["amp"]["policy_init_scale"] == 1
 
 
 def test_runtime_last_best_periodic_share_fp32_tensor_bits(tmp_path):
@@ -843,3 +843,28 @@ def test_reducer_warmup_preserves_state_rng_and_criterion_binding(tmp_path, monk
     assert runtime.state_digest(runtime.rng_state(trainer.device)) == rng_before
     assert torch.equal(trainer.train_loader.generator.get_state(), generator_before)
     assert trainer.optimizer_steps == 0 and original.weight.grad is None
+
+
+def test_runtime_amp_recipe_matches_policy():
+    from scripts.d1.runtime import AMP_GROWTH_INTERVAL, AMP_INIT_SCALE
+    from scripts.d1.train import RECIPE
+    from ultralytics.utils import YAML
+
+    runtime = YAML.load(RECIPE)["runtime"]
+    assert runtime["amp_init_scale"] == AMP_INIT_SCALE == 1
+    assert runtime["amp_growth_interval"] == AMP_GROWTH_INTERVAL == 1_000_000
+
+
+def test_runtime_overflow_records_failure_without_skipping_silently(tmp_path):
+    import json
+
+    trainer = _runtime_trainer(tmp_path / "overflow")
+    trainer.epoch = 0
+    trainer.loss = trainer.model.weight.square()
+    trainer.scaler.scale(trainer.loss).backward()
+    trainer.model.weight.grad.fill_(float("inf"))
+    with pytest.raises(RuntimeError, match="Missing/repeated optimizer update or AMP overflow"):
+        trainer.optimizer_step()
+    report = json.loads((trainer.run_output / "failed-update-rank-0.json").read_text())
+    assert report["gradient_nonfinite"] and not report["updated"]
+    assert report["optimizer_steps"] == report["actual_steps"] == report["ema_updates"] == [0, 0]

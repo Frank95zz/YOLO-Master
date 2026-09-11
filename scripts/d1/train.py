@@ -20,7 +20,7 @@ import torch
 from scripts.d1.artifacts import write_json
 from scripts.d1.ema import EMA_IMPLEMENTATIONS, configure_d1_ema, validate_ema_implementation
 from scripts.d1.rgb import ExportMixin, ExportRGBValidator, ScratchTrainer, audit_model
-from scripts.d1.runtime import RunMixin
+from scripts.d1.runtime import AMP_GROWTH_INTERVAL, AMP_INIT_SCALE, RunMixin
 from ultralytics.models.yolo.detect.foundation_train import D1FoundationDetectionTrainer
 from ultralytics.models.yolo.detect.foundation_val import D1FoundationDetectionValidator
 from ultralytics.nn.foundation.cache import canonical_json_bytes, sha256_bytes, sha256_file
@@ -186,7 +186,9 @@ def input_contract(args):
             raise ValueError("Checkpoint type does not match the requested variant")
         model_cfg = checkpoint_model.yaml if scratch else checkpoint_model.config_dict()
     runtime = value["runtime"]
-    if args.telemetry and (runtime["amp_init_scale"] != 16 or runtime["amp_growth_interval"] != 1_000_000):
+    if args.telemetry and (
+        runtime["amp_init_scale"] != AMP_INIT_SCALE or runtime["amp_growth_interval"] != AMP_GROWTH_INTERVAL
+    ):
         raise ValueError("Measured runtime requires the registered AMP scaler settings")
     lists = {}
     for split in ("train", "val"):
