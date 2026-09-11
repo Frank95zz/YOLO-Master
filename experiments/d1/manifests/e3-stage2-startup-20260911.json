@@ -1,0 +1,85 @@
+{
+  "schema_version": "d1-e3-stage2-startup-v1",
+  "status": "STARTUP_VALIDATED",
+  "started_local": "2026-09-11T13:56:45+08:00",
+  "supervisor_pid": 41265,
+  "initial_torchrun_pid": 41302,
+  "run_id": "E3-screen-b0.1-z0-g0-s0",
+  "orchestrator_commit": "bbb1e6c",
+  "plan_sha256": "3a823dc1eddf56eef2c91ee17829a412f720b0e304bb2a1dc71f0f03204b2865",
+  "script_sha256": "4767cebd8ef5ad29f97800fb193e280f03c97bab4adf3d853d0a5cdbc873eb3f",
+  "resources_before": {
+    "conflicting_jobs": [],
+    "gpus": [
+      "0, NVIDIA A40, 266, 46068",
+      "1, NVIDIA A40, 266, 46068",
+      "2, NVIDIA A40, 266, 46068",
+      "3, NVIDIA A40, 266, 46068",
+      "4, NVIDIA A40, 266, 46068",
+      "5, NVIDIA A40, 266, 46068"
+    ],
+    "memory_limit": 188978561024,
+    "memory_used": 64185221120,
+    "output_free_bytes": 189087334400,
+    "updated_unix": 1789106205.8144405
+  },
+  "checked_unix": 1789106398.4753475,
+  "rank_progress": [
+    {
+      "rank": 0,
+      "epoch": 10,
+      "optimizer_steps": 672,
+      "amp_scale": 16,
+      "amp_retries": 0,
+      "finite_loss": true,
+      "effective_aux": 0
+    },
+    {
+      "rank": 1,
+      "epoch": 10,
+      "optimizer_steps": 672,
+      "amp_scale": 16,
+      "amp_retries": 0,
+      "finite_loss": true,
+      "effective_aux": 0
+    },
+    {
+      "rank": 2,
+      "epoch": 10,
+      "optimizer_steps": 672,
+      "amp_scale": 16,
+      "amp_retries": 0,
+      "finite_loss": true,
+      "effective_aux": 0
+    },
+    {
+      "rank": 3,
+      "epoch": 10,
+      "optimizer_steps": 672,
+      "amp_scale": 16,
+      "amp_retries": 0,
+      "finite_loss": true,
+      "effective_aux": 0
+    },
+    {
+      "rank": 4,
+      "epoch": 10,
+      "optimizer_steps": 672,
+      "amp_scale": 16,
+      "amp_retries": 0,
+      "finite_loss": true,
+      "effective_aux": 0
+    },
+    {
+      "rank": 5,
+      "epoch": 10,
+      "optimizer_steps": 672,
+      "amp_scale": 16,
+      "amp_retries": 0,
+      "finite_loss": true,
+      "effective_aux": 0
+    }
+  ],
+  "first_validation_images": 548,
+  "tests": "81 passed; py_compile and git diff --check passed; Ruff unavailable in training Python environment"
+}
