@@ -40,7 +40,7 @@ def test_three_latent_publications_are_collected_once_and_reported() -> None:
 
     loss, items = model(empty_batch(make_features()))
 
-    assert tuple(loss.shape) == (3,)
+    assert loss.ndim == 0
     assert tuple(items.shape) == (7,)
     diagnostics = model._mixture_aux_diagnostics
     assert diagnostics["counts_by_kind"]["latent"] == 3

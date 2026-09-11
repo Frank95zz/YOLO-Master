@@ -19,7 +19,6 @@ from scripts.d1.run_wp8_train import (
     validate_cache_evidence,
 )
 from ultralytics.nn.foundation.cache import FeatureCacheWriter, sha256_bytes, verify_feature_cache
-from ultralytics.utils import YAML
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]

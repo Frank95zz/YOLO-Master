@@ -92,7 +92,7 @@ def test_native_e2e_loss_and_composite_aux_backward() -> None:
     loss, items = model(empty_batch(make_features()))
 
     assert isinstance(model.criterion, CompositeCriterion)
-    assert tuple(loss.shape) == (3,)
+    assert loss.ndim == 0
     assert tuple(items.shape) == (7,)
     assert torch.isfinite(loss).all()
     assert torch.isfinite(items).all()

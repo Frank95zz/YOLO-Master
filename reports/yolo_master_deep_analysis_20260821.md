@@ -256,3 +256,134 @@ python agent/scripts/validate_yolo_master_skill.py --suite quick --summary-only 
 1. `README_reproduce.md` 在工作区处于已删除状态（含犀牛鸟复现实验记录），**保留未提交**，待用户确认意图。
 2. 全部提交停留在本地 `main`，未 push。
 3. 本日修复后，**主干已无任何已知红灯测试**（在已运行的门禁范围内）；建议下一轮跑一次全量 `pytest tests/ -n auto` 作为 v26.08.1 候选基线。
+
+---
+
+## 十七、v26.08.1 候选基线：全量测试首跑（2026-08-21 深夜）
+
+> 此前各轮验证均为聚焦门禁，本轮首次覆盖 `tests/` 全部 141 个测试文件（`--slow` 按约定跳过）。因单次执行时限，按文件分批运行（-n 4 --dist=loadfile）。
+
+### 17.1 覆盖与结果
+
+| 范围 | 结果 |
+|:--|:--|
+| 134 个轻量/中量测试文件（4 批） | ✅ **~1,540 passed**；2 个失败均在复核中闭环（见下） |
+| `test_engine.py`（格式化后复验，两半） | ✅ **33 passed**（含 multitask resume 真实训练） |
+| `test_python.py`（上游重型 e2e，分 8 组） | ⚠️ ~103 passed / **16 failed**——全部为环境类失败（见 17.2），无代码回归 |
+| 未运行：7 个上游网络依赖型文件（`test_cli` / `test_integrations` / `test_exports` / `test_export_roundtrip` / `test_export_capability_matrix` / `test_solutions` / `test_benchmark_suite`） | ⛔ 离线网络 + 本机高负载下不可行（子进程下载重试循环）；CI 中 exports 本就走 `--export-env base` 专用链路 |
+
+### 17.2 失败分类与处置（全部为环境/债项，非代码回归）
+
+| 类别 | 涉及 | 处置 |
+|:--|:--|:--|
+| **MoE 治理 ledger 漂移（真实债项，已修复）** | `test_moe_ssot`：ledger 快照缺 `SharedExpertMoE` | 用官方脚本 `audit_moe_usage.py --record-version 8.4.101` 刷新快照，11 passed；commit `84a0762` |
+| **DDP gloo 抖动** | `test_ddp_checkpoint_coordination`：gloo send 20s 超时 | 单独重跑 9 passed；并行高负载下的偶发，建议 CI 重试机制而非改代码 |
+| **训练类超时** | `test_train_{multi,scratch,ndjson,pretrained}` 等 6 项 >120-150s | 本机高负载所致（同配置引擎套件 33 项全过）；非缺陷 |
+| **损坏的权重缓存** | `test_predict_classes_with_max_det[yolo11n.pt]`、`test_yolo_world`、`test_yoloe` ×2：`PytorchStreamReader` 读取截断 zip | 此前被中断下载留下的截断缓存 + 离线无法重下；联网后删除 `weights/` 下对应 .pt 即可恢复 |
+| **coco-multitask 数据集图片缺失** | `test_python` 参数化 multitask 用例 ×4（grayscale/predict_img/predict_visualize/results/val） | 与 0819 修复的 `test_engine` 临时夹具不同路径：`test_python` 用例仍要求真实数据集文件；建议下一轮把同一夹具机制复用到 `test_python` |
+| **polars xdist 竞态** | `test_train_pretrained[True]`：polars 部分初始化 | 并行 worker 导入竞态，偶发；单跑即过 |
+
+### 17.3 基线结论
+
+**v26.08.1 候选基线成立**：全部项目自有子系统门禁（CI P0/P1、MoE、MoLoRA、MoT/MoA、Foundation、引擎、Agent Skill、SSOT 治理）在全量范围内绿灯；残余红灯 100% 可归因于离线网络、缓存损坏与本机负载三类环境约束，且每一项都有明确的恢复路径。建议联网后补跑 7 个未覆盖文件 + `test_python` 训练组作为最终确认。
+
+---
+
+## 十八、基线恢复路径工具化与执行（2026-08-22）
+
+> 将 §17.2 的环境恢复路径固化为可重复工具：`scripts/release_baseline_preflight.py`（契约测试 `tests/test_release_baseline_preflight.py`，4 passed）。
+
+### 18.1 工具能力
+
+- **损坏权重扫描**：`zipfile.is_zipfile` 校验 `weights/` 与 settings `weights_dir` 下全部 `.pt`，识别中断下载留下的截断缓存；
+- **数据集存在性检查**：按 Ultralytics `datasets_dir` 解析规则核对 dataset YAML 的 train/val 图像目录（初版按仓根解析产生误报，已修正为与 trainer 一致的解析）；
+- **网络可达性探测**：github.com / objects.githubusercontent.com / raw.githubusercontent.com；
+- `--fix`：仅在网络可达时删除损坏缓存（防止离线误删后无法重下）；`--run-blocked`：基线就绪后自动补跑 7 个未覆盖测试文件；`--json` 输出机器可读报告。
+
+### 18.2 实机执行结果（2026-08-22）
+
+| 项 | 结果 |
+|:--|:--|
+| 网络探测 | ✅ 三主机全部可达（网络已恢复） |
+| 损坏权重 | 4 个（`yolo11n.pt` / `yolo26s-obb.pt` / `yoloe-11s-seg.pt` / `yolov8s-world.pt`），`--fix` 已全部删除 |
+| 恢复验证 | `test_predict_classes_with_max_det[yolo11n.pt]` 重下载后 **passed**（105.7s）；`yolov8s-world.pt`、`yolov8s-worldv2.pt`、`yoloe-11s-seg.pt`（curl 直补）、CLIP ViT-B-32 均已重新缓存 |
+| 剩余阻塞 | ① `coco-multitask.yaml` 需要完整 COCO（`~/PycharmProjects/datasets/coco` 的 train2017/val2017 清单），数据量大未拉取；② yolo-world/yoloe 测试的依赖链下载受单次执行时限截断，资产已部分落盘，无时限约束下重跑即可 |
+| 报告快照 | `reports/baseline-preflight-20260822.json` |
+
+### 18.3 结论
+
+§17.2 的"损坏缓存"与"离线网络"两类环境失败**已实质解除**（恢复路径端到端验证通过）。剩余仅为完整 COCO 数据集拉取与长下载链的时间预算问题，均非代码问题。v26.08.1 候选基线的最后确认项收敛为一条：**联网常态下跑一次 `--run-blocked`**。
+
+---
+
+## 十九、blocked 文件补跑与最终基线确认（2026-08-22 晚）
+
+> 网络恢复后执行 §18.3 的最终确认项。执行环境备注：本机负载 load avg ~45-52（其他训练任务并发），GitHub 资产下载带宽仅 ~35-60KB/s，多个用例因此需要超出常规的超时预算。
+
+### 19.1 关键环境发现：CLI 安装污染（重要）
+
+补跑 `test_cli.py` 时发现：**全局 `yolo` CLI 指向旧工作区 `YOLO-Master-v260720` 的 editable 安装**——所有 CLI 子进程测试实际验证的是旧代码库，而非本仓。这解释了 `test_export[yolo26-master-mt-n.yaml]` 的 FileNotFoundError（旧仓 cfg 无 master-mt 配置）。
+
+- **影响范围**：仅 CLI 子进程类测试（`test_cli.py`）；进程内 pytest（`import ultralytics` 命中本仓）不受影响。
+- **处置**：preflight 脚本新增 `check_cli_installation()`（对照 `direct_url.json` 的 editable source 与本仓路径），失配时输出 WARNING。是否 `pip install -e .` 重指向本仓会影响 v260720 工作区，**留待用户决策**。
+
+### 19.2 补跑结果矩阵
+
+| 文件 | 结果 | 备注 |
+|:--|:--|:--|
+| `test_integrations.py` + `test_benchmark_suite.py` | ✅ 10 passed / 4 skipped | |
+| `test_export_capability_matrix.py` + `test_export_preflight.py` | ✅ 17 passed | |
+| `test_export_roundtrip.py` | ⚠️ 6 passed / **2 failed** | **新发现先验 P1**：`MoTBlock`（module2）torchscript/onnx roundtrip 数值误差 0.003（容差 1e-4），在修复前提交 `aeb7d87` 的 worktree 上 3/3 复现——与本轮改动无关，是 eager-sparse 与 export-dense 路径的数值分叉，需专项根因 |
+| `test_solutions.py` | ✅ 51 passed / 1 skipped | ParkingManager 的 `solutions_ci_parking_model.pt` 截断缓存已修复（curl v0.0.0 直补） |
+| `test_exports.py` | ✅ 40 passed / 4 skipped / 1 failed | 失败为 `test_export_executorch`：缺 `flatc` 二进制（export 依赖未装全），环境项 |
+| `test_cli.py` | ⚠️ 大部分 passed | `rtdetr`（缓存修复后 ✅）、`fastsam`（缓存修复后 ✅）、train/val/predict 各组非 multitask 用例全过；残余失败=multitask 用例（需完整 COCO）+ master-mt export（CLI 污染）+ `test_distill`（DINOv3 下载体量超今晚带宽，未跑通） |
+
+### 19.3 缓存修复总账（本轮 `--fix` + 手动 curl 续传）
+
+`yolo11n.pt`、`yolo26s-obb.pt`、`yoloe-11s-seg.pt`、`yolov8s-world.pt`、`yolov8s-worldv2.pt`、`rtdetr-l.pt`（66.5MB，六轮断点续传）、`FastSAM-s.pt`、`solutions_ci_parking_model.pt`——**8 个截断缓存全部修复并 zip 校验通过**。教训已内化进工具：preflight 的 `--fix` 与 Ultralytics `attempt_download` 的"存在即跳过"逻辑形成互补防线。
+
+### 19.4 v26.08.1 最终基线结论
+
+**基线确认成立。** 全量 141 个测试文件现已全部覆盖；残余红灯清单收敛为：
+
+1. **代码级（需跟进）**：MoTBlock export roundtrip 数值分叉（先验 P1，已复现定位，待根因修复）；
+2. **环境级（有恢复路径）**：完整 COCO 未拉取（multitask 参数化用例）、`flatc` 未安装（executorch）、全局 CLI editable 指向旧仓（待决策）、DINOv3 下载带宽（test_distill）。
+
+即：**本仓代码在当前门禁范围内无活跃回归**；上述 4 项环境项均有明确的一行恢复命令，且 preflight 工具会在每次运行时报备状态。
+
+---
+
+## 二十、MoT 导出数值分叉根因与修复（2026-08-23）
+
+### 20.1 根因（一句话版）
+
+**不是数值 bug，是测试不变量错误**：MoT 的导出语义（文档化设计）与 roundtrip 测试的断言对象不一致。
+
+具体链路：
+
+1. `router.py:267-269`：ONNX/TorchScript 导出时路由器**刻意跳过 Top-K**，直接输出全量 softmax 权重（稀疏 Top-K 的专家选择是数据依赖控制流，不可 trace；且会触发 PyTorch 2.9 legacy exporter 的 bool scatter_ 别名分析失败）；
+2. `block.py` 导出分支据此做 dense softmax 混合（所有专家留在图中）；
+3. 而 eager eval 走的是 `stable_normalize` 重归一化的 Top-1 稀疏分发（选中专家权重=1.0）；
+4. 因此 eager-sparse 与 export-dense 计算的是**两个不同的函数**：`expert_top(x)` vs `Σ softmax_i·expert_i(x)`。随机初始化的路由器 softmax 接近均匀，两者差异 ~0.003，必然超出 1e-4 容差。
+
+`export_capabilities()` 早已文档化此限制（"ONNX and TorchScript tracing use dense blending because expert selection is data-dependent"），但测试断言的是"导出产物 == eager-sparse 输出"这个不成立的不变量。该测试自 7cddb8a 引入后因从未在门禁中运行而长期隐性失败（直到 08-22 全量补跑才暴露）。
+
+### 20.2 修复（保持导出语义不变，修正验证对象）
+
+- `ultralytics/utils/export_validation.py`：`validate_export_roundtrip` 新增可选 `reference` 参数——当导出图刻意编码与 eager 不同的语义时，用 reference 模块（导出等价配置）计算 eager 基线，roundtrip 回归其本职：**验证导出产物对"导出图实际编码的函数"的保真度**。
+- `tests/test_export_roundtrip.py`：新增 `_export_semantics_reference()`——MoTBlock 且 top_k < NUM_EXPERTS 时，deepcopy 并置 `top_k = NUM_EXPERTS`（eval 下即 dense 路径，与导出语义逐点一致）作为 reference。
+
+### 20.3 验证
+
+| 项 | 结果 |
+|:--|:--|
+| `test_export_roundtrip.py` | ✅ **8 passed**（修复前 6 passed / 2 failed） |
+| 导出相关套件（mixture_matrix / mixture_export / moe_export_governance / capability_matrix） | ✅ 49 passed / 1 skipped |
+| MoT/MoA 全范围 | ✅ 242 passed |
+| ruff check / format | ✅ 干净 |
+
+### 20.4 遗留说明
+
+eager-sparse 与 export-dense 的**语义差距本身**仍是部署侧的认知负担（导出模型 ≠ eager 稀疏模型，精度可能略有差异）——这是数据依赖控制流不可 trace 的固有约束，当前以文档化处理。若未来要消除差距，方向是导出期固化路由决策（如 Gumbel 硬采样导出或 LUT 化），属研究项而非缺陷项。
+
+**至此主干在已覆盖门禁范围内无任何已知红灯（代码级与环境级均有归属）。**

@@ -1,7 +1,5 @@
 """Offline data/export/partition tests; no downloads or training."""
 
-import json
-from pathlib import Path
 
 import pytest
 from PIL import Image
@@ -136,7 +134,9 @@ def test_npy_conversion_preserves_source_and_rejects_corruption(tmp_path):
     for name, value in reader.get(split+'/original_id').items():
         assert torch.equal(value, feature[name])
     path = out / split / 'original_id.npy'
-    data = bytearray(path.read_bytes()); data[-1] ^= 1; path.write_bytes(data)
+    data = bytearray(path.read_bytes())
+    data[-1] ^= 1
+    path.write_bytes(data)
     with pytest.raises(ValueError):
         convert_preserving_source(source, out)
 

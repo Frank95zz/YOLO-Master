@@ -373,7 +373,7 @@ def _model_arg(model: nn.Module, name: str, default: float) -> float:
 
 
 def _add_aux_once(native_loss: torch.Tensor, aux: torch.Tensor) -> torch.Tensor:
-    """Preserve native shape while contributing one scalar aux to the trainer's sum.
+    """Reduce native loss and add one scalar aux, matching the upstream loss contract.
 
     Native batch scaling and the trainer's DDP multiplier are unchanged. Aux is
     not multiplied by batch size here; its gain remains a model-level coefficient.
@@ -382,7 +382,7 @@ def _add_aux_once(native_loss: torch.Tensor, aux: torch.Tensor) -> torch.Tensor:
         raise ValueError("native criterion loss must not be empty")
     if aux.numel() != 1:
         raise ValueError("model-level auxiliary loss must be scalar")
-    return native_loss + aux.reshape(()) / native_loss.numel()
+    return native_loss.sum() + aux.reshape(())
 
 
 class CompositeCriterion:

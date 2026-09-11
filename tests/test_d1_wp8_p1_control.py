@@ -152,10 +152,33 @@ def test_scratch_rejects_pretrained(model):
         trainer.get_model(p1.ROOT / p1.MODEL, weights=model)
 
 
-def test_real_split_lists_are_valid():
-    paths, evidence = p1.read_splits(p1.ROOT / "experiments/d1/manifests")
-    assert {name: len(values) for name, values in paths.items()} == p1.SPLITS
-    assert evidence["train2017"]["label_files"] == 117266
+def test_published_split_contract_is_complete():
+    manifest = json.loads((p1.ROOT / "experiments/d1/manifests/coco2017-splits.json").read_text())
+    assert {name: entry["count"] for name, entry in manifest["splits"].items()} == p1.SPLITS
+    assert manifest["labels"]["train2017"] == 117266
+
+
+@pytest.mark.parametrize("failure", [None, "checksum", "overlap"])
+def test_generated_split_lists_are_validated(tmp_path, monkeypatch, failure):
+    monkeypatch.setattr(p1, "SPLITS", {"train2017": 2, "val2017": 1})
+    splits = {"train2017": ["000001", "000002"], "val2017": ["000003"]}
+    if failure == "overlap":
+        splits["val2017"] = ["000001"]
+    manifest = {"splits": {}, "labels": {"train2017": 2, "val2017": 1}}
+    for split, ids in splits.items():
+        path = tmp_path / f"coco2017-{split}.txt"
+        path.write_text("".join(f"images/{split}/{image_id}.jpg\n" for image_id in ids))
+        manifest["splits"][split] = {"path": path.name, "count": len(ids), "sha256": p1.sha256_file(path)}
+    if failure == "checksum":
+        manifest["splits"]["val2017"]["sha256"] = "0" * 64
+    (tmp_path / "coco2017-splits.json").write_text(json.dumps(manifest))
+    if failure:
+        with pytest.raises(ValueError, match="checksum|overlap"):
+            p1.read_splits(tmp_path)
+    else:
+        paths, evidence = p1.read_splits(tmp_path)
+        assert {name: len(values) for name, values in paths.items()} == p1.SPLITS
+        assert evidence["train2017"]["label_files"] == 2
 
 
 def test_copy_not_published_is_rejected(tmp_path):
