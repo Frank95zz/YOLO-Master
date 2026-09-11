@@ -106,17 +106,17 @@ def _get_mixture_loss_ema(model: nn.Module | None) -> dict[str, float] | None:
         return None
     buf = owner._buffers.get("_mixture_loss_ema_buf")
     # Determine target device from model parameters so the buffer stays aligned
-    # with the model even after ``.to(device)`` calls.
+    # with the model even after ``.to(device)`` calls. Parameter-free modules do
+    # not expose a reliable device anchor before the buffer exists, so initialize
+    # them on CPU and later preserve/move the registered buffer device normally.
     parameter = next(owner.parameters(), None)
     if parameter is not None:
         target_device = parameter.device
-    elif torch.cuda.is_available():
-        # No parameters available (e.g. frozen params, stripped model).
-        # Default to CUDA so the buffer doesn't end up on CPU, which would
-        # break NCCL validation broadcasts.
-        target_device = torch.device("cuda")
+    elif isinstance(buf, torch.Tensor):
+        target_device = buf.device
     else:
         target_device = torch.device("cpu")
+
     if buf is None:
         defaults = [_MIXTURE_LOSS_EMA_DEFAULTS[k] for k in _MIXTURE_LOSS_EMA_KEYS]
         owner.register_buffer(
@@ -278,7 +278,7 @@ def _collect_mixture_aux_loss(
             device=device,
             return_diagnostics=True,
             return_tensor_values=True,
-            return_value_scalars=False,
+            return_value_scalars=True,
             include_kinds=("moe", "moa", "mot", "molora", "latent"),
         )
         grouped = diagnostics.pop("_tensor_values_by_kind", {})
@@ -372,6 +372,19 @@ def _model_arg(model: nn.Module, name: str, default: float) -> float:
     return default if value is None else float(value)
 
 
+def _add_aux_once(native_loss: torch.Tensor, aux: torch.Tensor) -> torch.Tensor:
+    """Reduce native loss and add one scalar aux, matching the upstream loss contract.
+
+    Native batch scaling and the trainer's DDP multiplier are unchanged. Aux is
+    not multiplied by batch size here; its gain remains a model-level coefficient.
+    """
+    if native_loss.numel() == 0:
+        raise ValueError("native criterion loss must not be empty")
+    if aux.numel() != 1:
+        raise ValueError("model-level auxiliary loss must be scalar")
+    return native_loss.sum() + aux.reshape(())
+
+
 class CompositeCriterion:
     """Add one model-level routed auxiliary term after the native criterion."""
 
@@ -413,12 +426,23 @@ class CompositeCriterion:
             aux_budget=_model_arg(self.model, "mixture_aux_budget", 3.0),
         )
         self.model._last_mixture_aux_loss = aux.detach()
-        total = native_loss.sum() + aux
+        reporter = getattr(self.model, "mixture_aux_report_items", None)
+        report_items = reporter() if callable(reporter) else aux.new_empty(0)
+        if not isinstance(report_items, torch.Tensor) or report_items.ndim != 1:
+            raise TypeError("mixture_aux_report_items() must return a one-dimensional Tensor")
+        if report_items.requires_grad:
+            raise ValueError("mixture aux report items must be detached metrics")
+        if not bool(torch.isfinite(report_items).all()):
+            raise FloatingPointError("mixture aux report items contain NaN or Inf")
+        report_items = report_items.to(device=aux.device, dtype=aux.dtype)
+        total = _add_aux_once(native_loss, aux)
         if isinstance(native_items, torch.Tensor):
-            items = torch.cat((native_items.reshape(-1), aux.detach().reshape(1)))
+            items = torch.cat((native_items.reshape(-1), report_items, aux.detach().reshape(1)))
         elif isinstance(native_items, (list, tuple)):
-            items = [*native_items, aux.detach()]
+            items = [*native_items, *report_items, aux.detach()]
             items = type(native_items)(items) if isinstance(native_items, tuple) else items
+        elif report_items.numel():
+            raise TypeError("mixture aux reporting requires Tensor, list, or tuple native loss items")
         else:
             items = native_items
         return total, items
@@ -448,7 +472,7 @@ def compose_native_result(model: nn.Module, native_loss: torch.Tensor, native_it
         aux_budget=_model_arg(model, "mixture_aux_budget", 3.0),
     )
     model._last_mixture_aux_loss = aux.detach()
-    return native_loss.sum() + aux, torch.cat((native_items.reshape(-1), aux.detach().reshape(1)))
+    return _add_aux_once(native_loss, aux), torch.cat((native_items.reshape(-1), aux.detach().reshape(1)))
 
 
 __all__ = [
