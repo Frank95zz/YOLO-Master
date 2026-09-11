@@ -1,10 +1,12 @@
 """Actual-coefficient, per-epoch auxiliary probes on an independent FP32 model."""
 
 from copy import deepcopy
+from contextlib import ExitStack
 
 import torch
 
 from scripts.d1.p1p2_runtime import diagnostic_precision, separated_gradients
+from scripts.d1.e3_probe_precision import VERSION, accurate_router_vjp
 from ultralytics.nn.foundation_detection_model import D1FoundationDetectionModel
 from ultralytics.nn.mixture_loss import _collect_mixture_aux_loss, initialize_mixture_loss_ema_buffer
 
@@ -22,12 +24,13 @@ def plain(value):
 def probe(source, batch):
     """Caller preserves RNG; no mutation of the source model, optimizer, or aux EMA."""
     device = next(source.parameters()).device
-    with diagnostic_precision(device.type):
+    with diagnostic_precision(device.type), ExitStack() as stack:
         model = D1FoundationDetectionModel(source.config_dict(), verbose=False)
         initialize_mixture_loss_ema_buffer(model)
         model.load_state_dict(source.state_dict(), strict=True)
         model.args = deepcopy(source.args)
         model.to(device).train()
+        stack.enter_context(accurate_router_vjp(model))
         native = model.init_criterion().native_criterion
         original = getattr(source.criterion, "native_criterion", source.criterion)
         for key in ("updates", "o2m", "o2o"):
@@ -76,6 +79,7 @@ def probe(source, batch):
             raise ValueError("Aux telemetry differs from the actual collector")
         result = {
             "scope": "Independent FP32 copy; fixed two train samples per rank before this epoch; not epoch averages",
+            "diagnostic_precision": VERSION,
             "scales": scales,
             "aux_ema_before": plain(before),
             "aux_ema_after": plain(model._mixture_loss_ema_buf),

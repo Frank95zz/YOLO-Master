@@ -161,20 +161,74 @@ def prepare(workspace, data, cache):
     return result
 
 
+def verify_diagnostic_revision(workspace, recorded, current):
+    """Permit only a hash-bound diagnostic repair, never a change to training code."""
+    if recorded == current:
+        return
+    path = workspace / "execution-revision.json"
+    revision = json.loads(path.read_text()) if path.exists() else {}
+    if (
+        revision.get("schema_version") != "d1-e3-diagnostic-revision-v1"
+        or revision.get("approved") is not True
+        or revision.get("original_identity") != recorded
+        or revision.get("execution_identity") != current
+        or recorded["contract_sha256"] != current["contract_sha256"]
+    ):
+        raise ValueError("E3 source changed without an approved diagnostic revision")
+    if subprocess.run(
+        ["git", "merge-base", "--is-ancestor", recorded["commit"], current["commit"]], cwd=ROOT, check=False
+    ).returncode:
+        raise ValueError("E3 diagnostic revision must descend from the original code")
+    allowed = {
+        "scripts/d1/e3_mechanism.py",
+        "scripts/d1/e3_probe_precision.py",
+        "scripts/d1/run_e3.py",
+        "scripts/d1/diagnose_e3_gradients.py",
+        "tests/test_d1_e3_gradient_precision.py",
+        "experiments/d1/E3_GRADIENT_DIAGNOSTIC_20260911.md",
+        "experiments/d1/manifests/e3-gradient-diagnostic-20260911.json",
+    }
+    changed = set(
+        subprocess.check_output(
+            ["git", "diff", "--name-only", recorded["commit"], current["commit"]], cwd=ROOT, text=True
+        ).splitlines()
+    )
+    if not changed or not changed <= allowed:
+        raise ValueError("E3 diagnostic revision changed unapproved model/training/configuration files")
+    evidence_path = workspace / "diagnostic-repair-validation.json"
+    if file_sha(evidence_path) != revision.get("validation_sha256"):
+        raise ValueError("E3 diagnostic repair validation checksum differs")
+    evidence = json.loads(evidence_path.read_text())
+    if evidence.get("status") != "PASSED" or evidence.get("execution_identity") != current:
+        raise ValueError("E3 diagnostic repair was not validated on this code")
+
+
 def matrix(workspace):
     workspace = workspace.resolve()
     mat = json.loads((workspace / "matrix.json").read_text())
-    if mat["identity"] != identity() or mat["contract"] != load_contract() or mat["candidates"] != candidates():
+    current = identity()
+    verify_diagnostic_revision(workspace, mat["identity"], current)
+    if mat["contract"] != load_contract() or mat["candidates"] != candidates():
         raise ValueError("E3 source, contract or candidate matrix changed")
     if mat["workspace"] != str(workspace) or mat["reference_sha256"] != file_sha(workspace / "data-check/matrix.json"):
         raise ValueError("E3 workspace or provenance changed")
-    reference = e2.matrix(workspace / "data-check")
+    if mat["identity"] == current:
+        reference = e2.matrix(workspace / "data-check")
+    else:
+        # The immutable E2 provenance is bound to the original scientific identity.
+        reference = json.loads((workspace / "data-check/matrix.json").read_text())
+        expected = {"commit": mat["identity"]["commit"], "contract_sha256": file_sha(e2.CONFIG)}
+        if reference["identity"] != expected or reference["contract"] != e2.load_contract():
+            raise ValueError("E3 original data preparation identity changed")
+        for name, digest in reference["input_sha256"].items():
+            if file_sha(workspace / "data-check/inputs" / name) != digest:
+                raise ValueError("E3 original data preparation input changed")
     if any(mat[k] != reference[k] for k in ("data", "cache")):
         raise ValueError("E3 data/cache changed")
     for name, digest in mat["inputs_sha256"].items():
         if file_sha(workspace / "inputs" / name) != digest:
             raise ValueError(f"E3 prepared input changed: {name}")
-    return mat
+    return {**mat, "execution_identity": current}
 
 
 def spec_for(mat, candidate, profile="screen"):
@@ -196,6 +250,7 @@ def spec_for(mat, candidate, profile="screen"):
             "model_sha256": mat["inputs_sha256"][model],
             **policies,
         },
+        "execution_identity": mat.get("execution_identity", mat["identity"]),
         "workspace": str(workspace),
         "run_id": run_id,
         "profile": "E1" if profile == "screen" else "benchmark",
@@ -566,7 +621,14 @@ def launch_train(workspace, c, profile, *, resume=False, window=None):
     started = time.time()
     write_json(workspace / "status.json", {"status": "TRAINING", "run_id": spec["run_id"], "started_unix": started})
     write_json(
-        attempt_json, {"status": "STARTING", "command": command, "identity": spec["identity"], "resources": resources}
+        attempt_json,
+        {
+            "status": "STARTING",
+            "command": command,
+            "identity": spec["identity"],
+            "execution_identity": spec["execution_identity"],
+            "resources": resources,
+        },
     )
     with attempt_log.open("w") as log:
         child = subprocess.Popen(command, cwd=ROOT, env=clean_child_env(), stdout=log, stderr=subprocess.STDOUT)
@@ -581,6 +643,7 @@ def launch_train(workspace, c, profile, *, resume=False, window=None):
         "seconds": elapsed,
         "gpu_hours": elapsed * 6 / 3600,
         "identity": spec["identity"],
+        "execution_identity": spec["execution_identity"],
         "resources_before": resources,
         "command": command,
     }

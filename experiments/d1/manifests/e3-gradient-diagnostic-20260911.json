@@ -1,0 +1,92 @@
+{
+  "schema_version": "d1-e3-gradient-diagnostic-v1",
+  "status": "PASSED",
+  "source_commit": "993aee4d32168616fb96cedb2b524379c09d35fd",
+  "resume_sha256": "2facae865c3dc8384d8a5b40860f2c99e39c9fa653e1b8551a81084f299686e9",
+  "resume_completed_epoch": 18,
+  "diagnostic_epoch": 19,
+  "version": "softmax-vjp-fp64-v1",
+  "rtol": 0.0002,
+  "atol": 0.00002,
+  "test_result": "161 passed",
+  "ranks": [
+    {
+      "rank": 0,
+      "original_failed": 0,
+      "original_p3_max_abs": 0.000012874603271484375,
+      "repaired_p3_max_abs": 0.0000029802322387695312,
+      "max_tolerance_ratio": 0.0411440135764712,
+      "forward_and_loss_exact": true,
+      "repeat_exact": true,
+      "strict_passed": true,
+      "source_unchanged": true,
+      "original_report_sha256": "324275de0b0887e28a6e0c7c8685d0730b00b4c5e7423684c01698b1dbf4cfaf",
+      "repaired_report_sha256": "ccfc6e72866c71d689fae0150eed6ace822f12dafdfd351e2449981db73148a2"
+    },
+    {
+      "rank": 1,
+      "original_failed": 0,
+      "original_p3_max_abs": 0.000008463859558105469,
+      "repaired_p3_max_abs": 0.0000030994415283203125,
+      "max_tolerance_ratio": 0.07480363825866945,
+      "forward_and_loss_exact": true,
+      "repeat_exact": true,
+      "strict_passed": true,
+      "source_unchanged": true,
+      "original_report_sha256": "c32ce1e2abfc998e353ce523d1be6307f43346eefcd708b40f06deaedc4415dc",
+      "repaired_report_sha256": "67cd2a28aaea7a528f172af19e5d973d286280c8b499dd45090da49dcc9963bb"
+    },
+    {
+      "rank": 2,
+      "original_failed": 0,
+      "original_p3_max_abs": 0.000011801719665527344,
+      "repaired_p3_max_abs": 0.0000030994415283203125,
+      "max_tolerance_ratio": 0.0699402698954165,
+      "forward_and_loss_exact": true,
+      "repeat_exact": true,
+      "strict_passed": true,
+      "source_unchanged": true,
+      "original_report_sha256": "5877a0677a327f2d811617f2d3ffd1a159f50ce7d2359c050127ce2fe94137eb",
+      "repaired_report_sha256": "25a456a46b330cf1f5e489dc6366fdbd6270bb411349160271c7c875af4c1225"
+    },
+    {
+      "rank": 3,
+      "original_failed": 0,
+      "original_p3_max_abs": 0.000014126300811767578,
+      "repaired_p3_max_abs": 0.000006780028343200684,
+      "max_tolerance_ratio": 0.12191636404524263,
+      "forward_and_loss_exact": true,
+      "repeat_exact": true,
+      "strict_passed": true,
+      "source_unchanged": true,
+      "original_report_sha256": "8bf86bcd17633f1d32b56f488241ca50c7afce5430765a524ad1efb29ff9b5b5",
+      "repaired_report_sha256": "7966cb40dc88f2a9a0be4e7ec5c1dfb94ba8c02a95ecf831bf635ef594b1cd39"
+    },
+    {
+      "rank": 4,
+      "original_failed": 0,
+      "original_p3_max_abs": 0.000014647841453552246,
+      "repaired_p3_max_abs": 0.0000016689300537109375,
+      "max_tolerance_ratio": 0.035344490311479425,
+      "forward_and_loss_exact": true,
+      "repeat_exact": true,
+      "strict_passed": true,
+      "source_unchanged": true,
+      "original_report_sha256": "68dd6f67f5fe39caebeb93290fca6c0cd9c76d917d4df865d17887f32bc77af2",
+      "repaired_report_sha256": "de6ce48199324ef52b618311b4dadf20e26fc3e54fe967bb87e4b3d70f274e8b"
+    },
+    {
+      "rank": 5,
+      "original_failed": 5,
+      "original_p3_max_abs": 0.00002810359001159668,
+      "repaired_p3_max_abs": 0.0000040531158447265625,
+      "max_tolerance_ratio": 0.15853943703119705,
+      "forward_and_loss_exact": true,
+      "repeat_exact": true,
+      "strict_passed": true,
+      "source_unchanged": true,
+      "original_report_sha256": "bef89fd5b0c2137dd98de7228d7e6dfa17419efb3be96b78c8f00e904e5e3fcd",
+      "repaired_report_sha256": "2fefff5b72909f4ba1e6e2b489979109cb7f06b6765ad22d05573f65800c4534"
+    }
+  ]
+}
