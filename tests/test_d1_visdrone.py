@@ -1,8 +1,7 @@
-"""Offline data/export/partition tests; no downloads or training."""
+"""VisDrone annotation conversion, split isolation, and official evaluation protocol."""
 
 import pytest
 from PIL import Image
-
 from scripts.d1.prepare_visdrone import convert_annotation, prepare
 from scripts.d1.evaluate_visdrone import METRICS, TOOLKIT_COMMIT, export_predictions, validate_official_report
 
@@ -104,52 +103,6 @@ def test_cross_split_duplicate_bytes_rejected(tmp_path):
     (source / "VisDrone2019-DET-val/images/id_1.jpg").write_bytes(first.read_bytes())
     with pytest.raises(ValueError, match="across official splits"):
         prepare(source, tmp_path / "prepared", counts={"train": 1, "val": 1, "test-dev": 1})
-
-
-def test_npy_conversion_preserves_source_and_rejects_corruption(tmp_path):
-    import torch
-    from scripts.d1.npy import convert_preserving_source
-    from ultralytics.nn.foundation.cache import FeatureCacheWriter
-    from ultralytics.nn.foundation.npy_cache import NpyFeatureCacheReader
-
-    split = "visdrone-train"
-    source, out = tmp_path / split, tmp_path / "npy"
-    contract = {
-        "model_id": "test",
-        "teacher_weights_sha256": "a" * 64,
-        "preprocessing_sha256": "b" * 64,
-        "output_layers": [4, 8, 12],
-        "feature_names": ["block4", "block8", "block12"],
-        "dtype": "float16",
-        "expected_shape": [384, 40, 40],
-    }
-    writer = FeatureCacheWriter(source, split=split, contract=contract, shard_prefix=split + "-r00")
-    feature = {
-        name: torch.full((384, 40, 40), float(i), dtype=torch.float16)
-        for i, name in enumerate(contract["feature_names"])
-    }
-    writer.add(
-        sample_id=split + "/original_id",
-        split=split,
-        image_path="images/" + split + "/original_id.jpg",
-        image_sha256="c" * 64,
-        features=feature,
-    )
-    writer.close()
-    before = {p.name: p.read_bytes() for p in source.iterdir() if p.is_file()}
-    first = convert_preserving_source(source, out)
-    assert first == convert_preserving_source(source, out)
-    assert before == {p.name: p.read_bytes() for p in source.iterdir() if p.is_file()}
-    reader = NpyFeatureCacheReader(out / split)
-    reader.verify_sample(split + "/original_id")
-    for name, value in reader.get(split + "/original_id").items():
-        assert torch.equal(value, feature[name])
-    path = out / split / "original_id.npy"
-    data = bytearray(path.read_bytes())
-    data[-1] ^= 1
-    path.write_bytes(data)
-    with pytest.raises(ValueError):
-        convert_preserving_source(source, out)
 
 
 def test_default_preparation_does_not_require_test_dev(tmp_path, monkeypatch):

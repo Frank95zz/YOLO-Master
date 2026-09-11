@@ -1,6 +1,17 @@
 # D1：冻结 DINOv3 的缓存特征检测
 
-本目录提供可独立使用的功能实现与复现入口，不包含个人实验队列、资源清理脚本和阶段流水文档。主要研究结果与限制见 [REPORT.md](REPORT.md)。
+研究问题：冻结 DINOv3，只训练多尺度适配器、LatentMixture 和检测头，能保留多少检测精度，能否降低训练成本？
+
+本 README 是 D1 的统一入口，包含功能、复现步骤、研究结果、测试、局限与许可来源。`manifests/` 只保留程序直接读取的数据划分、Teacher 身份和预处理合同，不包含个人实验队列或阶段流水文档。
+
+- [架构与边界](#架构与边界)
+- [安装与输入](#安装与输入)
+- [缓存](#缓存)
+- [训练与独立评测](#训练与独立评测)
+- [研究结果](#研究结果)
+- [验收结论与局限](#验收结论与局限)
+- [测试与复现身份](#测试与复现身份)
+- [数据与模型许可](#数据与模型许可)
 
 ## 架构与边界
 
@@ -61,7 +72,7 @@ python -m scripts.d1.prepare_wp0 --coco-root "$COCO_ROOT" \
 
 COCO 列表数量固定为118,287/5,000，不进行重新随机划分。重跑时输出文件必须一致，否则报错，不覆盖已有证据。旧 --download/--workspace 参数已移出当前入口。
 
-来源与固定校验信息：[预处理合同](manifests/p0-experiment-contract.json)、[Teacher](manifests/dinov3-vits16.json)、[数据划分](manifests/coco2017-splits.json)、[许可来源](manifests/licenses.md)。
+来源与固定校验信息：[预处理合同](manifests/p0-experiment-contract.json)、[Teacher](manifests/dinov3-vits16.json)、[数据划分](manifests/coco2017-splits.json)、[许可来源](#数据与模型许可)。三个 JSON 是准备和抽取脚本的校验输入，不以 Markdown 表格替代。
 
 ## 缓存
 
@@ -132,21 +143,111 @@ coco-local.yaml 按仓库常规检测 YAML 指定本地 path、train、val、80 
 
 评测输出 evaluation.json 与 predictions.json，记录 checkpoint SHA256、epoch、数据合同、完整图像覆盖和内部指标。COCO 只有显式提供 --annotations 时才报告标准 AP，maxDets=[1,10,100]；预测导出最多 300 框，不改变标准 AP 的 maxDets=100。VisDrone 输出官方格式 TXT（最多500框）；裁剪或坐标舍入后宽/高为零的框被移除并计数，非有限值报错。官方 ignore 规则评分使用固定 MATLAB toolkit，不能用内部 COCO-style 指标代替。导出检查入口为 scripts.d1.evaluate_visdrone；本 PR 不包含原机器上的 MATLAB 任务调度器。
 
+## 研究结果
+
+### COCO 架构筛选
+
+固定 COCO 2017 train2017/val2017（118,287/5,000 张）、seed0、50轮窗口，在相同研究配方下对比 P5 分支。下表是固定第50轮 checkpoint 的独立 COCO 标准评测，AP 按 0-100 点显示，不是内部 mAP，也不是每组最优 epoch。
+
+| P5 结构 | COCO 下游参数 | AP | AP50 | AP75 | APs | APm | APl |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| BASE：3x3 stride2 Conv | 3,542,567 | 28.870 | 49.197 | 30.113 | 12.921 | 33.463 | 40.228 |
+| DW：深度可分离分支 | 1,195,943 | 28.593 | 48.542 | 29.723 | 13.033 | 32.510 | 41.559 |
+| BN64：64通道瓶颈 | 1,404,839 | 29.745 | 49.284 | 31.203 | 12.965 | 33.086 | 42.992 |
+
+BN64 被选作后续基座，归一化仍为 GroupNorm。单 seed 结果仅支持本轮候选筛选，不构成统计等效或稳定提升证明。
+
+完整配方、成本拆分、曲线、checkpoint 身份和无 FinsSim 干扰的正常 epoch 计时见固定版本[架构筛选报告](https://github.com/Frank95zz/YOLO-Master/blob/f4d2bc268bb6339f6545fc3ebe6a247c238cd883/experiments/d1/P5_FAST_RUN_20260909.md)与[机器可读汇总](https://github.com/Frank95zz/YOLO-Master/blob/f4d2bc268bb6339f6545fc3ebe6a247c238cd883/experiments/d1/manifests/p5-screen-20260909/suite-summary.json)。
+
+### VisDrone Latent Aux 消融
+
+VisDrone2019-DET 完整 train/val 为6,471/548张，使用 BN64、weighted_sum、三个独立种子0/1/2、固定300轮学习率调度的前60轮。主结果统一使用第60轮 checkpoint 和固定官方 MATLAB DET 工具，保留官方 ignore 语义。
+
+第一阶段扫描 balance={0,0.01,0.1} 与 z={0,0.001,0.01}，gain=0.1，共27次训练；第二阶段固定 balance=0.1、z=0，扫描 gain，新增9次并复用3次。共36个独立运行，不把复用结果重复计数。
+
+| latent_aux_gain | 官方 AP 均值（3 seeds） |
+|---|---:|
+| 0 | 8.022406397 |
+| 0.03 | 8.115370260 |
+| 0.1 | 8.131928488 |
+| 0.3 | 8.081231746 |
+
+按预先确定的均值优先规则，候选为 balance=0.1、z=0、gain=0.1、budget=3.0。gain=0.1 相对关闭aux平均仅高0.109522点，三 seed 配对差为 -0.245386/+0.339334/+0.234618点；探索性95%区间跨0。相同三个种子还参与了选参，未做独立确认，**不能宣称稳定或显著收益**。gain=0.03 是波动较小的备选。
+
+每5轮导出的预测并未全部完成官方评分，因此这不是完整 standard-best 曲线，也不能证明300轮已经收敛。完整指标、配对差、工具和 checkpoint SHA256 见[消融报告](https://github.com/Frank95zz/YOLO-Master/blob/f4d2bc268bb6339f6545fc3ebe6a247c238cd883/experiments/d1/E3.md)、[第一阶段证据](https://github.com/Frank95zz/YOLO-Master/blob/f4d2bc268bb6339f6545fc3ebe6a247c238cd883/experiments/d1/manifests/e3-stage1-official-20260911.json)、[第二阶段证据](https://github.com/Frank95zz/YOLO-Master/blob/f4d2bc268bb6339f6545fc3ebe6a247c238cd883/experiments/d1/manifests/e3-stage2-official-20260911.json)。
+
+## 验收结论与局限
+
+| 项目 | 当前结论 |
+|---|---|
+| P0 可运行闭环 | 冻结 Teacher、缓存、Adapter、LatentMixture、Detect、训练和独立评测已实现；区分历史真实实验与本分支合成回归 |
+| P1 对照 | 已覆盖 COCO 与 VisDrone 的冻结模型研究；最终同总参数量 scratch 对照尚未完成，不宣称 P1 完成 |
+| P1 GPU-hours 至少下降50% | 尚无满足最终公平对照合同的证据，不能认定达标 |
+| P2 辅助损失研究 | 已显式注册 latent aux，完成 balance/z/gain 的三 seed 消融；收益不稳定也是结果 |
+| 其他 P2 扩展 | 尚未完成其他 Teacher 对比；不把已有缓存工程误称为新增精度收益 |
+
+按当前约定，总参数统计包含冻结 Teacher：ViT-S/16 为21,596,544参数；加 BN64 后 COCO/VisDrone 总量为23,001,383/22,936,803。保留的 [scratch-total-l 配置](../../ultralytics/cfg/models/26/yolo26-d1-scratch-total-l.yaml)分别为23,133,560/23,032,340参数，差约+0.57%/+0.42%；这是待正式验证的对照配置，不是已训练的最终基线。
+
+最终比较必须固定数据划分、分辨率、种子、评测与 checkpoint 选择，分别报告总参数/可训练参数、精度保留率、峰值显存、GPU-hours；同时给出含一次特征抽取与不含抽取的成本，声明缓存复用次数。不能把缓存读取吞吐或短窗口筛选直接作为最终降本结论。
+
+P3 可分离双线性实现与 foreach EMA 为显式选项，保留原实现作数值对照；它们不改变模型结构。NPY 与 safetensors 存储相同 FP16 特征，不引入额外有损量化。实际吞吐依赖磁盘、缓存热度、CPU 和任务干扰，不能把更换存储介质的收益全部归为模型降本。
+
 ## 测试与复现身份
+
+测试按功能组织，不再按个人工作阶段拆文件；公共 Teacher 测试统一放在已有的 `test_foundation_dinov3.py`。
+
+| 测试文件 | 覆盖内容 |
+|---|---|
+| [test_d1_contracts.py](../../tests/test_d1_contracts.py) | 数据划分、预处理、Teacher 身份、scratch 总参数匹配 |
+| [test_d1_cache.py](../../tests/test_d1_cache.py) | safetensors/NPY、校验、恢复、来源保留、特征读取 |
+| [test_d1_cache_cli.py](../../tests/test_d1_cache_cli.py) | 统一抽取入口、确定性、原 batch 续跑、并发拒绝 |
+| [test_d1_adapter.py](../../tests/test_d1_adapter.py) | 九条适配分支、梯度、P3 上采样数值与梯度等价 |
+| [test_d1_model.py](../../tests/test_d1_model.py) | 检测模型、checkpoint、显式 latent aux 与标量损失 |
+| [test_d1_pipeline.py](../../tests/test_d1_pipeline.py) | Dataset/Trainer/Validator、坐标还原、最终评测与各 rank 行为 |
+| [test_d1_training.py](../../tests/test_d1_training.py) | 训练入口、合成闭环、独立评测与 EMA 等价 |
+| [test_d1_visdrone.py](../../tests/test_d1_visdrone.py) | 标注转换、ignore 信息、划分隔离、官方导出协议 |
+| [test_foundation_dinov3.py](../../tests/test_foundation_dinov3.py) | 默认及多层 Teacher 协议、冻结约束、可选真实权重 |
+
+相关回归命令（Bash）：
 
 ```bash
 CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=2 python -m pytest -q tests/test_d1_*.py \
-  tests/test_foundation_dinov3.py tests/test_foundation_teacher_protocol.py \
-  tests/test_latent_mixture.py tests/test_mixture_loss_composition.py
+  tests/test_foundation_{dinov3,teacher_protocol,distill_model,checkpoint}.py \
+  tests/test_foundation_{cache_training,config,losses,taps,weight_schedule,projectors}.py \
+  tests/test_foundation_{mixture_interaction,routing_contract,offline}.py \
+  tests/test_latent_mixture.py tests/test_mixture_loss_composition.py \
+  tests/test_ddp_lifecycle_ema_nan.py tests/test_prevalidation_recovery.py \
+  tests/test_optimizer_group_audit.py tests/test_checkpoint_compat.py \
+  tests/test_ddp_checkpoint_coordination.py tests/test_default_config_integrity.py \
+  tests/test_master_model_configs.py tests/test_engine.py::test_load_checkpoint_state_dict_rejected \
+  --deselect tests/test_foundation_cache_training.py::test_response_kd_builds_pseudo_batch_from_cached_responses \
+  --deselect tests/test_foundation_config.py::test_enabled_without_teacher_is_rejected
 git diff --check
 ```
 
 真实 Teacher/CUDA 测试按显式环境变量启用；普通 CI 不下载模型。新入口测试使用合成图像和合成特征，完成一轮 optimizer 更新、保存、严格重载和独立评测，不产生真实数据集精度结论。
 
-研究归档固定在 [f4d2bc2](https://github.com/Frank95zz/YOLO-Master/tree/f4d2bc268bb6339f6545fc3ebe6a247c238cd883/experiments/d1)。历史运行必须使用报告记录的执行提交。个人队列的每 rank RNG/buffer 快照、严格重试、阶段筛选和周期官方评测策略未迁入新入口；此 CLI 只启动新 run，不提供旧研究 run 的精确 resume。
+相关回归的两项排除项已在同一上游提交复现，不计为通过；没有运行完整仓库测试集。真实集成使用 `D1_DINOV3_WEIGHTS`、`D1_WP2_CACHE`（数据管线测试还需 `D1_COCO_ROOT`）、`D1_NPY_CACHE` 指定外部输入；保留这些环境变量以兼容既有使用方式，启用 CUDA 验收时不要清空 `CUDA_VISIBLE_DEVICES`。
+
+本分支基于 upstream af961b99b8ef80491e58cb5fd16e25ebaf3741eb；研究归档固定在 [f4d2bc2](https://github.com/Frank95zz/YOLO-Master/tree/f4d2bc268bb6339f6545fc3ebe6a247c238cd883/experiments/d1)。核心实现与研究版本的语义对齐已通过去除位置属性的 Python AST 比较，不能据此声称所有文件逐字节相同。历史运行必须使用报告记录的执行提交。个人队列的每 rank RNG/buffer 快照、严格重试、阶段筛选和周期官方评测策略未迁入新入口；此 CLI 只启动新 run，不提供旧研究 run 的精确 resume。
 
 后续正式实验继续使用获确认的研究合同；需记录执行提交，并核对与 PR 的核心实现一致，不能把默认示例参数冒充正式对照配方。
 
-上一轮精简的过程证据保留在 [历史提交](https://github.com/Frank95zz/YOLO-Master/blob/d6fe25ef0011294cf12014bbf6c4629291e7ab07/experiments/d1/manifests/pr-verification.json)，不再放入当前 PR 文件树。本轮验证结果见 REPORT；未启动真实训练或缓存抽取。scratch 总参数匹配配置及测试继续保留。
+PR 不包含旧实验队列、内存回收、迁移删除脚本、巨型路径列表、权重、数据集、缓存、完整预测或逐阶段流水报告。研究分支保留全部原始工作与证据；这些内容没有被删除或覆写。
 
-当前代码验收提交为 a6d4b295fd7c7f14179c66eae124805d4e162da3：556项通过、56项跳过，另单列排除2项已确认的上游既有失败；模型结构和 scratch 配置未变。
+本次测试组织与文档合并的回归结果将在验收完成后记录；历史测试数字不冒充当前版本结果。完整运行日志保存在外部工作区，不增加过程性 JSON 到 PR。
+
+## 数据与模型许可
+
+本节只记录上游许可来源，不替代上游条款，也不作额外法律判断。
+
+### COCO 2017
+
+- [官方 Terms of Use](https://cocodataset.org/#termsofuse)；[官方下载源](http://images.cocodataset.org/)。
+- COCO 不为全部源图片提供统一的总括许可；图片仍受各自原始 Flickr 许可约束，应遵循官方条款和逐图片许可元数据。
+- YOLO detection labels 来自 Ultralytics 的 COCO 2017 labels 压缩包，只是官方 COCO 标注的表示形式；来源与校验值保留在数据划分 JSON。
+
+### DINOv3 ViT-S/16
+
+- [ModelScope 模型来源](https://www.modelscope.cn/models/facebook/dinov3-vits16-pretrain-lvd1689m)、[上游项目](https://github.com/facebookresearch/dinov3)、[DINOv3 License](https://github.com/facebookresearch/dinov3/blob/main/LICENSE.md)。
+- 模型许可副本随权重保存在外部工作区，其 SHA256 记录在 Teacher JSON；模型及其相关代码的使用以对应上游许可为准。
