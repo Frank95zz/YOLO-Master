@@ -120,3 +120,5 @@ git diff --check
 研究归档固定在 [f4d2bc2](https://github.com/Frank95zz/YOLO-Master/tree/f4d2bc268bb6339f6545fc3ebe6a247c238cd883/experiments/d1)。历史运行必须使用报告记录的执行提交。个人队列的每 rank RNG/buffer 快照、严格重试、阶段筛选和周期官方评测策略未迁入新入口；此 CLI 只启动新 run，不提供旧研究 run 的精确 resume。
 
 后续正式实验继续使用获确认的研究合同；需记录执行提交，并核对与 PR 的核心实现一致，不能把默认示例参数冒充正式对照配方。
+
+本分支验收摘要：540项通过、56项跳过，另单列2项上游既有失败；测试与代码身份见 [pr-verification.json](manifests/pr-verification.json)。本轮未运行真实多卡训练。

@@ -1,0 +1,255 @@
+{
+  "schema_version": "d1-pr-verification-v1",
+  "code_commit": "f5bf7bc56d128e02d3485fe8df1e15301bee7556",
+  "upstream_commit": "af961b99b8ef80491e58cb5fd16e25ebaf3741eb",
+  "research_archive_commit": "f4d2bc268bb6339f6545fc3ebe6a247c238cd883",
+  "branch": "feat/d1-frozen-detector-pr",
+  "scope": {
+    "research_changed_files": 177,
+    "pr_changed_files": 63,
+    "core": 19,
+    "configs": 6,
+    "scripts": 9,
+    "tests": 20,
+    "documents": 2,
+    "manifests_and_evidence": 5,
+    "repository_settings": 2
+  },
+  "primary_regression": {
+    "code_commit": "f5bf7bc56d128e02d3485fe8df1e15301bee7556",
+    "clean_before_run": true,
+    "clean_after_run": true,
+    "tests": [
+      "tests/test_d1_ema.py",
+      "tests/test_d1_final_eval.py",
+      "tests/test_d1_npy_training.py",
+      "tests/test_d1_p3_upsample.py",
+      "tests/test_d1_portable_entry.py",
+      "tests/test_d1_scratch_total_contract.py",
+      "tests/test_d1_visdrone_protocol.py",
+      "tests/test_d1_wp0_contract.py",
+      "tests/test_d1_wp1_dinov3.py",
+      "tests/test_d1_wp2_cache_cli.py",
+      "tests/test_d1_wp2_feature_cache.py",
+      "tests/test_d1_wp3_foundation_adapter.py",
+      "tests/test_d1_wp4_foundation_detection_model.py",
+      "tests/test_d1_wp5_cached_pipeline.py",
+      "tests/test_d1_wp6_latent_aux.py",
+      "tests/test_foundation_dinov3.py",
+      "tests/test_foundation_teacher_protocol.py",
+      "tests/test_foundation_distill_model.py",
+      "tests/test_foundation_checkpoint.py",
+      "tests/test_latent_mixture.py",
+      "tests/test_mixture_loss_composition.py",
+      "tests/test_ddp_lifecycle_ema_nan.py",
+      "tests/test_prevalidation_recovery.py",
+      "tests/test_optimizer_group_audit.py",
+      "tests/test_checkpoint_compat.py",
+      "tests/test_ddp_checkpoint_coordination.py",
+      "tests/test_default_config_integrity.py",
+      "tests/test_master_model_configs.py"
+    ],
+    "pytest_options": [
+      "-q",
+      "--disable-warnings",
+      "--color=no"
+    ],
+    "env": {
+      "CUDA_VISIBLE_DEVICES": "",
+      "OMP_NUM_THREADS": "2",
+      "MKL_NUM_THREADS": "2"
+    },
+    "python": "3.11.15",
+    "exit_code": 0,
+    "seconds": 51.89688988029957,
+    "summary": "419 passed, 56 skipped, 1 warning in 48.90s",
+    "log_sha256": "37003243fd69278d0a150cf131ca2f078dec4226cf3e41ba5c4247c4e085a01c"
+  },
+  "shared_regression": {
+    "code_commit": "f5bf7bc56d128e02d3485fe8df1e15301bee7556",
+    "tests": [
+      "tests/test_foundation_cache_training.py",
+      "tests/test_foundation_config.py",
+      "tests/test_foundation_losses.py",
+      "tests/test_foundation_taps.py",
+      "tests/test_foundation_weight_schedule.py",
+      "tests/test_foundation_projectors.py",
+      "tests/test_foundation_mixture_interaction.py",
+      "tests/test_foundation_routing_contract.py",
+      "tests/test_foundation_offline.py",
+      "tests/test_engine.py::test_load_checkpoint_state_dict_rejected"
+    ],
+    "deselected_upstream_failures": [
+      "tests/test_foundation_cache_training.py::test_response_kd_builds_pseudo_batch_from_cached_responses",
+      "tests/test_foundation_config.py::test_enabled_without_teacher_is_rejected"
+    ],
+    "exit_code": 0,
+    "summary": "121 passed, 2 deselected in 6.82s",
+    "log_sha256": "2e6b19d888c120f4aa8ad623bffdd97606c8e8a63fdd3ee0f218e1ccd9493ff1",
+    "py_compile_files": 48,
+    "clean_after_run": true,
+    "model_configs": {
+      "ultralytics/cfg/models/26/yolo26-d1-dinov3-latent-n.yaml": "9ec273824d079364a576ee9a7c6dbd701cba21d47e4ae65dd95d2be3e93e3087",
+      "ultralytics/cfg/models/26/yolo26-d1-dinov3-latent-p5-bottleneck64-n.yaml": "97cc3c8dcfafcb867854223682b296d843c50b7b6e43024a5fbe8c3f16cca32d",
+      "ultralytics/cfg/models/26/yolo26-d1-dinov3-latent-p5-dw-n.yaml": "060ed43abc33688c2f1f2a9995ba0067b5932b4a883814bf25ffd38d438cd792",
+      "ultralytics/cfg/models/26/yolo26-d1-scratch-total-l.yaml": "c0dcfe1f934d8f76750ad622d429f28d29ebf107343a32d68cc00bbbb5bc7c77"
+    }
+  },
+  "total": {
+    "passed": 540,
+    "skipped": 56,
+    "known_upstream_failures_deselected": 2
+  },
+  "checks": {
+    "ruff_version": "0.12.0",
+    "ruff_check": "passed (48 selected Python files)",
+    "ruff_format_check": "passed (48 selected Python files)",
+    "py_compile": "passed (48 files)",
+    "diff_check": "passed",
+    "relative_document_links": "passed",
+    "omitted_script_imports": "none",
+    "generated_coco_lists_present_during_tests": false,
+    "codespell": "not run: executable unavailable"
+  },
+  "core_equivalence_method": "ast.dump(ast.parse(source), include_attributes=False); equality of all 19 core files and scripts/d1/ema.py against the research archive, not universal byte equality",
+  "core_equivalence": [
+    {
+      "path": "ultralytics/data/__init__.py",
+      "research_sha256": "873a95e8c1dc3849dec37046fa5436a45898315cf941bbfa4679e5929e726885",
+      "pr_sha256": "873a95e8c1dc3849dec37046fa5436a45898315cf941bbfa4679e5929e726885",
+      "ast_equal": true
+    },
+    {
+      "path": "ultralytics/data/build.py",
+      "research_sha256": "95dff49b80ea9fbc28515120efb7f7e231f0c3b892ecfea0f1d47a51a9e60daf",
+      "pr_sha256": "95dff49b80ea9fbc28515120efb7f7e231f0c3b892ecfea0f1d47a51a9e60daf",
+      "ast_equal": true
+    },
+    {
+      "path": "ultralytics/data/d1_cache.py",
+      "research_sha256": "295cbae64acc7b3247889b26c23d974536a02931c6e80c74556f74811698e781",
+      "pr_sha256": "295cbae64acc7b3247889b26c23d974536a02931c6e80c74556f74811698e781",
+      "ast_equal": true
+    },
+    {
+      "path": "ultralytics/engine/extensions/recovery.py",
+      "research_sha256": "00a59bb54d58b8c5ddcf2945222932e0ef30c6b39515c0cfe25d82bf5f7286df",
+      "pr_sha256": "00a59bb54d58b8c5ddcf2945222932e0ef30c6b39515c0cfe25d82bf5f7286df",
+      "ast_equal": true
+    },
+    {
+      "path": "ultralytics/engine/trainer.py",
+      "research_sha256": "178edd32aecd23980cb0c5f8a75f09c9296b0f2320f0599e70ff594d7c07f391",
+      "pr_sha256": "178edd32aecd23980cb0c5f8a75f09c9296b0f2320f0599e70ff594d7c07f391",
+      "ast_equal": true
+    },
+    {
+      "path": "ultralytics/models/yolo/detect/__init__.py",
+      "research_sha256": "a02b9b657b1a67bcd623c7684823e46f3737a0b196468e3d1653c8378f54e147",
+      "pr_sha256": "a02b9b657b1a67bcd623c7684823e46f3737a0b196468e3d1653c8378f54e147",
+      "ast_equal": true
+    },
+    {
+      "path": "ultralytics/models/yolo/detect/foundation_train.py",
+      "research_sha256": "5005dae6184bb473519c355bcf776b611350d77f58ac104bb8bc030e710a7766",
+      "pr_sha256": "5005dae6184bb473519c355bcf776b611350d77f58ac104bb8bc030e710a7766",
+      "ast_equal": true
+    },
+    {
+      "path": "ultralytics/models/yolo/detect/foundation_val.py",
+      "research_sha256": "4f5932506c642e47a134a900f7b114da7428f7642e12fbeddbd2d78f0ee92ee3",
+      "pr_sha256": "4f5932506c642e47a134a900f7b114da7428f7642e12fbeddbd2d78f0ee92ee3",
+      "ast_equal": true
+    },
+    {
+      "path": "ultralytics/nn/__init__.py",
+      "research_sha256": "628959a4cf68feea8f751152dcabfe0ec29c31e3f23c676a4c0fc6537674d508",
+      "pr_sha256": "628959a4cf68feea8f751152dcabfe0ec29c31e3f23c676a4c0fc6537674d508",
+      "ast_equal": true
+    },
+    {
+      "path": "ultralytics/nn/foundation/__init__.py",
+      "research_sha256": "34209557aeb4f6244a49c4b4ab9129eac055525d595ed60e00383c20a519ebe9",
+      "pr_sha256": "34209557aeb4f6244a49c4b4ab9129eac055525d595ed60e00383c20a519ebe9",
+      "ast_equal": true
+    },
+    {
+      "path": "ultralytics/nn/foundation/cache.py",
+      "research_sha256": "d83a9b4f0424c30a0d0e684bc99bf51bbc2c3619c83ddf5d271986bba0dd9a1a",
+      "pr_sha256": "5a869502cfd9623fad2b2bb17dd17559176c14f662827943a636351aefb5575a",
+      "ast_equal": true
+    },
+    {
+      "path": "ultralytics/nn/foundation/npy_cache.py",
+      "research_sha256": "5ace2f28ddb1c933f9807f0c6eecea73a9c54cff7a3df47f845ec8cf0e038464",
+      "pr_sha256": "5ace2f28ddb1c933f9807f0c6eecea73a9c54cff7a3df47f845ec8cf0e038464",
+      "ast_equal": true
+    },
+    {
+      "path": "ultralytics/nn/foundation/teachers/dinov3.py",
+      "research_sha256": "4155ae06fcc21b61d7d0f50f1712092a2c436e9a468cf4a1bdf0cf26353ef707",
+      "pr_sha256": "0d60d7318a0a13c0ce67950ed4b2049544dd23cd45c38318fec3670b718a69d1",
+      "ast_equal": true
+    },
+    {
+      "path": "ultralytics/nn/foundation_detection_model.py",
+      "research_sha256": "1a5a1653026a17acaf74ce5dc15489b84f7241e86f6c81e4d0c7c61e492245bb",
+      "pr_sha256": "dfec11158e970c141421952a15175ab6e7de890f309410686ff0ba7caa4040b4",
+      "ast_equal": true
+    },
+    {
+      "path": "ultralytics/nn/mixture_loss.py",
+      "research_sha256": "e28b5393fdc79b0315fb365ec817495047c5bdb58a5435f483eb7b75c1c0974f",
+      "pr_sha256": "e28b5393fdc79b0315fb365ec817495047c5bdb58a5435f483eb7b75c1c0974f",
+      "ast_equal": true
+    },
+    {
+      "path": "ultralytics/nn/modules/__init__.py",
+      "research_sha256": "27228763bc2c8e0247356e0ded9bdb164558d95d876195e85f7c774841515cc0",
+      "pr_sha256": "27228763bc2c8e0247356e0ded9bdb164558d95d876195e85f7c774841515cc0",
+      "ast_equal": true
+    },
+    {
+      "path": "ultralytics/nn/modules/foundation_adapter.py",
+      "research_sha256": "aff559fd63a9ea3aae2ceebc153b21543e40f52d61de4989ff1ea21ff0527b01",
+      "pr_sha256": "509ce69b3f125b87a6f9d424fea622f6430708a3f827f2468cb84b20eb2d7128",
+      "ast_equal": true
+    },
+    {
+      "path": "ultralytics/nn/tasks.py",
+      "research_sha256": "456b798075211e4aca5b5665c5448d8c94f43343ed4385f85db5cc34c5b32a9b",
+      "pr_sha256": "456b798075211e4aca5b5665c5448d8c94f43343ed4385f85db5cc34c5b32a9b",
+      "ast_equal": true
+    },
+    {
+      "path": "ultralytics/utils/torch_utils.py",
+      "research_sha256": "bb97ce3fb376db6542de2a4a42db7db237e485a51e9d7cf1d4b3f5e470ad601c",
+      "pr_sha256": "bb97ce3fb376db6542de2a4a42db7db237e485a51e9d7cf1d4b3f5e470ad601c",
+      "ast_equal": true
+    },
+    {
+      "path": "scripts/d1/ema.py",
+      "research_sha256": "d62824608416e8ed0780a1442e0ffde72b3576030a9f0c6a7a5b7bb302cfe828",
+      "pr_sha256": "d62824608416e8ed0780a1442e0ffde72b3576030a9f0c6a7a5b7bb302cfe828",
+      "ast_equal": true
+    }
+  ],
+  "synthetic_integration": [
+    "one epoch optimizer update, checkpoint save and strict reload",
+    "independent COCO validation and prediction export",
+    "independent VisDrone validation, original-image TXT export and preserved string IDs",
+    "zero-area export filtering is counted; nonfinite predictions rejected",
+    "COCO per-image NPY conversion is repeatable and preserves source shards",
+    "EMA installed after setup with updates preserved",
+    "explicit approval, fresh output, cache identity and DDP batch checks"
+  ],
+  "boundaries": {
+    "real_training_started": false,
+    "real_cuda_training_tested": false,
+    "upstream_pr_created": false,
+    "precise_research_queue_resume_migrated": false,
+    "large_datasets_weights_and_caches_in_git": false,
+    "known_upstream_failure_basis": "The two listed cases were reproduced on upstream af961b9 before this PR preparation. They are not reported as passing; the full repository test suite was not run.",
+    "research_results_in_report": "Historical measurements linked to the immutable research archive; not rerun by this PR verification."
+  }
+}
