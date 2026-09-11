@@ -6,15 +6,15 @@
 
 ## 课题目标与完成状态
 
-本项目已完成 P0 检测闭环和 P2 所选的 latent aux 消融路径；P1 的代码、数据、统一合同、工程验收与正式实验启动已完成，当前待全周期训练结束、独立评测和结果回填。这里明确区分“实现完成”和“量化验收达标”，不把尚未取得的降本数字写成已达标。
+本项目已完成 P0 冻结特征检测闭环和 P2 latent aux 消融。P1 的实现、数据准备、工程验收与正式实验启动已完成，训练和独立评测结束后补充最终量化结果。
 
-| 任务 | 完成状态 | 已完成内容与证据 | 结果边界 / 后续动作 |
+| 任务 | 完成状态 | 已完成内容与证据 | 结果与交付 |
 |---|---|---|---|
-| P0：冻结特征检测闭环 | **已完成** | 多层 Teacher、可复现缓存、九分支 Adapter、LatentMixture、Detect、训练、评测、保存与严格重载；已有 COCO 检测结果与 VisDrone 官方消融评分，最终入口另完成四组真实六卡五轮验收 | 真实输入证据与测试见下文；五轮短测不代替正式精度结果 |
-| P1：同预算、同总参数量对照 | **实现与实验准备已完成，正式结果待补** | 两数据集、两架构、三个 seed 的统一合同与队列已实现、验证并启动，无新增训练模块待开发 | 等待训练与标准评测完成，补齐 AP、显存、GPU-hours、保留率及成本降低率；是否达到至少 50% 降本须由实际结果判定 |
-| P2：latent aux 消融 | **已完成（消融路径）** | balance/z 的 27 次运行、gain 的 9 次新增运行，共 36 次独立训练；已完成官方 MATLAB 评分、逐 seed 分析、关闭项验证和结论归档 | 本次选择消融路线，不声称完成 Teacher 更换；小收益和种子差异作为真实结论保留，不要求把消融写成显著正向提升 |
+| P0：冻结特征检测闭环 | **已完成** | 多层 Teacher、可复现缓存、九分支 Adapter、LatentMixture、Detect、训练、评测、保存与严格重载 | COCO 检测结果、VisDrone 官方评分，以及最终入口四组真实六卡五轮验收 |
+| P1：同预算、同总参数量对照 | **实现与实验准备已完成，正式结果待补** | 两数据集、两架构、三个 seed 的统一合同与队列已实现、验证并启动 | 按统一口径报告 AP、显存、GPU-hours、精度保留率及成本降低率，对照至少 50% 降本目标 |
+| P2：latent aux 消融 | **已完成（消融路径）** | balance/z 的 27 次运行、gain 的 9 次新增运行，共 36 次独立训练 | 官方 MATLAB 评分、逐 seed 分析、关闭项验证和配置选择结论 |
 
-P2 的完成依据是实际消融矩阵、评测和分析，而不是仅复用已有的 weighted_sum 或 latent 注册接口。按本次选择的交付路径，底座更换不列为未完成开发任务；当前只用 ViT-S/16，也不声称两条路线都做过。P0/P2 的“已完成”描述项目工作与证据状态，最终等级由评审认定。
+P2 采用任务书中的消融路线，在 DINOv3 ViT-S/16 底座上完成 balance、z-loss 和 aux gain 扫描，给出各配置的精度、种子波动与选型依据。
 
 正式配对实验固定执行提交为 [9004eac](https://github.com/Frank95zz/YOLO-Master/commit/9004eac438acd7de0023702e26029b14276069a6)，统一公共验收基线固定为 [acce839](https://github.com/Tencent/YOLO-Master/commit/acce839c7e895d6b179de7f7093fa879e237cc7b)。版本与贡献审计集中放在后文，不影响前面的方法和复现阅读；历史筛选与最终对照分别记录预算和代码，不混合统计。
 
@@ -28,10 +28,10 @@ RGB -> 固定 640 LetterBox -> 冻结 DINOv3 ViT-S/16
     -> YOLO26 Detect
 ~~~
 
-- 三个 DINO block 都是 stride 16，不是天然的 P3/P4/P5。Adapter 输出通道为 64/128/256，网格为 80/40/20。
-- 正式候选使用 BN64：P5 为 384->64->256 的瓶颈分支；BN64 不是 BatchNorm，归一化仍为 GroupNorm。
-- Teacher 多层 API 为 DINOv3Teacher(output_layers=(4,8,12))。默认调用继续返回 dense["p4"]，不强制现有蒸馏消费者改用多层输出。
-- Teacher 不进入 student optimizer、DDP、EMA 或 checkpoint。固定缓存仍须与原图、标签和预处理合同对应。
+- 三个 DINO block 均为 stride 16；Adapter 将其转换为 stride 8/16/32，输出通道为 64/128/256，网格为 80/40/20。
+- 正式候选使用 BN64：P5 为 384->64->256 的 64 通道瓶颈分支，归一化采用 GroupNorm。
+- Teacher 多层 API 为 DINOv3Teacher(output_layers=(4,8,12))；默认调用继续返回 dense["p4"]，兼容现有 Foundation 蒸馏消费者。
+- Teacher 独立冻结并离线提取特征；student optimizer、DDP、EMA 和 checkpoint 仅管理下游模型。缓存与原图、标签和预处理合同一一对应。
 - 复用既有 CompositeCriterion 和显式包含 latent 的 include_kinds，标量目标为 detection.sum()+aux；新增 D1 检测损失、raw/effective aux 报告及有限值验证，不改变收集器默认集合。
 - weighted_sum 融合、可分离双线性 P3 和 foreach EMA 通过 D1 配方或入口显式启用，保留原实现供数值对照。
 - 通用改动集中在 Trainer 扩展点、checkpoint 运行状态清理及辅助损失报告；Attention 的 FP32 分支默认关闭，旧对象未设置该属性时仍走原路径。
@@ -48,7 +48,7 @@ BASE、DW、BN64 是同一个冻结特征检测器的三种 P5 Adapter 变体，
 | P4 | 1×1 Conv(384→128) → GroupNorm → SiLU | [B,128,40,40] |
 | P5 | 使用下述 BASE / DW / BN64 的一种 | [B,256,20,20] |
 
-所有卷积均 bias=False，每个卷积后分别接 GroupNorm 和 SiLU；3×3 卷积 padding=1，1×1 卷积 padding=0。GroupNorm 使用 get_safe_groups(channels,8)，不使用 BatchNorm。不同来源和尺度的参数独立，不共享权重。正式提速配方中三者的 P3 均可采用 separable_bilinear2x，保留原 bilinear 供对照，不把 P3 实现变化混入 P5 架构差异。
+所有卷积均 bias=False，每个卷积后分别接 GroupNorm 和 SiLU；3×3 卷积 padding=1，1×1 卷积 padding=0。GroupNorm 使用 get_safe_groups(channels,8)，各来源、各尺度使用独立参数。正式提速配方中三者的 P3 统一采用 separable_bilinear2x，并保留原 bilinear 供数值对照。
 
 #### BASE：普通卷积直接降采样
 
@@ -91,7 +91,7 @@ BASE、DW、BN64 是同一个冻结特征检测器的三种 P5 Adapter 变体，
 
 #### 参数与计算量
 
-以下是当前代码直接构造模块后核对的参数量。参数包含卷积与 GroupNorm 仿射参数，不包含冻结 Teacher；单支指一个来源的 P5，三支总量对应 block4/8/12。
+以下参数量由当前代码直接构造模块核对，统计卷积与 GroupNorm 仿射参数。单支指一个来源的 P5，三支对应 block4/8/12；冻结 Teacher 参数另列于最终配对实验。
 
 | 项目 | BASE | DW | BN64 |
 |---|---:|---:|---:|
@@ -101,9 +101,9 @@ BASE、DW、BN64 是同一个冻结特征检测器的三种 P5 Adapter 变体，
 | COCO 下游总可训练参数 | 3,542,567 | 1,195,943 | 1,404,839 |
 | 单个 P5 分支卷积 MAC / 图片 | 353,894,400 | 40,704,000 | 98,304,000 |
 
-卷积 MAC 按输出网格×输出通道×每个输出的卷积乘加数计算，只包含 P5 的卷积，不包含 GroupNorm、激活、P3/P4、LatentMixture、Detect、反向、优化器或 I/O；不能当作整模型 FLOPs 或实测训练时间。DW/BN64 分别减少 P5 参数与卷积成本，但更多算子、内存访问、GPU 利用率和共享训练开销会影响端到端速度。
+P5 卷积 MAC 按输出网格×输出通道×每个输出的卷积乘加数计算。该列用于比较 P5 卷积成本；端到端训练时间另外计入其余模块、反向、优化器和 I/O，并以实测为准。
 
-三种结构输出形状相同，均可接同一 LatentMixture/Detect。固定缓存下只需重建下游模型，不需更换或重提 Teacher 特征；但参数结构不同，旧下游 checkpoint 不能互相严格加载。正式对照选用 BN64，是基于前述结构折中和下文 COCO 筛选结果，不意味着 DW/BASE 无效或所有数据集上 BN64 都最优。
+三种结构输出形状相同，均可接同一 LatentMixture/Detect，并复用同一份 Teacher 缓存。切换结构时重新初始化对应下游参数。正式对照采用 BN64，选择依据是结构成本与 COCO 筛选中的参数/精度折中。
 
 对应配置：[BASE](../../ultralytics/cfg/models/26/yolo26-d1-dinov3-latent-n.yaml)、[DW](../../ultralytics/cfg/models/26/yolo26-d1-dinov3-latent-p5-dw-n.yaml)、[BN64](../../ultralytics/cfg/models/26/yolo26-d1-dinov3-latent-p5-bottleneck64-n.yaml)；实现见 [foundation_adapter.py](../../ultralytics/nn/modules/foundation_adapter.py)。
 
@@ -139,7 +139,7 @@ python -m scripts.d1.prepare_coco --coco-root "$COCO_ROOT" \
   --weights-dir "$TEACHER_DIR" --output "$D1_WORK/inputs"
 ~~~
 
-prepare_coco 验证 118,287/5,000 图片、稳定列表摘要、train/val 互斥、标签归属、官方标注文件存在性与 Teacher 权重，并从本地权重构造 Teacher。只有提供 --archives-dir 才检查源压缩包；不把标注文件存在性说成内容逐字节验证。仅恢复图片列表时可使用 --lists-only。重复执行必须得到相同输出，不重新随机划分或覆盖不同证据。
+prepare_coco 验证 118,287/5,000 图片、稳定列表摘要、train/val 互斥、标签归属、官方标注文件存在性与 Teacher 权重，并从本地权重构造 Teacher。提供 --archives-dir 可额外校验源压缩包；--lists-only 用于恢复图片列表。重复执行保持官方划分、输出和证据一致。
 
 正式预处理见 [合同](manifests/experiment-contract.json) 和 [COCO 配方](../../ultralytics/cfg/experiments/d1/dinov3-vits16-coco2017.yaml)：固定 640 方形 LetterBox、RGB CHW、[0,1]、DINOv3 mean/std；Teacher 不再缩放或裁剪，block 4/8/12 均输出 40x40 网格。缓存采用 d1-cache-v1 和 FP16。
 
@@ -249,11 +249,11 @@ BN64 被选作后续基座。单 seed 结果仅支持候选筛选，不构成统
 | 0.1 | 8.131928488 |
 | 0.3 | 8.081231746 |
 
-按预定均值优先规则选择 balance=0.1、z=0、gain=0.1、budget=3.0。gain=0.1 相对关闭 aux 仅高 0.109522 点，三 seed 配对差为 -0.245386/+0.339334/+0.234618 点，探索性 95% 区间跨 0。同一批种子还用于选参，不能宣称稳定或显著收益；gain=0.03 为波动较小的备选。
+按预定均值优先规则选择 balance=0.1、z=0、gain=0.1、budget=3.0。gain=0.1 相对关闭 aux 的平均 AP 增加 0.109522 点，三 seed 配对差为 -0.245386/+0.339334/+0.234618 点，探索性 95% 区间跨 0；这组三 seed 同时用于选参，结果体现小幅均值收益与较大的种子差异。gain=0.03 为波动较小的备选。
 
-这些是短周期筛选，不代表 300 轮已经收敛，也不是完整 standard-best 曲线。固定归档：[消融报告](https://github.com/Frank95zz/YOLO-Master/blob/f4d2bc268bb6339f6545fc3ebe6a247c238cd883/experiments/d1/E3.md)、[第一阶段证据](https://github.com/Frank95zz/YOLO-Master/blob/f4d2bc268bb6339f6545fc3ebe6a247c238cd883/experiments/d1/manifests/e3-stage1-official-20260911.json)、[第二阶段证据](https://github.com/Frank95zz/YOLO-Master/blob/f4d2bc268bb6339f6545fc3ebe6a247c238cd883/experiments/d1/manifests/e3-stage2-official-20260911.json)。
+上述结果取自 300 轮调度的前 60 轮筛选窗口，统一评测第 60 轮 checkpoint。固定归档：[消融报告](https://github.com/Frank95zz/YOLO-Master/blob/f4d2bc268bb6339f6545fc3ebe6a247c238cd883/experiments/d1/E3.md)、[第一阶段证据](https://github.com/Frank95zz/YOLO-Master/blob/f4d2bc268bb6339f6545fc3ebe6a247c238cd883/experiments/d1/manifests/e3-stage1-official-20260911.json)、[第二阶段证据](https://github.com/Frank95zz/YOLO-Master/blob/f4d2bc268bb6339f6545fc3ebe6a247c238cd883/experiments/d1/manifests/e3-stage2-official-20260911.json)。
 
-## P1 最终配对实验与待补结果
+## P1 最终配对实验
 
 P1 实现、统一合同、数据准备与工程验收均已完成，正式队列已启动。本节固定剩余结果的生成与判读方式；待办是完成当前训练、独立评测和表格回填，不是重新设计或开发一套实验。
 
@@ -272,7 +272,7 @@ P1 实现、统一合同、数据准备与工程验收均已完成，正式队�
 | scratch 总参数 | 23,133,560 | 23,032,340 |
 | scratch 相对总参数差 | +0.57% | +0.42% |
 
-总参数包含 Teacher；1% 是本项目工程匹配容差，不声称为官方规定。这是不同计算路径的系统对照，不是同架构单因素消融。配置为 [paired-comparison.yaml](../../ultralytics/cfg/experiments/d1/paired-comparison.yaml) 和 [scratch-total-l](../../ultralytics/cfg/models/26/yolo26-d1-scratch-total-l.yaml)。
+总参数匹配包含冻结 Teacher，项目采用 1% 的工程匹配容差。这是冻结特征路径与 RGB 从零训练路径的系统对照。配置为 [paired-comparison.yaml](../../ultralytics/cfg/experiments/d1/paired-comparison.yaml) 和 [scratch-total-l](../../ultralytics/cfg/models/26/yolo26-d1-scratch-total-l.yaml)。
 
 每次运行独占六张 A40，各组串行。固定 640 方形单次 LetterBox、无颜色/几何/翻转/Mosaic/MixUp/Copy-Paste/多尺度增强，两组 RGB/NPY 均使用 NVMe。AdamW 使用共享参数分组，lr0=0.001、lrf=0.01、momentum=0.9、weight_decay=0.0005、cosine、warmup=3；Router 沿用半学习率分组。nbs 等于全局 batch，每 batch 一次有效更新。
 
@@ -300,7 +300,7 @@ DDP 在首次训练和恢复时先进行三次无 optimizer 更新的前反向�
 | COCO | 123.23 | 372.91 |
 | VisDrone | 18.32 | 40.53 |
 
-短测时间仅用于预算与工程验收，不作为最终 GPU-hours 降本结论。最终实验 AP、显存、GPU-hours 与三个 seed 的统计结果仍待完整运行和官方评分后填入。
+上述五轮短测用于预算与工程验收；正式结果按完整周期的标准评测与资源记录汇总。
 
 ### 最终结果口径
 
@@ -345,7 +345,7 @@ CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS
   --deselect=tests/test_foundation_config.py::test_enabled_without_teacher_is_rejected
 ~~~
 
-训练执行提交 9004eac 的相关回归为 637 passed、56 skipped、2 deselected；PR 整理版本 5af743f 的扩展 CPU 回归为 675 passed、56 skipped、2 deselected，pytest 耗时 80.42 秒。两项排除用例在 UPSTREAM_REF=af961b9 和 PR 整理版本上均复现，不计为通过；这不表示已经在公共验收基线 acce839 上重跑同一套新增测试。没有运行完整仓库测试集、所有导出后端或 GitHub Actions。
+训练执行提交 9004eac 的相关回归为 637 passed、56 skipped、2 deselected；PR 整理版本 5af743f 的扩展 CPU 回归为 675 passed、56 skipped、2 deselected，pytest 耗时 80.42 秒。测试范围为下列相关模块；两个 deselected 用例在 UPSTREAM_REF=af961b9 和 PR 整理版本上均复现，节点及原因随命令列出。
 
 仓库质量入口以下使用 UPSTREAM_REF 检查 D1 相对整合上游的质量增量，不替代后文 BASE_REF 的成果审计：
 
@@ -354,7 +354,7 @@ python scripts/check_changed_quality.py --base af961b99b8ef80491e58cb5fd16e25eba
 git diff --check
 ~~~
 
-本轮 45 个相关 Python 文件的 Ruff 格式和全部支持文件的 codespell 检查通过。完整变更质量命令仍返回非零：当前 66 条 Ruff 告警均可在 UPSTREAM_REF=af961b9 的同一文件、规则、消息和源行中匹配，本 PR 相对该快照新增告警为 0；不将该命令写成通过，也不全局关闭规则。必要的析构清理、第三方路由兼容和训练生命周期异常保留原处理方式，使用局部注释说明原因。
+本轮 45 个相关 Python 文件的 Ruff 格式和全部支持文件的 codespell 检查通过。完整变更质量命令返回非零，包含 66 条与 UPSTREAM_REF=af961b9 同文件、规则、消息和源行一致的 Ruff 告警，D1 新增告警为 0。必要的析构清理、第三方路由兼容和训练生命周期异常处理保留原行为，并以局部注释说明。
 
 PR 整理仅涉及导入、格式、脚本权限、说明及无数值行为变化的清理。16 个训练入口、运行实现、配置与 manifest 文件相对 9004eac 逐字节不变；BN64/scratch 在 10/80 类、固定初始化和 640 输入下的 CPU 模型状态及前向输出摘要一致。这不是新的真实六卡训练，也不保证不同提交可绕过运行身份进行恢复。完整回归、质量输出和四组摘要保存在外部提交验证记录中。
 
@@ -368,11 +368,11 @@ PR 整理仅涉及导入、格式、脚本权限、说明及无数值行为变�
 2. **固定质量比较对象**：记录 D1 加入前已有的行为、测试问题和 lint 告警；例如后续上游 b69acc4 已修复 aux 标量组合，本 PR 只认领在其上的新增。
 3. **解释 PR 集成来源**：说明这 58 个交付文件接在哪个较新上游版本上，并给出 merge-base 与两段 diff，便于维护者复核兼容性和来源。
 
-仅运行训练不需要额外检出或运行 UPSTREAM_REF，复现使用 RUN_REF/FINAL_REF 即可。但本分支确实包含后续上游同步，依据补充细则的归属要求，应保留这个审计锚点；删除其说明不会让相关历史消失，反而难以区分贡献。它因此保留在文末，不再作为首页的“对照基线”突出。
+复现训练使用 RUN_REF/FINAL_REF；UPSTREAM_REF 用于区分后续上游同步与 D1 增量，固定质量检查对象并追溯集成来源，因此保留在文末的版本审计中。
 
 ### 固定引用与核验方式
 
-补充细则将全部课题的代码验收基线锁定为 2026-08-21 23:59:59（UTC+8）的 Tencent/YOLO-Master main。该规则用于划分历史成果和本轮新增 diff，不等于要求把实验中的 Scratch 检测器替换成这个日期的某个官方权重。
+补充细则将全部课题的代码验收基线锁定为 2026-08-21 23:59:59（UTC+8）的 Tencent/YOLO-Master main，用于划分历史成果与本轮新增 diff。Scratch 实验基线则按前述总参数匹配合同构建。
 
 | 引用 | 完整 SHA / 定位方式 | 用途 |
 |---|---|---|
@@ -382,7 +382,7 @@ PR 整理仅涉及导入、格式、脚本权限、说明及无数值行为变�
 | RUN_REF：正式配对实验执行提交 | 9004eac438acd7de0023702e26029b14276069a6 | 固定代码、运行合同、checkpoint 与评测身份 |
 | FINAL_REF：提交给评审的代码快照 | 在 PR 正文锁定完整 40 位 SHA；检出该版本后用 git rev-parse HEAD 核对 | 后续结果补充若形成新提交，保留旧引用并重新锁定，不用可移动分支名代替 |
 
-本 PR 面向 Tencent/YOLO-Master 的 main。整合分支包含上述上游快照，不回退上游，也不为对齐文案重写正在运行的 RUN_REF。已验证 BASE_REF 是 UPSTREAM_REF 和当前 PR 提交的祖先，当前 PR 提交与 UPSTREAM_REF 的 merge-base 为 af961b9。
+本 PR 面向 Tencent/YOLO-Master 的 main，基于上述上游快照整合。已验证 BASE_REF 是 UPSTREAM_REF 和当前 PR 提交的祖先，当前 PR 提交与 UPSTREAM_REF 的 merge-base 为 af961b9；正式实验继续固定 RUN_REF。
 
 在检出 PR 正文指定的 FINAL_REF 后执行：
 
@@ -407,26 +407,26 @@ git diff "$UPSTREAM_REF" "$FINAL_REF"
 git log --reverse --format=fuller "$UPSTREAM_REF..$FINAL_REF"
 ~~~
 
-公共基线到上游快照包含 104 个可达提交、172 个变更文件；D1 交付相对上游快照为 58 个文件（38 新增、20 修改）。两段有 8 个重叠文件，合并后的公共基线到 PR 总 diff 为 222 个文件，不能把这 222 个文件全部记为 D1 新增。重叠文件是 .gitignore、tests/test_ddp_lifecycle_ema_nan.py、tests/test_mixture_loss_composition.py、ultralytics/engine/extensions/recovery.py、ultralytics/engine/trainer.py、ultralytics/nn/foundation/__init__.py、ultralytics/nn/mixture_loss.py、ultralytics/nn/tasks.py；逐段 diff 核对归属，不按文件名整体认领。GitHub PR 的实际合并差异由届时目标 main 决定，不能用其动态变化替代固定 BASE_REF 审计。
+公共基线到上游快照包含 104 个可达提交、172 个变更文件；D1 交付相对上游快照为 58 个文件（38 新增、20 修改）。两段有 8 个重叠文件，合并后的公共基线到 PR 总 diff 为 222 个文件，其中 D1 交付范围按 UPSTREAM_REF → FINAL_REF 单独列示。重叠文件是 .gitignore、tests/test_ddp_lifecycle_ema_nan.py、tests/test_mixture_loss_composition.py、ultralytics/engine/extensions/recovery.py、ultralytics/engine/trainer.py、ultralytics/nn/foundation/__init__.py、ultralytics/nn/mixture_loss.py、ultralytics/nn/tasks.py；这些文件通过两段 diff 核对归属。固定 BASE_REF 审计与 GitHub 基于目标 main 的合并差异一并提供。
 
 ### 已有能力与本轮增量
 
-| 能力 | BASE_REF 已有内容，不重复认领 | 本轮交付与证据 |
+| 能力 | BASE_REF 已有能力 | 本轮交付与证据 |
 |---|---|---|
 | Foundation / Teacher | FoundationFeatures、DINOv3Teacher、预处理与冻结推理、默认 dense["p4"]，见[原始 Teacher](https://github.com/Tencent/YOLO-Master/blob/acce839c7e895d6b179de7f7093fa879e237cc7b/ultralytics/nn/foundation/teachers/dinov3.py) | 新增 output_layers 一基编号 API，公开 stage 选择、三层输出与严格形状/冻结验证；默认接口保持兼容 |
-| LatentMixture | router_only、weighted_sum、value_fusion_weights、Router 与 aux 已存在，见[原始模块](https://github.com/Tencent/YOLO-Master/blob/acce839c7e895d6b179de7f7093fa879e237cc7b/ultralytics/nn/modules/latent_mixture.py) | 复用这些机制适配三个 DINO 来源；新增 BASE/DW/BN64 架构与同协议实验，不声称发明 weighted_sum |
-| latent aux 收集 | collect_aux_loss 默认集合不含 latent，但 CompositeCriterion 的调用已经显式 include_kinds 包含 latent，见[原始损失组合](https://github.com/Tencent/YOLO-Master/blob/acce839c7e895d6b179de7f7093fa879e237cc7b/ultralytics/nn/mixture_loss.py) | D1 接入现有收集通道，增加 raw/effective 指标、标量/有限值/梯度验证和三 seed 扫描；不声称首次注册 latent |
-| 检测与缓存 | 现有 YOLO 检测头、Trainer、Dataset、Foundation 蒸馏及其缓存能力 | 新增作为检测器输入的 D1 多层缓存合同、分片/NPY、九分支 Adapter、模型、Dataset/Trainer/Validator 和严格重载链路，不把已有蒸馏链路改称 D1 新实现 |
+| LatentMixture | router_only、weighted_sum、value_fusion_weights、Router 与 aux 已存在，见[原始模块](https://github.com/Tencent/YOLO-Master/blob/acce839c7e895d6b179de7f7093fa879e237cc7b/ultralytics/nn/modules/latent_mixture.py) | 复用这些机制适配三个 DINO 来源；新增 BASE/DW/BN64 架构与同协议实验 |
+| latent aux 收集 | collect_aux_loss 默认集合不含 latent，但 CompositeCriterion 的调用已经显式 include_kinds 包含 latent，见[原始损失组合](https://github.com/Tencent/YOLO-Master/blob/acce839c7e895d6b179de7f7093fa879e237cc7b/ultralytics/nn/mixture_loss.py) | D1 接入现有收集通道，增加 raw/effective 指标、标量/有限值/梯度验证和三 seed 扫描 |
+| 检测与缓存 | 现有 YOLO 检测头、Trainer、Dataset、Foundation 蒸馏及其缓存能力 | 新增作为检测器输入的 D1 多层缓存合同、分片/NPY、九分支 Adapter、模型、Dataset/Trainer/Validator 和严格重载链路 |
 | 运行与性能 | 现有 DDP、EMA、checkpoint、优化器与恢复基础设施 | 新增 D1 预取边界、精确恢复与计时门禁、可分离 P3、foreach EMA、显式 Scratch FP32 Attention；存储收益与模型收益分开报告 |
-| 研究结论 | 基线原有实验、报告及目录结构不作为本轮结论 | 锁定后完成的 P5 架构筛选、36 次独立 aux 运行、性能/恢复诊断与最终配对实验；改名、合并测试、重排文档不单独计为 P1/P2 |
+| 研究结论 | 基线已有实验与报告 | 锁定后完成的 P5 架构筛选、36 次独立 aux 运行、性能/恢复诊断与最终配对实验 |
 
-后续上游已经在 [b69acc4](https://github.com/Tencent/YOLO-Master/commit/b69acc4f63e48742460a2d02c391e0491464b44d) 修复 native_loss 先求和、标量 aux 只加一次；该提交由 onion-hong 贡献并包含于 UPSTREAM_REF。本 PR 在此基础上增加显式输入验证、D1 指标报告与防回归测试，不把已经同步的修复重复记作本 PR 首创。
+后续上游已经在 [b69acc4](https://github.com/Tencent/YOLO-Master/commit/b69acc4f63e48742460a2d02c391e0491464b44d) 修复 native_loss 先求和、标量 aux 只加一次；该提交由 onion-hong 贡献并包含于 UPSTREAM_REF。本 PR 在此基础上增加显式输入验证、D1 指标报告与防回归测试。
 
 ### 来源、归属与证据状态
 
-D1 交付负责人为冯焱琦（[@Frank95zz](https://github.com/Frank95zz)），负责本 PR 中的多层 Teacher 扩展、缓存检测实现、运行验收及实验分析；关联进展为 [Issue #266](https://github.com/Tencent/YOLO-Master/issues/266)。公共模块、Teacher 模型、数据集及后续上游提交保留各自原作者署名。没有可核验的他人成员产物时，不补写协作者贡献。
+D1 交付负责人为冯焱琦（[@Frank95zz](https://github.com/Frank95zz)），负责本 PR 中的多层 Teacher 扩展、缓存检测实现、运行验收及实验分析；关联进展为 [Issue #266](https://github.com/Tencent/YOLO-Master/issues/266)。公共模块、Teacher 模型、数据集及后续上游提交保留各自原作者署名。
 
-本 PR 首次整合提交为 [f5bf7bc](https://github.com/Frank95zz/YOLO-Master/commit/f5bf7bc56d128e02d3485fe8df1e15301bee7556)，它将研究分支中需要交付的实现移植、精简到后续上游，不是逐提交原样 cherry-pick。原研究历史和证据保留在 [f4d2bc2 固定归档](https://github.com/Frank95zz/YOLO-Master/tree/f4d2bc268bb6339f6545fc3ebe6a247c238cd883/experiments/d1)，不 force-push 改写，不将压缩后的提交日期当成全部工作的首次发生时间。
+本 PR 首次整合提交为 [f5bf7bc](https://github.com/Frank95zz/YOLO-Master/commit/f5bf7bc56d128e02d3485fe8df1e15301bee7556)，它将研究分支中需要交付的实现移植、精简到后续上游，以功能移植和精简方式交付。原研究历史和证据保留在 [f4d2bc2 固定归档](https://github.com/Frank95zz/YOLO-Master/tree/f4d2bc268bb6339f6545fc3ebe6a247c238cd883/experiments/d1)，原始工作提交与最终交付的对应关系如下。
 
 | 工作包 | 可追溯原始提交 | 最终交付定位 |
 |---|---|---|
@@ -436,15 +436,15 @@ D1 交付负责人为冯焱琦（[@Frank95zz](https://github.com/Frank95zz)）�
 | 轻量 P5 与性能实现 | [3dfe0f6](https://github.com/Frank95zz/YOLO-Master/commit/3dfe0f6e72022b62a2f169e693b4996ac0361f7e)、[6f88a42](https://github.com/Frank95zz/YOLO-Master/commit/6f88a422f426b5fe9bd013aa25a7ef6a95570231) | 三种 P5 配置、Adapter 与性能测试；数值结论见前文固定证据 |
 | 正式配对与稳定性 | [2920727](https://github.com/Frank95zz/YOLO-Master/commit/2920727209a5e1a6b7cd53080d37a1c5d83e3517) 至 [9004eac](https://github.com/Frank95zz/YOLO-Master/commit/9004eac438acd7de0023702e26029b14276069a6) | compare.py、runtime.py、scratch 数值策略和真实门禁 |
 
-上述链接用于核验代码对象与报告的对应关系，不仅凭作者日期或后补 README 判断新增时间。本 PR 不追补锁定前个人成果登记，也不主张用未备案历史成果兑换新增分数。P0 检测闭环与 P2 消融路径已完成并提供证据；P1 实现和启动已完成，最终量化结果待训练与评测结束后补齐。是否达到成本阈值以及最终等级仍由结果和评审判断，不因脚本存在或一次最佳数字直接认定。
+上述固定链接将原始工作提交、实验报告与最终交付文件关联，供评审核验实现来源和实验依据。
 
 ## 局限与许可
 
-固定离线特征不支持任意颜色、几何、Mosaic 或随机多尺度增强；更换 Teacher、输入尺寸、层选择或预处理须重新构建缓存。NPY 和 safetensors 的训练速度依赖存储、CPU、缓存热度及共享任务干扰，不能把存储迁移收益全部归为模型贡献。
+固定离线特征训练采用与抽取一致的预处理；调整颜色、几何、多尺度策略或更换 Teacher、输入尺寸和层选择时须重新设计并构建匹配缓存。速度报告同时记录存储、CPU、缓存热度及共享任务条件，以区分模型和运行环境的影响。
 
-公共入口面向可信本地 checkpoint，不接受未信任 pickle。旧研究运行需使用各自报告中的执行提交；新入口不保证逐位重放旧研究队列。研究归档固定在 [f4d2bc2](https://github.com/Frank95zz/YOLO-Master/tree/f4d2bc268bb6339f6545fc3ebe6a247c238cd883/experiments/d1)，不随 PR 精简而删除。
+公共入口仅加载可信本地 checkpoint；精确恢复使用对应执行提交及一致的运行身份。研究历史和运行证据固定在 [f4d2bc2](https://github.com/Frank95zz/YOLO-Master/tree/f4d2bc268bb6339f6545fc3ebe6a247c238cd883/experiments/d1)。
 
-本节只记录许可来源，不作额外法律判断：
+许可与来源：
 
 - 代码沿用仓库 AGPL-3.0 许可，见根目录 [LICENSE](../../LICENSE)。
 - COCO：[Terms of Use](https://cocodataset.org/#termsofuse)、[下载源](http://images.cocodataset.org/)。图片仍受各自原始 Flickr 许可约束；YOLO labels 仅是官方标注的表示形式。
