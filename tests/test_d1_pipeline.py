@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import os
+from contextlib import nullcontext
 from pathlib import Path
 from types import SimpleNamespace
-import os
+
 import cv2
 import numpy as np
 import pytest
 import torch
+
 from ultralytics.data.d1_cache import (
     D1_FEATURE_NAMES,
     D1_FEATURE_SHAPE,
@@ -18,12 +21,11 @@ from ultralytics.data.d1_cache import (
 from ultralytics.models.yolo.detect import (
     D1FoundationDetectionTrainer,
     D1FoundationDetectionValidator,
+    foundation_train,
 )
 from ultralytics.nn import D1FoundationDetectionModel
 from ultralytics.nn.foundation.cache import FeatureCacheReader, FeatureCacheWriter, sha256_bytes
 from ultralytics.utils import DEFAULT_CFG_DICT, YAML
-from contextlib import nullcontext
-from ultralytics.models.yolo.detect import foundation_train
 from ultralytics.utils.errors import MoERouterError
 
 
@@ -498,3 +500,200 @@ def test_final_eval_fallback_records_the_checkpoint_actually_evaluated(tmp_path,
     trainer.final_eval()
     assert callbacks == [("on_fit_epoch_end", trainer.last)]
     assert trainer._d1_final_eval_checkpoint is None
+
+
+@pytest.mark.parametrize("shape", [(100, 200), (200, 100), (333, 517), (721, 1281)])
+def test_rgb_original_pixels_labels_and_inverse_geometry_match_cache(tmp_path, shape):
+    from scripts.d1.rgb import ScratchValidator, build_dataset
+    from ultralytics.data.augment import LetterBox
+
+    data_root, split_file, cache_dir = build_fixture(tmp_path, count=1)
+    image_path = data_root / "images/train2017/000000000001.jpg"
+    pixels = np.random.default_rng(7).integers(0, 256, (*shape, 3), dtype=np.uint8)
+    assert cv2.imwrite(str(image_path), pixels)
+    args = hyp_config()
+    rgb = build_dataset(args, data_config(), str(split_file), 1)
+    cached = D1FeatureCacheDataset(
+        img_path=str(split_file), cache_dir=cache_dir, data=data_config(), imgsz=640, batch_size=1, hyp=args
+    )
+    sample, reference = rgb[0], cached[0]
+    assert sample["ori_shape"] == reference["ori_shape"] == shape
+    assert sample["ratio_pad"] == reference["ratio_pad"]
+    assert torch.equal(sample["cls"], reference["cls"])
+    assert torch.allclose(sample["bboxes"], reference["bboxes"], atol=1e-7, rtol=0)
+    assert sample["img"].shape == (3, 640, 640)
+    original = cv2.imread(str(image_path))
+    expected = LetterBox((640, 640), auto=False, scaleup=True)(image=original)
+    expected = torch.from_numpy(np.ascontiguousarray(expected[..., ::-1].transpose(2, 0, 1)))
+    assert torch.equal(sample["img"], expected)
+    assert np.array_equal(rgb.load_image(0)[0], original)
+    assert not rgb.rect and not rgb.augment and not rgb.cache
+
+    validator = ScratchValidator(save_dir=tmp_path / "validation", args={"plots": False})
+    validator.data = data_config()
+    assert isinstance(validator.build_dataset(str(split_file)), type(rgb))
+    batch = rgb.collate_fn([sample])
+    target = validator._prepare_batch(0, batch)
+    prediction = {"bboxes": target["bboxes"].clone(), "conf": torch.tensor([0.9]), "cls": sample["cls"].flatten()}
+    restored = validator.scale_preds(prediction, target)
+    height, width = shape
+    expected_box = torch.tensor([[width * 0.25, height * 0.3, width * 0.75, height * 0.7]])
+    assert torch.allclose(restored["bboxes"], expected_box, atol=1e-4, rtol=0)
+    cached.feature_reader.close()
+
+
+def test_rgb_empty_labels_and_fixed_size_guard(tmp_path):
+    from scripts.d1.rgb import build_dataset
+
+    data_root, split_file, _ = build_fixture(tmp_path, count=1)
+    (data_root / "labels/train2017/000000000001.txt").write_text("")
+    args = hyp_config()
+    sample = build_dataset(args, data_config(), str(split_file), 1)[0]
+    assert sample["bboxes"].shape == (0, 4) and sample["cls"].shape == (0, 1)
+    args.imgsz = 320
+    with pytest.raises(ValueError, match="imgsz=640"):
+        build_dataset(args, data_config(), str(split_file), 1)
+    args.imgsz, args.multi_scale = 640, 0.5
+    with pytest.raises(ValueError, match="multi_scale=0"):
+        build_dataset(args, data_config(), str(split_file), 1)
+
+
+@pytest.mark.parametrize("nc,expected", [(10, 23_032_340), (80, 23_133_560)])
+def test_rgb_total_model_forward_and_strict_resume(tmp_path, nc, expected):
+    from scripts.d1.rgb import ScratchTrainer, audit_model
+
+    trainer = object.__new__(ScratchTrainer)
+    trainer.data = {"nc": nc, "names": dict(enumerate(map(str, range(nc)))), "channels": 3}
+    trainer.args, trainer.resume = hyp_config(), False
+    previous_threads = torch.get_num_threads()
+    torch.set_num_threads(2)
+    try:
+        model = trainer.get_model(verbose=False)
+        assert audit_model(model)["total_parameters"] == expected
+        assert model.names == trainer.data["names"]
+        model.eval()
+        model.set_head_attr(max_det=500 if nc == 10 else 300)
+        with torch.inference_mode():
+            prediction = model(torch.zeros(1, 3, 640, 640))[0]
+        assert prediction.shape == (1, 500 if nc == 10 else 300, 6)
+        assert torch.isfinite(prediction).all()
+        with pytest.raises(ValueError, match="Pretrained weights"):
+            trainer.get_model(weights=model, verbose=False)
+        trainer.resume = True
+        restored = trainer.get_model(cfg=model.yaml, weights=model, verbose=False)
+        assert all(torch.equal(value, restored.state_dict()[key]) for key, value in model.state_dict().items())
+        del restored
+        model.register_buffer("unexpected_resume_key", torch.zeros(1))
+        with pytest.raises(RuntimeError, match="Unexpected key"):
+            trainer.get_model(cfg=model.yaml, weights=model, verbose=False)
+        del model.unexpected_resume_key
+        with torch.no_grad():
+            next(model.parameters()).view(-1)[0] = float("nan")
+        with pytest.raises(FloatingPointError, match="nonfinite state"):
+            trainer.get_model(cfg=model.yaml, weights=model, verbose=False)
+    finally:
+        torch.set_num_threads(previous_threads)
+
+
+def test_rgb_rejects_changed_architecture_and_uses_shared_lifecycle():
+    from scripts.d1.rgb import MODEL_CFG, ScratchTrainer, scratch_config
+    from ultralytics.models.yolo.detect.train import DetectionTrainer
+
+    config = YAML.load(MODEL_CFG)
+    config["scales"]["l"][1] = 1.0
+    with pytest.raises(ValueError, match="exact registered"):
+        scratch_config(config, nc=80)
+    with pytest.raises(ValueError, match="nc=10 or nc=80"):
+        scratch_config(nc=1)
+    trainer = object.__new__(ScratchTrainer)
+    assert trainer.resolve_ddp_policy() == (False, True)
+    assert ScratchTrainer._setup_train is DetectionTrainer._setup_train
+    assert ScratchTrainer.optimizer_step is DetectionTrainer.optimizer_step
+    assert ScratchTrainer.get_dataloader is DetectionTrainer.get_dataloader
+    trainer.device = torch.device("cpu")
+    assert trainer.check_amp_compatibility() is False
+
+
+@pytest.mark.parametrize("bad_amp", [False, True])
+def test_rgb_amp_check_is_local_and_restores_training_mode(monkeypatch, bad_amp):
+    from scripts.d1.rgb import ScratchTrainer
+    from ultralytics.engine import trainer as trainer_module
+
+    class LocalModel(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.calls = 0
+
+        def forward(self, image):
+            self.calls += 1
+            assert not self.training
+            return torch.full((1, 300, 6), float("nan") if bad_amp and self.calls == 2 else 1.0), {}
+
+    trainer = object.__new__(ScratchTrainer)
+    trainer.device, trainer.model = torch.device("cuda"), LocalModel()
+    linspace = torch.linspace
+    monkeypatch.setattr(torch, "linspace", lambda *a, **kw: linspace(*a))
+    monkeypatch.setattr(torch, "autocast", lambda *a, **kw: nullcontext())
+    monkeypatch.setattr(trainer_module, "check_amp", lambda *a: pytest.fail("Unrelated AMP model requested"))
+    assert trainer.check_amp_compatibility() is (not bad_amp)
+    assert trainer.model.training and trainer.model.calls == 2
+
+
+@pytest.mark.parametrize("dataset_kind", ["coco", "visdrone"])
+def test_rgb_official_exports_match_cached_validator(tmp_path, dataset_kind):
+    from scripts.d1.rgb import ExportRGBValidator
+    from scripts.d1.train import ExportValidator
+    from ultralytics.data.converter import coco80_to_coco91_class
+
+    _, split_file, cache_dir = build_fixture(tmp_path, count=1)
+    args = {"plots": False, "save_json": True, "conf": 0.001, "imgsz": 640}
+    nc = 80 if dataset_kind == "coco" else 10
+    model = SimpleNamespace(names=dict(enumerate(map(str, range(nc)))), end2end=True)
+    rgb = ExportRGBValidator(save_dir=tmp_path / "rgb-export", args=args, dataset_kind=dataset_kind)
+    cached = ExportValidator(
+        save_dir=tmp_path / "cache-export", args=args, dataset_kind=dataset_kind, feature_cache=cache_dir
+    )
+    for validator in (rgb, cached):
+        validator.data = {"val": str(split_file)}
+        validator.init_metrics(model)
+        assert validator.args.save_json and validator.eval_json({"sentinel": 1}) == {"sentinel": 1}
+        assert validator.class_map == (coco80_to_coco91_class() if dataset_kind == "coco" else list(range(10)))
+        prediction = {
+            "bboxes": torch.tensor([[160.0, 256.0, 480.0, 384.0], [10.0, 0.0, 100.0, 150.0]]),
+            "conf": torch.tensor([0.9, 0.8]),
+            "cls": torch.tensor([nc - 1.0, 0.0]),
+        }
+        target = {
+            "im_file": "000000000001.jpg",
+            "imgsz": (640, 640),
+            "ori_shape": (100, 200),
+            "ratio_pad": ((3.2, 3.2), (0, 160)),
+            "ignored_regions": [[0, 0, 200, 100]],
+        }
+        validator.pred_to_json(validator.scale_preds(prediction, target), target)
+    assert rgb.jdict == cached.jdict
+    assert rgb.jdict[0]["bbox"] == [50.0, 30.0, 100.0, 40.0]
+    assert rgb.jdict[0]["category_id"] == (90 if dataset_kind == "coco" else 9)
+    assert rgb.jdict[0]["image_id"] == (1 if dataset_kind == "coco" else "000000000001")
+    assert rgb.degenerate_boxes_removed == cached.degenerate_boxes_removed == (dataset_kind == "visdrone")
+    before = list(rgb.jdict)
+    empty = {"bboxes": torch.empty(0, 4), "conf": torch.empty(0), "cls": torch.empty(0)}
+    rgb.pred_to_json(empty, target)
+    assert rgb.jdict == before
+
+
+def test_rgb_visdrone_rejects_nonfinite_export_and_invalid_dataset(tmp_path):
+    from scripts.d1.rgb import ExportRGBValidator
+
+    with pytest.raises(ValueError, match="dataset_kind"):
+        ExportRGBValidator(dataset_kind="unknown")
+    validator = ExportRGBValidator(save_dir=tmp_path / "export", args={"plots": False}, dataset_kind="visdrone")
+    validator.data = {"val": "images"}
+    validator.init_metrics(SimpleNamespace(names=dict(enumerate(map(str, range(10)))), end2end=True))
+    bad = {
+        "bboxes": torch.tensor([[0.0, 0.0, 1.0, 1.0]]),
+        "conf": torch.tensor([float("nan")]),
+        "cls": torch.tensor([0.0]),
+    }
+    with pytest.raises(FloatingPointError, match="Nonfinite prediction"):
+        validator.pred_to_json(bad, {"im_file": "000001.jpg"})

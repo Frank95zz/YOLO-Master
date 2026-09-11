@@ -8,6 +8,7 @@
 - [安装与输入](#安装与输入)
 - [缓存](#缓存)
 - [训练与独立评测](#训练与独立评测)
+- [最终配对实验](#最终配对实验)
 - [研究结果](#研究结果)
 - [验收结论与局限](#验收结论与局限)
 - [测试与复现身份](#测试与复现身份)
@@ -144,6 +145,40 @@ coco-local.yaml 按仓库常规检测 YAML 指定本地 path、train、val、80 
 --ema scalar-v1/foreach-v1 和 --p3-upsample bilinear/separable_bilinear2x 控制实现；--fp32 用于 CPU 或精度对照。默认逐样本验证缓存，只有已经单独完成全量校验时才使用 --trusted-cache。
 
 评测输出 evaluation.json 与 predictions.json，记录 checkpoint SHA256、epoch、数据合同、完整图像覆盖和内部指标。COCO 只有显式提供 --annotations 时才报告标准 AP，maxDets=[1,10,100]；预测导出最多 300 框，不改变标准 AP 的 maxDets=100。VisDrone 输出官方格式 TXT（最多500框）；裁剪或坐标舍入后宽/高为零的框被移除并计数，非有限值报错。官方 ignore 规则评分使用固定 MATLAB toolkit，不能用内部 COCO-style 指标代替。导出检查入口为 scripts.d1.evaluate_visdrone；本 PR 不包含原机器上的 MATLAB 任务调度器。
+
+## 最终配对实验
+
+最终候选固定为 ViT-S/16 + BN64 + weighted_sum，P5 的瓶颈宽度为64；balance=0.1、z=0、gain=0.1、budget=3.0。Scratch 从随机权重训练标准 YOLO26-L 拓扑的宽度匹配版：depth=1.0、width=0.9375、max_channels=512。两组均重新初始化，不续训候选筛选权重。
+
+集中合同为 [paired-comparison.yaml](../../ultralytics/cfg/experiments/d1/paired-comparison.yaml)，运行入口为 [compare.py](../../scripts/d1/compare.py)。
+
+| 数据集 | train / val | 两组各自预算 | seeds | 每卡 / 全局 batch | 总运行数 |
+|---|---:|---:|---|---:|---:|
+| COCO 2017 | 118,287 / 5,000 | 100 epochs | 0/1/2 | 64 / 384 | 6 |
+| VisDrone2019-DET | 6,471 / 548 | 300 epochs | 0/1/2 | 16 / 96 | 6 |
+
+每个运行独占六张A40，组间串行。两组输入几何固定640方形单次LetterBox，禁用增强、多尺度、矩形验证和RGB内存缓存；两组的RGB/NPY均放NVMe。优化器使用仓库共享AdamW参数分组，lr0=0.001、lrf=0.01、momentum=0.9、weight_decay=0.0005、cosine、warmup3。Router保留共享实现的半学习率分组，不另改优化器。nbs等于全局batch，每batch一次有效更新。AMP初始scale16、growth_interval=1000000，workers4/rank、prefetch1。Frozen使用foreach EMA和可分离P3；Scratch使用原生EMA，分别记录实现成本。
+
+总参数统计包含21,596,544个冻结Teacher参数：COCO Frozen/Scratch为23,001,383/23,133,560；VisDrone为22,936,803/23,032,340。1%为项目工程匹配容差，不声称是官方规定。两个模型计算路径不同，本实验是系统对照而不是单因素同架构消融。
+
+启动门禁先执行真实六卡连续两轮与一轮后恢复到两轮的状态比较，保留100/300轮调度；随后每种数据集/架构测五个完整epoch，使用warmup后的第4/5轮估时，并覆盖第5轮周期checkpoint。任何缺失样本、非有限loss/梯度、漏更新、恢复不一致或OOM都会停止，不能自动缩小单组batch。数据加载按明确epoch边界创建迭代器，避免无限预取跨轮改变续跑样本顺序；这是新正式运行的版本化执行合同，不声称逐位重放历史研究队列。普通训练仍可不启用该测量模式。
+
+```bash
+python -m scripts.d1.compare --approved --output "$D1_WORK/final-comparison" \
+  --coco-root "$COCO_ROOT" --coco-cache "$D1_WORK/coco-npy" \
+  --visdrone-root "$D1_WORK/datasets/visdrone-prepared" \
+  --visdrone-cache "$D1_WORK/visdrone-npy" --device 0,1,2,3,4,5
+```
+
+Linux入口要求新的外部输出目录、干净代码提交和明确批准。完整数据及缓存不下载、不重新抽取、不删除。工作目录写入plan.json、status.json、各任务日志、门禁状态和eta.json；ETA按新基准更新，不能用旧小型Scratch的速度代替。实际数据根路径只写入外部运行身份，不进入Git。
+
+单次测量训练使用train入口的--telemetry；--window只限制已执行轮数，不缩短学习率调度。--resume-snapshot指向同一运行的resume.pt，恢复FP32模型、EMA、优化器、scaler、scheduler、criterion及各rank状态；必须保持提交、模型、数据、batch、seed等身份一致。普通last.pt用于独立评测，不用其FP16序列化代替精确训练恢复。
+
+主结果固定第100/300轮；每5轮保留checkpoint，用同一标准协议补评分选standard-best，平局取更早者。COCO采用maxDets100标准AP；VisDrone采用官方MATLAB DET评分，不能把内部指标当作官方结果。报告三个seed的逐项结果、均值、样本标准差和配对差值。GPU-hours包括分配GPU的等待；冷启动计入已有日志中的Teacher抽取，训练-only和实际复用摊销另列。若旧抽取成本无法可靠恢复则标记未知，不宣称冷启动降低50%。
+
+正式实验结果尚待上述门禁和完整运行，不因启动队列就提前标记P1通过；不自动追加其他Teacher或新的消融。
+
+2026-09-11 启动准备回归：D1、Foundation、LatentMixture、损失组合、checkpoint与DDP相关测试共623 passed、56 skipped、2 deselected，耗时68.17秒。两项deselected沿用下方已确认的上游问题排除记录。新增覆盖原生Scratch严格重载、有限epoch采样与恢复、统一FP32评测checkpoint、周期文件重复发布和残留临时文件恢复。静态检查、格式、编译和git diff --check通过；这仍是CPU/离线回归，不冒充真实六卡门禁或正式实验结果。
 
 ## 研究结果
 

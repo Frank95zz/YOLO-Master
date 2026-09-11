@@ -5,9 +5,11 @@ from __future__ import annotations
 import importlib.util
 import json
 from pathlib import Path
-import yaml
+
 import pytest
 import torch
+import yaml
+
 from ultralytics.nn.foundation_detection_model import D1FoundationDetectionModel
 from ultralytics.nn.tasks import DetectionModel
 from ultralytics.utils import YAML
@@ -335,3 +337,49 @@ def test_total_match_forward_and_strict_reload(nc, expected_downstream, expected
         assert not result.missing_keys and not result.unexpected_keys
     finally:
         torch.set_num_threads(previous_threads)
+
+
+def test_final_comparison_budget_and_parameter_contract():
+    from pathlib import Path
+
+    from ultralytics.utils import YAML
+
+    root = Path(__file__).resolve().parents[1]
+    contract = YAML.load(root / "ultralytics/cfg/experiments/d1/paired-comparison.yaml")
+    assert contract["seeds"] == [0, 1, 2]
+    assert contract["world_size"] == 6
+    assert contract["models"] == ["BN64", "SCRATCH"]
+    assert {key: value["epochs"] for key, value in contract["datasets"].items()} == {"coco": 100, "visdrone": 300}
+    for value in contract["datasets"].values():
+        assert value["global_batch"] % contract["world_size"] == 0
+        assert abs(value["scratch_parameters"] / value["frozen_total_parameters"] - 1) < 0.01
+
+
+def test_final_comparison_checkpoint_state_gate():
+    import torch
+
+    from scripts.d1.compare import compare_states
+
+    keys = ("model", "ema", "optimizer", "scaler", "scheduler", "criterion", "optimizer_steps", "ema_updates", "ranks")
+    left = {key: {"value": torch.tensor([1.0, 2.0])} for key in keys}
+    right = {key: {"value": torch.tensor([1.0, 2.0])} for key in keys}
+    assert compare_states(left, right) == []
+    right["model"]["value"][0] += 1
+    assert compare_states(left, right) == ["model/value"]
+    del right["scaler"]
+    assert "scaler/missing" in compare_states(left, right)
+
+
+def test_final_comparison_keeps_full_schedule_for_gate(tmp_path):
+    from scripts.d1.compare import training_command
+
+    plan = {
+        "contract": {"datasets": {"coco": {"global_batch": 384, "epochs": 100}}},
+        "data": {"coco": {"splits": {"train": {"cache": "train"}, "val": {"cache": "val"}}}},
+        "device": "0,1,2,3,4,5",
+    }
+    command = training_command(plan, "coco", "SCRATCH", tmp_path, tmp_path / "data.yaml", window=2)
+    assert command[command.index("--epochs") + 1] == "100"
+    assert command[command.index("--window") + 1] == "2"
+    assert "--train-cache" not in command
+    assert "--approved" in command and "--telemetry" in command
