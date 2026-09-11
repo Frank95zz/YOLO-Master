@@ -249,6 +249,8 @@ def input_contract(args):
         },
         "dataset": args.dataset,
         "variant": args.variant,
+        "epoch_loader_policy": "bounded-v1" if args.telemetry else "shared",
+        "ddp_reducer_policy": "prebuild-restore-v1" if args.telemetry and world_size > 1 else "shared",
         "command": args.command,
         "seed": args.seed,
         "epochs": args.epochs,

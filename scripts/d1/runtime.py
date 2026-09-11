@@ -255,7 +255,63 @@ class RunMixin:
         self.optimizer.register_step_post_hook(self._run_step_recorded)
         if self.resume_snapshot is not None:
             self._run_restore()
+        self._run_warm_reducer()
         self._run_setup_report()
+
+    def _run_warm_reducer(self):
+        """Build DDP buckets before either fresh or resumed updates, without training."""
+        if not isinstance(self.model, torch.nn.parallel.DistributedDataParallel):
+            return
+        model = unwrap_model(self.model)
+        state = detached_state(model)
+        criterion = getattr(model, "criterion", None)
+        native = getattr(criterion, "native_criterion", criterion)
+        criterion_progress = {
+            key: deepcopy(getattr(native, key)) for key in ("updates", "o2m", "o2o") if hasattr(native, key)
+        }
+        rng = rng_state(self.device)
+        generator = self.train_loader.generator.get_state()
+        scaler = deepcopy(self.scaler.state_dict())
+        was_training = model.training
+        started = time.monotonic()
+        iterator = None
+        try:
+            self.train_loader.set_epoch(self.start_epoch)
+            iterator = iter(self.train_loader)
+            batch = self.preprocess_batch(next(iterator))
+            model.train()
+            for _ in range(3):
+                self.optimizer.zero_grad(set_to_none=True)
+                with torch.autocast(self.device.type, enabled=self.amp):
+                    loss, _ = self.model(batch)
+                    loss = loss.sum() * self.world_size
+                if not bool(torch.isfinite(loss).all()):
+                    raise FloatingPointError("DDP reducer warmup loss is not finite")
+                self.scaler.scale(loss).backward()
+            if self.device.type == "cuda":
+                torch.cuda.synchronize(self.device)
+        finally:
+            del iterator
+            self.optimizer.zero_grad(set_to_none=True)
+            model.criterion = criterion
+            for key, value in criterion_progress.items():
+                setattr(native, key, value)
+            model.load_state_dict(state, strict=True)
+            model.train(was_training)
+            self.scaler.load_state_dict(scaler)
+            self.train_loader.generator.set_state(generator)
+            restore_rng(rng, self.device)
+        if state_digest(model.state_dict()) != state_digest(state):
+            raise RuntimeError("DDP warmup changed registered model state")
+        write_json(
+            self.run_output / f"reducer-warmup-rank-{self._run_rank}.json",
+            {
+                "passes": 3,
+                "optimizer_updates": 0,
+                "state_restored": True,
+                "seconds": time.monotonic() - started,
+            },
+        )
 
     def _run_setup_report(self):
         datasets = {}

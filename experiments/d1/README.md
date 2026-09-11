@@ -174,7 +174,11 @@ Linux入口要求新的外部输出目录、干净代码提交和明确批准。
 
 单次测量训练使用train入口的--telemetry；--window只限制已执行轮数，不缩短学习率调度。--resume-snapshot指向同一运行的resume.pt，恢复FP32模型、EMA、优化器、scaler、scheduler、criterion及各rank状态；必须保持提交、模型、数据、batch、seed等身份一致。普通last.pt用于独立评测，不用其FP16序列化代替精确训练恢复。
 
+测量模式的DDP在新训练和恢复时均先做三次无optimizer更新的前反向，建立相同的梯度分桶，再恢复全部模型、损失调度和随机数状态；不改FP32通信精度，也不放宽恢复误差阈值。这避免静态DDP连续运行与重启后的首次分桶状态不同。该一次性准备耗时单独记录。六卡VisDrone/BN64隔离诊断已确认连续两轮与中断后两轮的模型、EMA、优化器、scaler、scheduler、criterion及六rank状态逐位一致；其他组合仍须通过队列中的真实门禁。
+
 主结果固定第100/300轮；每5轮保留checkpoint，用同一标准协议补评分选standard-best，平局取更早者。COCO采用maxDets100标准AP；VisDrone采用官方MATLAB DET评分，不能把内部指标当作官方结果。报告三个seed的逐项结果、均值、样本标准差和配对差值。GPU-hours包括分配GPU的等待；冷启动计入已有日志中的Teacher抽取，训练-only和实际复用摊销另列。若旧抽取成本无法可靠恢复则标记未知，不宣称冷启动降低50%。
+
+训练入口与恢复修复的相关回归测试为624 passed、56 skipped、2 deselected；两项未纳入项为已有Foundation上游失败，条件性跳过不等于真实多卡验收通过。四个数据集/模型组合仍须分别完成真实多卡恢复门禁和完整轮次短基准。
 
 正式实验结果尚待上述门禁和完整运行，不因启动队列就提前标记P1通过；不自动追加其他Teacher或新的消融。
 

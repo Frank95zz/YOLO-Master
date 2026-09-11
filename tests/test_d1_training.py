@@ -811,3 +811,35 @@ def test_native_scratch_checkpoint_strict_reload(tmp_path):
     for name, value in model.state_dict().items():
         if isinstance(value, torch.Tensor):
             torch.testing.assert_close(value, restored.state_dict()[name], rtol=0, atol=0)
+
+
+def test_reducer_warmup_preserves_state_rng_and_criterion_binding(tmp_path, monkeypatch):
+    from scripts.d1 import runtime
+
+    trainer = _runtime_trainer(tmp_path / "warmup")
+    original = trainer.model
+    criterion = original.criterion
+    before = runtime.state_digest(original.state_dict())
+    rng_before = runtime.state_digest(runtime.rng_state(trainer.device))
+    generator_before = trainer.train_loader.generator.get_state()
+
+    class FakeDDP(torch.nn.Module):
+        def __init__(self, module):
+            super().__init__()
+            self.module = module
+
+        def forward(self, batch):
+            self.module.running.add_(1)
+            self.module.criterion.updates += 1
+            loss = self.module.weight * batch["value"].sum()
+            return loss, loss.detach()
+
+    monkeypatch.setattr(torch.nn.parallel, "DistributedDataParallel", FakeDDP)
+    trainer.model = FakeDDP(original)
+    trainer.preprocess_batch = lambda batch: batch
+    trainer._run_warm_reducer()
+    assert original.criterion is criterion and criterion.updates == 0
+    assert runtime.state_digest(original.state_dict()) == before
+    assert runtime.state_digest(runtime.rng_state(trainer.device)) == rng_before
+    assert torch.equal(trainer.train_loader.generator.get_state(), generator_before)
+    assert trainer.optimizer_steps == 0 and original.weight.grad is None
