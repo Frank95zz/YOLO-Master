@@ -10,7 +10,7 @@ import math
 import re
 from pathlib import Path
 
-from scripts.d1.prepare_visdrone import encoded, file_sha, immutable
+from scripts.d1.artifacts import encoded, file_sha, immutable
 
 TOOLKIT_COMMIT = "005445782213e20cb91bc50a597db3dd949e749a"
 METRICS = ("AP_all", "AP_50", "AP_75", "AR_1", "AR_10", "AR_100", "AR_500")

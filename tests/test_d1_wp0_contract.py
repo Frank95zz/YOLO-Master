@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import zipfile
 from pathlib import Path
 
 import yaml
@@ -189,6 +188,8 @@ def test_split_overlap_is_compared_by_image_filename() -> None:
 
 
 def test_manifest_writers_are_deterministic(tmp_path: Path) -> None:
+    from scripts.d1.artifacts import write_json
+
     module = _load_script()
     lines = ["images/train2017/000000000001.jpg", "images/train2017/000000000002.jpg"]
     list_path = tmp_path / "split.txt"
@@ -199,9 +200,9 @@ def test_manifest_writers_are_deterministic(tmp_path: Path) -> None:
     assert second_hash == first_hash
 
     manifest_path = tmp_path / "manifest.json"
-    module.write_json(manifest_path, {"z": 1, "a": {"value": True}})
+    write_json(manifest_path, {"z": 1, "a": {"value": True}})
     first_bytes = manifest_path.read_bytes()
-    module.write_json(manifest_path, {"a": {"value": True}, "z": 1})
+    write_json(manifest_path, {"a": {"value": True}, "z": 1})
     assert manifest_path.read_bytes() == first_bytes
 
 
@@ -221,50 +222,49 @@ def test_modelscope_vits16_contract_matches_expected_architecture() -> None:
         86_406_384,
         "4610ad75edef83e75afdebf162d148dc628045ea6cbb83d67d4708c709c4f91d",
     )
-    assert module.COCO_MIRROR_REVISION == "5466a7f1944225fcddb1896006508cad5be27b5b"
-    assert module.COCO_FILES["train2017.zip"][2:] == (
-        19_336_861_798,
-        "69a8bb58ea5f8f99d24875f21416de2e9ded3178e903f1f7603e283b9e06d929",
-    )
-    assert module.COCO_FILES["val2017.zip"][2:] == (
-        815_585_330,
-        "4f7e2ccb2866ec5041993c9cf2a952bbed69647b115d0f74da7ce8f4bef82f05",
-    )
 
 
-def test_download_only_promotes_hash_verified_part_file(tmp_path: Path, monkeypatch) -> None:
+def test_teacher_verification_rejects_same_size_corruption(tmp_path, monkeypatch):
     module = _load_script()
-    payload = b"verified payload"
-    source = tmp_path / "source.bin"
-    source.write_bytes(payload)
-    destination = tmp_path / "artifact.bin"
-    expected_sha256 = module.hashlib.sha256(payload).hexdigest()
-
-    monkeypatch.setattr(module.shutil, "which", lambda _name: "/usr/bin/curl")
-    module.download_file(
-        source.as_uri(),
-        destination,
-        expected_size=len(payload),
-        expected_sha256=expected_sha256,
+    payloads = {
+        "config.json": json.dumps(module.EXPECTED_MODEL_CONFIG).encode(),
+        "model.safetensors": b"test-weights",
+        "LICENSE.md": b"license",
+        "README.md": b"readme",
+    }
+    for name, data in payloads.items():
+        (tmp_path / name).write_bytes(data)
+    monkeypatch.setattr(
+        module,
+        "MODEL_FILES",
+        {name: (len(data), module.hashlib.sha256(data).hexdigest()) for name, data in payloads.items()},
     )
-    assert destination.read_bytes() == payload
-    assert not destination.with_name(destination.name + ".part").exists()
+    assert module.verify_model(tmp_path, load_model=False)["model_loaded"] is False
+    path = tmp_path / "model.safetensors"
+    path.write_bytes(b"X" + path.read_bytes()[1:])
+    with pytest.raises(ValueError, match="SHA256"):
+        module.verify_model(tmp_path, load_model=False)
 
 
-def test_extract_zip_is_repeatable_and_records_archive_digest(tmp_path: Path) -> None:
+def test_label_count_and_membership_are_checked(tmp_path):
     module = _load_script()
-    archive_path = tmp_path / "sample.zip"
-    destination = tmp_path / "output"
-    with zipfile.ZipFile(archive_path, "w") as archive:
-        archive.writestr("images/a.jpg", b"a")
-        archive.writestr("images/b.jpg", b"bb")
-    (destination / "images").mkdir(parents=True)
-    (destination / "images/a.jpg").write_bytes(b"a")
+    directory = tmp_path / "labels/train2017"
+    directory.mkdir(parents=True)
+    annotations = tmp_path / "annotations"
+    annotations.mkdir()
+    (annotations / "instances_train2017.json").write_text("{}")
+    label = directory / "a.txt"
+    label.write_text("")
+    lists = {"train2017": ["images/train2017/a.jpg", "images/train2017/b.jpg"]}
+    assert module.verify_labels(tmp_path, lists, {"train2017": 1}) == {"train2017": 1}
+    with pytest.raises(ValueError, match="count"):
+        module.verify_labels(tmp_path, lists, {"train2017": 2})
+    label.rename(directory / "unknown.txt")
+    with pytest.raises(ValueError, match="membership"):
+        module.verify_labels(tmp_path, lists, {"train2017": 1})
 
-    module.extract_zip(archive_path, destination)
-    module.extract_zip(archive_path, destination)
 
-    assert (destination / "images/a.jpg").read_bytes() == b"a"
-    assert (destination / "images/b.jpg").read_bytes() == b"bb"
-    marker = destination / ".sample.zip.extracted"
-    assert marker.read_text(encoding="utf-8").strip() == module.sha256_file(archive_path)
+def test_prepare_rejects_removed_download_mode():
+    module = _load_script()
+    with pytest.raises(SystemExit):
+        module.main(["--download"])

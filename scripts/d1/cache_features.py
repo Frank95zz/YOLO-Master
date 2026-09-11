@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
-"""Build, verify, and compare D1 DINOv3 feature caches."""
+"""Build either dataset's D1 cache from an explicit image list; verify, compare or convert it."""
 
 from __future__ import annotations
 
 import argparse
+import importlib.metadata
 import json
 import os
+import re
 import subprocess
 import time
 from pathlib import Path
-from typing import Any
 
 import cv2
 import numpy as np
 import torch
 
+from scripts.d1.artifacts import encoded, immutable, write_json
+from scripts.d1.prepare_wp0 import verify_model
 from ultralytics.data.augment import LetterBox
 from ultralytics.nn.foundation import DINOv3Teacher
 from ultralytics.nn.foundation.cache import (
@@ -29,36 +32,27 @@ from ultralytics.nn.foundation.cache import (
     verify_feature_cache,
 )
 
-
 DEFAULT_MODEL_ID = "facebook/dinov3-vits16-pretrain-lvd1689m"
 OUTPUT_LAYERS = (4, 8, 12)
 FEATURE_NAMES = ("block4", "block8", "block12")
 EXPECTED_SHAPE = (384, 40, 40)
+SPLITS = ("train2017", "val2017", "visdrone-train", "visdrone-val")
 
 
-def write_json(path: Path, payload: Any) -> None:
-    """Atomically write a stable JSON report."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.part")
-    temporary.write_bytes(json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=True).encode() + b"\n")
-    os.replace(temporary, path)
-
-
-def load_json(path: Path) -> dict[str, Any]:
+def load_json(path):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def git_commit(repo_root: Path) -> str:
+def git_commit(repo_root):
     return subprocess.check_output(["git", "-C", str(repo_root), "rev-parse", "HEAD"], text=True).strip()
 
 
-def cache_contract(repo_root: Path) -> dict[str, Any]:
-    """Derive the cache contract only from tracked WP0 manifests."""
-    manifests = repo_root / "experiments" / "d1" / "manifests"
+def cache_contract(repo_root):
+    manifests = repo_root / "experiments/d1/manifests"
     p0 = load_json(manifests / "p0-experiment-contract.json")
     teacher = load_json(manifests / "dinov3-vits16.json")
     if p0["cache"]["schema_version"] != CACHE_SCHEMA_VERSION:
-        raise ValueError("WP0 and cache implementation schema versions differ.")
+        raise ValueError("WP0 and cache implementation schema versions differ")
     return {
         "schema_version": CACHE_SCHEMA_VERSION,
         "model_id": teacher["model_id"],
@@ -71,26 +65,19 @@ def cache_contract(repo_root: Path) -> dict[str, Any]:
     }
 
 
-def split_paths(repo_root: Path, split: str, limit: int | None) -> tuple[list[str], str]:
-    path = repo_root / "experiments" / "d1" / "manifests" / f"coco2017-{split}.txt"
-    if not path.is_file():
-        raise FileNotFoundError(
-            "COCO split list is generated, not checked into Git. Run scripts.d1.prepare_wp0 "
-            "with --materialize-splits-from COCO_ROOT (or --download) before extracting features."
-        )
-    entries = [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
-    if entries != sorted(entries):
-        raise ValueError(f"split manifest is not sorted: {path}")
-    if len(entries) != len(set(entries)):
-        raise ValueError(f"split manifest contains duplicate paths: {path}")
-    if any(Path(entry).is_absolute() or ".." in Path(entry).parts for entry in entries):
-        raise ValueError(f"split manifest contains a non-portable path: {path}")
+def split_paths(path, split, limit=None):
+    """Lists use root-relative images/SPLIT/ID.jpg paths for both datasets."""
+    if split not in SPLITS or limit is not None and limit <= 0:
+        raise ValueError("Unsupported split or nonpositive limit")
+    entries = path.read_text(encoding="utf-8").splitlines()
+    pattern = rf"images/{re.escape(split)}/[A-Za-z0-9][A-Za-z0-9_-]*\.jpg"
+    if not entries or entries != sorted(set(entries)) or any(not re.fullmatch(pattern, p) for p in entries):
+        raise ValueError("Image list must be nonempty, sorted, unique and use portable paths for the selected split")
     selected = entries if limit is None else entries[:limit]
-    data = ("\n".join(selected) + "\n").encode()
-    return selected, sha256_bytes(data)
+    return selected, sha256_bytes(("\n".join(selected) + "\n").encode())
 
 
-def make_letterbox() -> LetterBox:
+def make_letterbox():
     return LetterBox(
         new_shape=(640, 640),
         auto=False,
@@ -103,249 +90,244 @@ def make_letterbox() -> LetterBox:
     )
 
 
-def load_image(path: Path, letterbox: LetterBox) -> torch.Tensor:
-    """Read BGR input, apply the WP0 letterbox, and return RGB CHW in [0, 1]."""
+def load_image(path, letterbox):
     image = cv2.imread(str(path), cv2.IMREAD_COLOR)
     if image is None:
-        raise ValueError(f"failed to decode image: {path}")
+        raise ValueError(f"Failed to decode image: {path}")
     image = letterbox(image=image)
     if image.shape != (640, 640, 3):
-        raise ValueError(f"letterbox returned {image.shape} for {path}")
-    rgb_chw = np.ascontiguousarray(image[:, :, ::-1].transpose(2, 0, 1))
-    return torch.from_numpy(rgb_chw).float().div_(255.0)
+        raise ValueError(f"Unexpected letterbox shape: {image.shape}")
+    return torch.from_numpy(np.ascontiguousarray(image[:, :, ::-1].transpose(2, 0, 1))).float().div_(255.0)
 
 
-def normalize_device(value: str) -> str:
-    if value.isdigit():
-        return f"cuda:{value}"
-    return value
+def normalize_device(value):
+    return f"cuda:{value}" if value.isdigit() else value
 
 
-def selected_samples(
-    data_root: Path,
-    split: str,
-    paths: list[str],
-    writer: FeatureCacheWriter,
-) -> tuple[list[dict[str, Any]], int]:
-    samples = []
-    resumed = 0
-    for relative_path in paths:
-        image_path = data_root / relative_path
-        if not image_path.is_file():
-            raise FileNotFoundError(image_path)
-        image_sha256 = sha256_file(image_path)
-        sample_id = f"{split}/{image_path.stem}"
-        if writer.is_cached(sample_id, image_sha256):
-            resumed += 1
-            continue
-        samples.append(
+def sample_inventory(data_root, split, paths):
+    result = []
+    for relative in paths:
+        image = data_root / relative
+        if not image.resolve().is_relative_to(data_root.resolve()) or not image.is_file():
+            raise ValueError(f"Missing image or path outside data root: {relative}")
+        result.append(
             {
-                "sample_id": sample_id,
+                "sample_id": f"{split}/{image.stem}",
                 "split": split,
-                "image_path": relative_path,
-                "path": image_path,
-                "image_sha256": image_sha256,
+                "image_path": relative,
+                "image_sha256": sha256_file(image),
             }
         )
-    return samples, resumed
+    return result
 
 
-def benchmark_reader(cache_dir: Path, sample_ids: list[str]) -> dict[str, Any]:
+def benchmark_reader(cache_dir, sample_ids):
     reader = FeatureCacheReader(cache_dir)
-    start = time.perf_counter()
-    tensor_bytes = 0
-    for sample_id in sample_ids:
-        features = reader.get(sample_id)
-        for tensor in features.values():
-            tensor_bytes += tensor.numel() * tensor.element_size()
+    start, tensor_bytes = time.perf_counter(), 0
+    try:
+        for sid in sample_ids:
+            tensor_bytes += sum(t.numel() * t.element_size() for t in reader.get(sid).values())
+    finally:
+        reader.close()
     elapsed = time.perf_counter() - start
     return {
         "seconds": elapsed,
         "tensor_bytes": tensor_bytes,
         "mib_per_second": tensor_bytes / 1024**2 / elapsed if elapsed else None,
-        "images_per_second": len(sample_ids) / elapsed if elapsed else None,
     }
 
 
-def build(args: argparse.Namespace) -> dict[str, Any]:
-    repo_root = args.repo_root.resolve()
-    workspace = args.workspace.resolve()
-    data_root = (args.data_root or workspace / "datasets" / "coco").resolve()
-    weights_dir = (args.weights_dir or workspace / "weights" / "teachers" / "dinov3-vits16-pretrain-lvd1689m").resolve()
-    cache_dir = args.cache_dir.resolve()
-    contract = cache_contract(repo_root)
-    paths, selected_paths_sha256 = split_paths(repo_root, args.split, args.limit)
-    if not paths:
-        raise ValueError("selected split is empty.")
-    if not weights_dir.joinpath("model.safetensors").is_file():
-        raise FileNotFoundError(weights_dir / "model.safetensors")
-    if sha256_file(weights_dir / "model.safetensors") != contract["teacher_weights_sha256"]:
-        raise ValueError("teacher weights do not match the tracked WP0 manifest.")
+def build(args):
+    """One process owns each output directory; orchestration belongs outside this reusable entry."""
+    import fcntl
 
-    writer = FeatureCacheWriter(
-        cache_dir,
-        split=args.split,
-        contract=contract,
-        target_shard_bytes=args.target_shard_bytes,
-    )
-    pending, resumed = selected_samples(data_root, args.split, paths, writer)
+    if args.batch_size <= 0 or args.target_shard_bytes <= 0:
+        raise ValueError("Batch and shard size must be positive")
+    if int(os.environ.get("WORLD_SIZE", "1")) != 1:
+        raise ValueError("Cache extraction is single-process; do not launch this entry with torchrun")
+    root = args.cache_dir.resolve()
+    if root.is_relative_to(args.repo_root.resolve()) or root in (args.data_root.resolve(), args.weights_dir.resolve()):
+        raise ValueError("Cache output must be outside the source repo and separate from input roots")
+    root.mkdir(parents=True, exist_ok=True)
+    with (root / ".build.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        if list(root.glob("*.part")):
+            raise ValueError("Uncommitted .part files remain; inspect them before retrying")
+        return _build(args, root)
+
+
+def _build(args, root):
+    data_root, weights = args.data_root.resolve(), args.weights_dir.resolve()
+    contract = cache_contract(args.repo_root)
+    paths, paths_sha = split_paths(args.samples_file, args.split, args.limit)
+    samples = sample_inventory(data_root, args.split, paths)
+    verify_model(weights, load_model=False)
+    if sha256_file(weights / "model.safetensors") != contract["teacher_weights_sha256"]:
+        raise ValueError("Teacher weights do not match the cache contract")
     device = normalize_device(args.device)
-    peak_gpu_bytes = 0
-    extraction_start = time.perf_counter()
-    if pending:
+    identity = {
+        "schema_version": "d1-list-extraction-v1",
+        "extractor_sha256": sha256_file(Path(__file__)),
+        "teacher_code_sha256": sha256_file(args.repo_root / "ultralytics/nn/foundation/teachers/dinov3.py"),
+        "contract": contract,
+        "split": args.split,
+        "paths_sha256": paths_sha,
+        "images_sha256": sha256_bytes(canonical_json_bytes(samples)),
+        "batch_size": args.batch_size,
+        "target_shard_bytes": args.target_shard_bytes,
+        "device": device,
+        "seed": 0,
+        "deterministic": True,
+        "tf32": False,
+        "torch": str(torch.__version__),
+        "transformers": importlib.metadata.version("transformers"),
+    }
+    if not (root / "build.json").exists() and (list(root.glob("*.safetensors")) or (root / "index.json").exists()):
+        raise ValueError("Legacy cache has no batch identity; verify/read it or resume with its original extractor")
+    immutable(root / "build.json", encoded(identity))
+    writer = FeatureCacheWriter(root, split=args.split, contract=contract, target_shard_bytes=args.target_shard_bytes)
+    verify_feature_cache(root)
+    reader = FeatureCacheReader(root)
+    if set(reader.records) - {s["sample_id"] for s in samples}:
+        raise ValueError("Cache contains samples outside the selected list")
+    pending = [not writer.is_cached(s["sample_id"], s["image_sha256"]) for s in samples]
+    resumed, forwarded, peak_gpu_bytes = len(samples) - sum(pending), 0, 0
+    start = time.perf_counter()
+    if any(pending):
+        torch.manual_seed(0)
+        torch.use_deterministic_algorithms(True)
+        torch.backends.cuda.matmul.allow_tf32 = False
+        torch.backends.cudnn.allow_tf32 = False
+        torch.backends.cudnn.benchmark = False
         if device.startswith("cuda"):
             if not torch.cuda.is_available():
-                raise RuntimeError("CUDA was requested but is unavailable.")
+                raise RuntimeError("CUDA was requested but is unavailable")
             torch.cuda.set_device(torch.device(device))
             torch.cuda.reset_peak_memory_stats()
         teacher = DINOv3Teacher(
             model_id=DEFAULT_MODEL_ID,
-            weights_path=weights_dir,
+            weights_path=weights,
             local_files_only=True,
             dtype="fp16",
             device=device,
             output_layers=OUTPUT_LAYERS,
         )
         letterbox = make_letterbox()
-        for offset in range(0, len(pending), args.batch_size):
-            batch_samples = pending[offset : offset + args.batch_size]
-            images = torch.stack([load_image(sample["path"], letterbox) for sample in batch_samples])
-            features = teacher.encode(images)
-            if tuple(features.dense) != FEATURE_NAMES:
-                raise ValueError(f"teacher returned unexpected features: {tuple(features.dense)}")
-            for batch_index, sample in enumerate(batch_samples):
-                writer.add(
-                    sample_id=sample["sample_id"],
-                    split=sample["split"],
-                    image_path=sample["image_path"],
-                    image_sha256=sample["image_sha256"],
-                    features={name: features.dense[name][batch_index] for name in FEATURE_NAMES},
-                )
-        writer.close()
+        for offset in range(0, len(samples), args.batch_size):
+            batch = samples[offset : offset + args.batch_size]
+            missing = pending[offset : offset + args.batch_size]
+            if not any(missing):
+                continue
+            # Replay the original full batch, including its already-committed members.
+            images = torch.stack([load_image(data_root / s["image_path"], letterbox) for s in batch])
+            features = teacher.encode(images).dense
+            if tuple(features) != FEATURE_NAMES:
+                raise ValueError("Teacher feature names mismatch")
+            if any(
+                tuple(t.shape) != (len(batch), *contract["expected_shape"]) or not torch.isfinite(t).all()
+                for t in features.values()
+            ):
+                raise ValueError("Teacher batch shape or finite-value check failed")
+            forwarded += len(batch)
+            for index, sample in enumerate(batch):
+                if not missing[index]:
+                    old = reader.get(sample["sample_id"])
+                    if any(
+                        not torch.equal(old[name], features[name][index].cpu().to(torch.float16))
+                        for name in FEATURE_NAMES
+                    ):
+                        raise ValueError("Resumed batch does not reproduce committed FP16 features")
+            for index, sample in enumerate(batch):
+                if missing[index]:
+                    writer.add(**sample, features={name: features[name][index] for name in FEATURE_NAMES})
         if device.startswith("cuda"):
             torch.cuda.synchronize()
             peak_gpu_bytes = torch.cuda.max_memory_allocated()
         del teacher
-    else:
-        writer.close()
-    extraction_seconds = time.perf_counter() - extraction_start
-
-    verification = verify_feature_cache(cache_dir)
-    sample_ids = [f"{args.split}/{Path(path).stem}" for path in paths]
-    missing = sorted(set(sample_ids) - set(FeatureCacheReader(cache_dir).records))
-    if missing:
-        raise ValueError(f"cache build is missing selected samples: {missing[:5]}")
-    read_benchmark = benchmark_reader(cache_dir, sample_ids)
+    writer.close()
+    reader.close()
+    elapsed = time.perf_counter() - start
+    verification = verify_feature_cache(root)
+    if verification["sample_count"] != len(samples) or verification["part_files"]:
+        raise ValueError("Incomplete cache or unexpected temporary files")
     report = {
-        "schema_version": "d1-wp2-build-report-v1",
-        "code_commit": git_commit(repo_root),
-        "cache_id": cache_dir.name,
+        "schema_version": "d1-list-build-report-v1",
+        "code_commit": git_commit(args.repo_root),
         "split": args.split,
-        "selected_sample_count": len(paths),
-        "selected_paths_sha256": selected_paths_sha256,
-        "new_sample_count": len(pending),
+        "selected_sample_count": len(samples),
+        "selected_paths_sha256": paths_sha,
+        "new_sample_count": sum(pending),
         "resumed_sample_count": resumed,
+        "forwarded_image_count": forwarded,
         "batch_size": args.batch_size,
-        "target_shard_bytes": args.target_shard_bytes,
         "contract": contract,
         "verification": verification,
         "metrics": {
-            "extraction_seconds": extraction_seconds,
-            "new_images_per_second": len(pending) / extraction_seconds if extraction_seconds else None,
+            "extraction_seconds": elapsed,
             "peak_gpu_bytes": peak_gpu_bytes,
-            "read": read_benchmark,
+            "new_images_per_second": sum(pending) / elapsed if elapsed else None,
         },
-        "online_cache_validation": "exact FP16 tensor SHA256 verified after safetensors reload",
+        "serialization_validation": "FP16 tensor SHA256 verified after safetensors reload",
     }
-    if args.report:
-        write_json(args.report, report)
+    if args.benchmark_read:
+        report["metrics"]["read"] = benchmark_reader(root, [s["sample_id"] for s in samples])
     return report
 
 
-def verify(args: argparse.Namespace) -> dict[str, Any]:
-    report = {
-        "schema_version": "d1-wp2-verify-report-v1",
-        "cache_id": args.cache_dir.resolve().name,
-        "verification": verify_feature_cache(args.cache_dir, full_tensor_hash=not args.metadata_only),
-    }
-    if args.report:
-        write_json(args.report, report)
-    return report
+def verify(args):
+    return {"verification": verify_feature_cache(args.cache_dir, full_tensor_hash=not args.metadata_only)}
 
 
-def compare(args: argparse.Namespace) -> dict[str, Any]:
-    comparison = compare_feature_caches(args.cache_dir, args.other_cache_dir)
-    report = {
-        "schema_version": "d1-wp2-reproducibility-v1",
-        "code_commit": git_commit(args.repo_root.resolve()),
-        "first_cache_id": args.cache_dir.resolve().name,
-        "second_cache_id": args.other_cache_dir.resolve().name,
-        "comparison": comparison,
-    }
-    if args.first_report:
-        report["first_build"] = load_json(args.first_report)
-    if args.second_report:
-        report["second_build"] = load_json(args.second_report)
-    if args.report:
-        write_json(args.report, report)
-    return report
-
-
-def parser() -> argparse.ArgumentParser:
-    result = argparse.ArgumentParser(description=__doc__)
-    subparsers = result.add_subparsers(dest="command", required=True)
-
-    convert_parser = subparsers.add_parser("to-npy", help="lossless conversion without deleting source shards")
-    convert_parser.add_argument("--cache-dir", type=Path, required=True)
-    convert_parser.add_argument("--output", type=Path, required=True)
-    convert_parser.set_defaults(handler=convert_npy)
-
-    build_parser = subparsers.add_parser("build", help="build or resume one deterministic cache")
-    build_parser.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[2])
-    build_parser.add_argument("--workspace", type=Path, required=True)
-    build_parser.add_argument("--data-root", type=Path)
-    build_parser.add_argument("--weights-dir", type=Path)
-    build_parser.add_argument("--cache-dir", type=Path, required=True)
-    build_parser.add_argument("--split", choices=("train2017", "val2017"), default="train2017")
-    build_parser.add_argument("--limit", type=int)
-    build_parser.add_argument("--batch-size", type=int, default=8)
-    build_parser.add_argument("--device", default="0")
-    build_parser.add_argument("--target-shard-bytes", type=int, default=DEFAULT_TARGET_SHARD_BYTES)
-    build_parser.add_argument("--report", type=Path)
-    build_parser.set_defaults(handler=build)
-
-    verify_parser = subparsers.add_parser("verify", help="verify an existing cache without model inference")
-    verify_parser.add_argument("--cache-dir", type=Path, required=True)
-    verify_parser.add_argument("--metadata-only", action="store_true")
-    verify_parser.add_argument("--report", type=Path)
-    verify_parser.set_defaults(handler=verify)
-
-    compare_parser = subparsers.add_parser("compare", help="compare two independent verified cache builds")
-    compare_parser.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[2])
-    compare_parser.add_argument("--cache-dir", type=Path, required=True)
-    compare_parser.add_argument("--other-cache-dir", type=Path, required=True)
-    compare_parser.add_argument("--first-report", type=Path)
-    compare_parser.add_argument("--second-report", type=Path)
-    compare_parser.add_argument("--report", type=Path)
-    compare_parser.set_defaults(handler=compare)
-    return result
+def compare(args):
+    return {"comparison": compare_feature_caches(args.cache_dir, args.other_cache_dir)}
 
 
 def convert_npy(args):
-    """Reuse the verified, source-preserving converter for either supported dataset."""
     from scripts.d1.npy import convert_preserving_source
 
     return convert_preserving_source(args.cache_dir, args.output)
 
 
-def main() -> None:
-    args = parser().parse_args()
-    if getattr(args, "limit", None) is not None and args.limit <= 0:
-        raise ValueError("--limit must be positive.")
-    if getattr(args, "batch_size", 1) <= 0:
-        raise ValueError("--batch-size must be positive.")
+def parser():
+    result = argparse.ArgumentParser(description=__doc__)
+    sub = result.add_subparsers(dest="command", required=True)
+    p = sub.add_parser("build", help="single-process extraction from a sorted image list")
+    p.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[2])
+    for name in ("data-root", "weights-dir", "samples-file", "cache-dir"):
+        p.add_argument(f"--{name}", type=Path, required=True)
+    p.add_argument("--split", choices=SPLITS, required=True)
+    p.add_argument("--limit", type=int)
+    p.add_argument("--batch-size", type=int, default=16)
+    p.add_argument("--device", default="0")
+    p.add_argument("--target-shard-bytes", type=int, default=DEFAULT_TARGET_SHARD_BYTES)
+    p.add_argument("--benchmark-read", action="store_true", help="Optional extra full read; not training throughput")
+    p.set_defaults(handler=build)
+    p = sub.add_parser("verify")
+    p.add_argument("--cache-dir", type=Path, required=True)
+    p.add_argument("--metadata-only", action="store_true")
+    p.set_defaults(handler=verify)
+    p = sub.add_parser("compare")
+    p.add_argument("--cache-dir", type=Path, required=True)
+    p.add_argument("--other-cache-dir", type=Path, required=True)
+    p.set_defaults(handler=compare)
+    p = sub.add_parser("to-npy", help="lossless conversion that preserves source shards")
+    p.add_argument("--cache-dir", type=Path, required=True)
+    p.add_argument("--output", type=Path, required=True)
+    p.set_defaults(handler=convert_npy)
+    for command in sub.choices.values():
+        command.add_argument("--report", type=Path)
+    return result
+
+
+def main(argv=None):
+    args = parser().parse_args(argv)
+    torch.set_num_threads(2)
+    cv2.setNumThreads(2)
+    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
     report = args.handler(args)
-    print(json.dumps(report, indent=2, sort_keys=True, ensure_ascii=True))
+    if args.report:
+        write_json(args.report, report)
+    print(json.dumps(report, indent=2, sort_keys=True, allow_nan=False))
 
 
 if __name__ == "__main__":

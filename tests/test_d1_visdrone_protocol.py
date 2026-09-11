@@ -5,7 +5,6 @@ from PIL import Image
 
 from scripts.d1.prepare_visdrone import convert_annotation, prepare
 from scripts.d1.evaluate_visdrone import METRICS, TOOLKIT_COMMIT, export_predictions, validate_official_report
-from scripts.d1.cache_visdrone import batches
 
 
 def test_annotation_flags_and_clipping():
@@ -56,15 +55,6 @@ def test_prepare_is_stable_preserves_originals(tmp_path):
     (target / "labels/visdrone-train/id_0.txt").write_text("corrupt")
     with pytest.raises(ValueError):
         prepare(source, target, counts=counts, verify=True)
-
-
-def test_partition_keeps_tail_context():
-    records = list(range(101))
-    parts = [batches(records, r, 6, 16) for r in range(6)]
-    assert sorted(v for part in parts for batch in part for v in batch) == records
-    assert parts[0][0] == list(range(0, 96, 6))
-    assert parts[0][-1] == [96]
-    assert parts == [batches(records, r, 6, 16) for r in range(6)]
 
 
 def test_export_empty_and_sorted(tmp_path):
@@ -118,7 +108,7 @@ def test_cross_split_duplicate_bytes_rejected(tmp_path):
 
 def test_npy_conversion_preserves_source_and_rejects_corruption(tmp_path):
     import torch
-    from scripts.d1.cache_visdrone import convert_preserving_source
+    from scripts.d1.npy import convert_preserving_source
     from ultralytics.nn.foundation.cache import FeatureCacheWriter
     from ultralytics.nn.foundation.npy_cache import NpyFeatureCacheReader
 
@@ -162,68 +152,13 @@ def test_npy_conversion_preserves_source_and_rejects_corruption(tmp_path):
         convert_preserving_source(source, out)
 
 
-@pytest.mark.parametrize("failure", [None, "missing_rank", "bad_identity", "partial", "corrupt_shard"])
-def test_finalize_fails_closed(tmp_path, monkeypatch, failure):
-    import types
-    import torch
-    from scripts.d1 import cache_visdrone as cache
-    from ultralytics.nn.foundation.cache import FeatureCacheWriter, verify_feature_cache
-    from scripts.d1.cache_features import write_json
+def test_default_preparation_does_not_require_test_dev(tmp_path, monkeypatch):
+    from scripts.d1 import prepare_visdrone
+    import yaml
 
-    contract = {
-        "model_id": "test",
-        "teacher_weights_sha256": "a" * 64,
-        "preprocessing_sha256": "b" * 64,
-        "output_layers": [4, 8, 12],
-        "feature_names": ["block4", "block8", "block12"],
-        "dtype": "float16",
-        "expected_shape": [1, 2, 2],
-        "schema_version": "d1-cache-v1",
-    }
-    records = [
-        {
-            "sample_id": f"visdrone-train/id{i}",
-            "split": "visdrone-train",
-            "image_path": f"images/visdrone-train/id{i}.jpg",
-            "image_sha256": str(i) * 64,
-        }
-        for i in range(4)
-    ]
-    monkeypatch.setattr(cache, "rows", lambda *args: records)
-    args = types.SimpleNamespace(output=tmp_path, data=tmp_path, batch=2)
-    own = {"world_size": 2, "contract": contract}
-    for rank in range(2):
-        part = tmp_path / "parts/visdrone-train" / f"rank{rank:02d}"
-        writer = FeatureCacheWriter(
-            part, split="visdrone-train", contract=contract, shard_prefix=f"visdrone-train-r{rank:02d}"
-        )
-        for record in records[rank::2]:
-            writer.add(
-                **record,
-                features={name: torch.ones(1, 2, 2, dtype=torch.float16) for name in contract["feature_names"]},
-            )
-        writer.close()
-        report = {
-            "status": "PASSED",
-            "identity": own,
-            "rank": rank,
-            "split": "visdrone-train",
-            "batch_contexts": [[r["sample_id"] for r in records[rank::2]]],
-            "verification": verify_feature_cache(part),
-        }
-        if failure == "bad_identity" and rank == 1:
-            report["identity"] = {"different": "run"}
-        if failure != "missing_rank" or rank != 1:
-            write_json(tmp_path / "reports" / f"visdrone-train-r{rank:02d}.json", report)
-        if failure == "partial" and rank == 1:
-            (part / ".unexpected.part").touch()
-        if failure == "corrupt_shard" and rank == 1:
-            next(part.glob("*.safetensors")).write_bytes(b"corrupt")
-    if failure:
-        with pytest.raises((ValueError, FileNotFoundError)):
-            cache.finalize(args, "train", own)
-        assert not (tmp_path / "safetensors/visdrone-train/index.json").exists()
-    else:
-        result = cache.finalize(args, "train", own)
-        assert result["sample_count"] == 4 and result["tensor_count"] == 12
-        assert cache.finalize(args, "train", own) == result
+    source = make_dataset(tmp_path)
+    monkeypatch.setattr(prepare_visdrone, "COUNTS", {"train": 1, "val": 1, "test-dev": 1610})
+    output = tmp_path / "prepared"
+    report = prepare_visdrone.prepare(source, output)
+    assert set(report["splits"]) == {"train", "val"}
+    assert "test" not in yaml.safe_load((output / "dataset.yaml").read_text())

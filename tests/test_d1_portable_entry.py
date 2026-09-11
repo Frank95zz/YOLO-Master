@@ -224,18 +224,22 @@ def test_preparation_keeps_published_manifest_unchanged(tmp_path, monkeypatch):
     repo, workspace = tmp_path / "repo", tmp_path / "work"
     manifest = repo / "experiments/d1/manifests"
     manifest.mkdir(parents=True)
-    original = {"published.json": b'{"historical": true}\n'}
+    published = {"splits": {}, "labels": {"train2017": 1, "val2017": 1}}
+    original = {"coco2017-splits.json": train.canonical_json_bytes(published)}
     for name, data in original.items():
         (manifest / name).write_bytes(data)
-    monkeypatch.setattr(prepare_wp0, "build_split_list", lambda root, split: [f"images/{split}/{split}.jpg"])
-    monkeypatch.setattr(prepare_wp0, "verify_labels", lambda root: {"train2017": 1, "val2017": 1})
-    monkeypatch.setattr(prepare_wp0, "COCO_FILES", {})
-    monkeypatch.setattr(prepare_wp0, "verify_model", lambda *a, **kw: {"files": {}, "config": {}})
-    monkeypatch.setattr(prepare_wp0, "environment_manifest", lambda root: {"source": "test"})
-    monkeypatch.setattr(prepare_wp0, "materialize_splits", lambda *a: None)
-    prepare_wp0.generate_manifests(workspace, repo, load_model=False)
+    monkeypatch.setattr(prepare_wp0, "verify_contract", lambda *a: None)
+    monkeypatch.setattr(
+        prepare_wp0,
+        "validated_splits",
+        lambda *a: {split: [f"images/{split}/{split}.jpg"] for split in ("train2017", "val2017")},
+    )
+    monkeypatch.setattr(prepare_wp0, "verify_labels", lambda *a: published["labels"])
+    monkeypatch.setattr(prepare_wp0, "verify_model", lambda *a: {"files": {}})
+    report = prepare_wp0.verify_inputs(workspace / "data", workspace / "weights", workspace, repo=repo)
     assert {p.name: p.read_bytes() for p in manifest.iterdir()} == original
-    assert (workspace / "manifests/environment.json").is_file()
+    assert (workspace / "verification.json").is_file()
+    assert report["source_archives_verified"] is False
 
 
 def test_official_coco_handles_empty_predictions(tmp_path):

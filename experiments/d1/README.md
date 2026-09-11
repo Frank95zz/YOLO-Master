@@ -22,40 +22,53 @@ RGB -> 固定 640 LetterBox -> 冻结 DINOv3 ViT-S/16
 
 ## 安装与输入
 
-D1 实测 Python 3.11；Foundation 可选依赖要求 Python >=3.10。缓存多进程脚本面向 Linux。
+D1 实测 Python 3.11；Foundation 可选依赖要求 Python >=3.10。缓存构建入口面向 Linux，单进程独占一个输出目录。
 
 ```bash
 pip install -e ".[dev,foundation]"
 # 仅 COCO 标准评分需要：
 pip install faster-coco-eval==1.8.0
 export D1_WORK=/path/to/external/d1-work
+export COCO_ROOT="$D1_WORK/datasets/coco"
+export TEACHER_DIR="$D1_WORK/weights/dinov3-vits16"
 ```
 
 所有图片、权重、缓存和运行输出放在仓库外。不要把未信任来源的 pickle checkpoint 传给评测入口。
 
-首次准备完整 COCO 2017 和固定 ViT-S/16（大文件下载）：
+先使用现有下载工具准备输入，D1 不再维护自己的下载、解压和环境采集器：
+
+- Teacher：从 [ModelScope 模型页](https://www.modelscope.cn/models/facebook/dinov3-vits16-pretrain-lvd1689m) 选择版本 2e601320d0545509ab03374e2f8707f303e1de7a，取得 config.json、model.safetensors、LICENSE.md、README.md，放入 TEACHER_DIR。每个文件的大小、SHA256 和来源版本记录在下方 Teacher manifest 中。
+- COCO：下载 train2017.zip、val2017.zip、annotations_trainval2017.zip、coco2017labels.zip。每个压缩包的官方 URL、已验证镜像 URL、大小和 SHA256 均在 [数据划分 manifest](manifests/coco2017-splits.json) 的 archives 中。
+- train/val 图片解压到 COCO_ROOT/images，官方标注解压到 COCO_ROOT/annotations；labels 压缩包包含 coco/labels，应解压到 D1_WORK/datasets。可保留压缩包供额外校验，但不是缓存读取的运行依赖。
+
+准备完毕后运行校验，生成两份完整、排序稳定的图片列表：
 
 ```bash
-python -m scripts.d1.prepare_wp0 --workspace "$D1_WORK" --download
+python -m scripts.d1.prepare_wp0 --coco-root "$COCO_ROOT" \
+  --weights-dir "$TEACHER_DIR" --output "$D1_WORK/inputs"
 ```
 
-已具备数据时，可用 --verify-only 完整校验；只恢复列表则使用：
+它验证图片数量与列表 SHA256、train/val 互斥、标签数量与图片归属、官方标注文件存在性、Teacher 文件大小/SHA256/架构，并用本地权重构造 Teacher。只有提供 --archives-dir 时才验证源压缩包，报告会明确标记是否做过该项；不把文件存在性说成标注内容逐字节验证。生成结果写入外部 inputs，不覆盖仓库 manifest。
+
+只需恢复列表时可以运行：
 
 ```bash
-python -m scripts.d1.prepare_wp0 --workspace "$D1_WORK" \
-  --materialize-splits-from /path/to/coco
+python -m scripts.d1.prepare_wp0 --coco-root "$COCO_ROOT" \
+  --lists-only --output "$D1_WORK/inputs"
 ```
 
-COCO 根目录包含 images/train2017、images/val2017、labels 和 annotations。列表数量为 118,287/5,000，不进行重新随机划分；生成的列表被 Git 忽略。新机器环境与下载证据写入 D1_WORK/manifests，不覆盖仓库中的原始合同。
+COCO 列表数量固定为118,287/5,000，不进行重新随机划分。重跑时输出文件必须一致，否则报错，不覆盖已有证据。旧 --download/--workspace 参数已移出当前入口。
 
 来源与固定校验信息：[预处理合同](manifests/p0-experiment-contract.json)、[Teacher](manifests/dinov3-vits16.json)、[数据划分](manifests/coco2017-splits.json)、[许可来源](manifests/licenses.md)。
 
 ## 缓存
 
 ```bash
-python -m scripts.d1.cache_features build --workspace "$D1_WORK" \
+python -m scripts.d1.cache_features build --data-root "$COCO_ROOT" --weights-dir "$TEACHER_DIR" \
+  --samples-file "$D1_WORK/inputs/coco2017-train2017.txt" \
   --cache-dir "$D1_WORK/cache/train2017" --split train2017 --batch-size 16 --device 0
-python -m scripts.d1.cache_features build --workspace "$D1_WORK" \
+python -m scripts.d1.cache_features build --data-root "$COCO_ROOT" --weights-dir "$TEACHER_DIR" \
+  --samples-file "$D1_WORK/inputs/coco2017-val2017.txt" \
   --cache-dir "$D1_WORK/cache/val2017" --split val2017 --batch-size 16 --device 0
 python -m scripts.d1.cache_features verify --cache-dir "$D1_WORK/cache/train2017"
 
@@ -68,17 +81,28 @@ python -m scripts.d1.cache_features to-npy \
 
 工程小样本可在 build 中传 --limit，但对应训练 YAML 必须只列出这些已缓存图片；不能用 100 图缓存搭配完整 train2017 列表。读缓存支持 safetensors 和 NPY，不做有损量化。
 
+图片列表必须按字典序排序、无重复，且每行是 images/SPLIT/ID.jpg。自定义列表代表显式子集，不自动等同于完整官方数据。build 固定 seed0、确定性算法和 TF32 关闭，记录图片摘要、batch、设备和依赖版本；同目录并发写入、运行身份变化、遗留 .part 或多进程 torchrun 启动都会报错。中断后按原 batch 重放，不把剩余图片重新组 batch；已提交成员的 FP16 特征必须逐元素一致。
+
+保留相同命令即可续跑新入口生成的缓存。旧缓存缺少 build.json 身份时仍支持读取、校验和转换，但须用原提取器续写，不能静默改变 batch。独立的六卡调度器保留在研究归档，不进入本 PR。可选 --benchmark-read 会额外完整读取一次缓存，其吞吐不是训练吞吐。
+
 VisDrone 使用已下载并解压的官方 DET train/val（6,471/548 张），源目录下应有 VisDrone2019-DET-train 与 VisDrone2019-DET-val，分别包含 images/annotations。转换标签时保留 ignore 原始信息，原始数据不删除：
 
 ```bash
 python -m scripts.d1.prepare_visdrone \
   --source "$D1_WORK/visdrone-original" --output "$D1_WORK/visdrone-prepared"
-python -m scripts.d1.cache_visdrone all --repo "$PWD" \
-  --data "$D1_WORK/visdrone-prepared" --weights /path/to/local/dinov3-vits16 \
-  --output "$D1_WORK/visdrone-cache" --devices 0 --batch 16
+python -m scripts.d1.cache_features build --data-root "$D1_WORK/visdrone-prepared" \
+  --weights-dir "$TEACHER_DIR" --samples-file "$D1_WORK/visdrone-prepared/train.txt" \
+  --split visdrone-train --cache-dir "$D1_WORK/cache/visdrone-train" --batch-size 16 --device 0
+python -m scripts.d1.cache_features build --data-root "$D1_WORK/visdrone-prepared" \
+  --weights-dir "$TEACHER_DIR" --samples-file "$D1_WORK/visdrone-prepared/val.txt" \
+  --split visdrone-val --cache-dir "$D1_WORK/cache/visdrone-val" --batch-size 16 --device 0
+python -m scripts.d1.cache_features to-npy \
+  --cache-dir "$D1_WORK/cache/visdrone-train" --output "$D1_WORK/npy"
+python -m scripts.d1.cache_features to-npy \
+  --cache-dir "$D1_WORK/cache/visdrone-val" --output "$D1_WORK/npy"
 ```
 
-prepare_visdrone 生成 dataset.yaml；cache_visdrone 生成 safetensors 和 npy/visdrone-train、npy/visdrone-val。缓存脚本要求数据、权重和输出位于同一本地文件系统、Git 干净且至少有 200 GiB 可用空间；显式 --devices 0 可用单卡，不指定则默认六卡。它不会在网络盘上静默启动，也不负责下载 VisDrone。
+prepare_visdrone 生成 dataset.yaml、train.txt、val.txt 和标注 sidecar；默认只要求 train/val。可选 --include-test-dev 准备额外保留集，但缓存训练入口不会将其混入 train/val。标签准备仍用硬链接保留原图，原始数据与 prepared 目录必须位于同一文件系统；缓存构建不再硬编码200 GiB空闲空间或六张GPU条件。请自行核对容量，训练与缓存优先使用本地高速存储。
 
 ## 训练与独立评测
 
@@ -121,4 +145,4 @@ git diff --check
 
 后续正式实验继续使用获确认的研究合同；需记录执行提交，并核对与 PR 的核心实现一致，不能把默认示例参数冒充正式对照配方。
 
-本分支验收摘要：540项通过、56项跳过，另单列2项上游既有失败；测试与代码身份见 [pr-verification.json](manifests/pr-verification.json)。本轮未运行真实多卡训练。
+上一轮精简的过程证据保留在 [历史提交](https://github.com/Frank95zz/YOLO-Master/blob/d6fe25ef0011294cf12014bbf6c4629291e7ab07/experiments/d1/manifests/pr-verification.json)，不再放入当前 PR 文件树。本轮验证结果见 REPORT；未启动真实训练或缓存抽取。scratch 总参数匹配配置及测试继续保留。

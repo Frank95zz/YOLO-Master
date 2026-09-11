@@ -18,7 +18,7 @@ from types import SimpleNamespace
 
 import torch
 
-from scripts.d1.cache_features import write_json
+from scripts.d1.artifacts import write_json
 from scripts.d1.ema import EMA_IMPLEMENTATIONS, configure_d1_ema, validate_ema_implementation
 from ultralytics.data.converter import coco80_to_coco91_class
 from ultralytics.models.yolo.detect.foundation_train import D1FoundationDetectionTrainer

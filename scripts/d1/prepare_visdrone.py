@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import csv
-import hashlib
 import io
 import json
 import math
@@ -16,47 +15,11 @@ from pathlib import Path
 
 from PIL import Image
 
+from scripts.d1.artifacts import digest, encoded, file_sha, immutable
+
 COUNTS = {"train": 6471, "val": 548, "test-dev": 1610}
 NAMES = ("pedestrian", "people", "bicycle", "car", "van", "truck", "tricycle", "awning-tricycle", "bus", "motor")
 SCHEMA = "d1-visdrone-data-v1"
-
-
-def digest(data):
-    return hashlib.sha256(data).hexdigest()
-
-
-def file_sha(path):
-    h = hashlib.sha256()
-    with Path(path).open("rb") as stream:
-        for block in iter(lambda: stream.read(8 * 1024**2), b""):
-            h.update(block)
-    return h.hexdigest()
-
-
-def encoded(value):
-    return (json.dumps(value, sort_keys=True, indent=2, allow_nan=False) + "\n").encode()
-
-
-def immutable(path, data, verify=False):
-    """Existing artifacts must match byte-for-byte; never overwrite other data."""
-    path = Path(path)
-    if path.is_symlink():
-        raise ValueError(f"Refusing symlink output: {path}")
-    if path.exists():
-        if path.read_bytes() != data:
-            raise ValueError(f"Existing artifact differs: {path}")
-    elif verify:
-        raise FileNotFoundError(path)
-    else:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_name(path.name + ".part")
-        if tmp.is_symlink():
-            raise ValueError("Unsafe temporary file")
-        with tmp.open("wb") as stream:
-            stream.write(data)
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.replace(tmp, path)
 
 
 def convert_annotation(text, width, height):
@@ -113,7 +76,7 @@ def convert_annotation(text, width, height):
 
 def prepare(source, output, *, verify=False, counts=None):
     source, output = Path(source).resolve(), Path(output).resolve()
-    counts = COUNTS if counts is None else counts
+    counts = {key: COUNTS[key] for key in ("train", "val")} if counts is None else counts
     if output == source or output.is_relative_to(source) or source.is_relative_to(output):
         raise ValueError("Prepared data must be separate from original data")
     if source.stat().st_dev != output.parent.stat().st_dev:
@@ -203,10 +166,11 @@ def prepare(source, output, *, verify=False, counts=None):
         "path": str(output),
         "train": "images/visdrone-train",
         "val": "images/visdrone-val",
-        "test": "images/visdrone-test-dev",
         "nc": 10,
         "names": list(NAMES),
     }
+    if "test-dev" in counts:
+        cfg["test"] = "images/visdrone-test-dev"
     immutable(output / "dataset.yaml", yaml.safe_dump(cfg, sort_keys=False).encode(), verify)
     original_manifest = source / "manifest.json"
     source_receipt = json.loads(original_manifest.read_text()) if original_manifest.exists() else None
@@ -234,8 +198,16 @@ def main():
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--verify-only", action="store_true")
+    parser.add_argument("--include-test-dev", action="store_true", help="Also prepare the optional held-out split")
     args = parser.parse_args()
-    print(json.dumps(prepare(args.source, args.output, verify=args.verify_only), indent=2))
+    print(
+        json.dumps(
+            prepare(
+                args.source, args.output, verify=args.verify_only, counts=COUNTS if args.include_test_dev else None
+            ),
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

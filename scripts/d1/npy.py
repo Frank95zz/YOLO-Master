@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 from safetensors import safe_open
 
-from scripts.d1.prepare_visdrone import encoded, file_sha, immutable
+from scripts.d1.artifacts import encoded, file_sha, immutable
 from ultralytics.nn.foundation.cache import FeatureCacheReader, sha256_bytes
 from ultralytics.nn.foundation.npy_cache import NPY_SCHEMA_VERSION, NpyFeatureCacheReader
 
