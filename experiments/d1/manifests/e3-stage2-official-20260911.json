@@ -1,0 +1,1146 @@
+{
+  "AUX_STAR": {
+    "balance_loss_coeff": 0.1,
+    "latent_aux_gain": 0.1,
+    "mixture_aux_budget": 3.0,
+    "router_z_loss_coeff": 0.0
+  },
+  "P1_cost_reduction_claim": false,
+  "all36_training_gpu_hours": 67.16009708046914,
+  "cost_scope": "Six reserved GPUs times training job wall seconds including diagnostics/validation/exports and prior attempts; excludes preparation, independent diagnostics, transfer and MATLAB",
+  "default_rows": [
+    {
+      "AP_50": 0.1888327772854354,
+      "AP_75": 0.05763425857158056,
+      "AP_all": 0.07952804414027526,
+      "AR_1": 0.006268376565772853,
+      "AR_10": 0.041455624735333776,
+      "AR_100": 0.14039348605504062,
+      "AR_500": 0.21877034997317857,
+      "attempt_count": 1,
+      "balance": 0.01,
+      "gain": 0.1,
+      "reused_stage1": true,
+      "run_id": "E3-screen-b0.01-z0.001-g0.1-s0",
+      "seed": 0,
+      "training_gpu_hours": 1.8775324257214865,
+      "z": 0.001
+    },
+    {
+      "AP_50": 0.19006972519874984,
+      "AP_75": 0.06128011538408564,
+      "AP_all": 0.0812888084553506,
+      "AR_1": 0.0064948404515325076,
+      "AR_10": 0.04183844144640982,
+      "AR_100": 0.14071257254936373,
+      "AR_500": 0.2183835233798174,
+      "attempt_count": 1,
+      "balance": 0.01,
+      "gain": 0.1,
+      "reused_stage1": true,
+      "run_id": "E3-screen-b0.01-z0.001-g0.1-s1",
+      "seed": 1,
+      "training_gpu_hours": 1.8839874827861787,
+      "z": 0.001
+    },
+    {
+      "AP_50": 0.19303532968544856,
+      "AP_75": 0.05952368379889811,
+      "AP_all": 0.0817270312022586,
+      "AR_1": 0.006976033353951997,
+      "AR_10": 0.04219185557021854,
+      "AR_100": 0.1383472457086492,
+      "AR_500": 0.2137951302073083,
+      "attempt_count": 1,
+      "balance": 0.01,
+      "gain": 0.1,
+      "reused_stage1": true,
+      "run_id": "E3-screen-b0.01-z0.001-g0.1-s2",
+      "seed": 2,
+      "training_gpu_hours": 1.8794691514968873,
+      "z": 0.001
+    }
+  ],
+  "execution_identity": {
+    "commit": "050737e79806a1d4a9ad0a16a5e76a64d311ba10",
+    "contract_sha256": "1b5b1ede7250b21c03f5ba7d6875e565f5fc39e3e4d2eba169d56848d1614e0e"
+  },
+  "gain0_vs_stage1_zero_prediction_check": [
+    {
+      "byte_identical": true,
+      "prediction_files": 548,
+      "seed": 0
+    },
+    {
+      "byte_identical": true,
+      "prediction_files": 548,
+      "seed": 1
+    },
+    {
+      "byte_identical": true,
+      "prediction_files": 548,
+      "seed": 2
+    }
+  ],
+  "groups": [
+    {
+      "AP_values": [
+        0.07971717643322199,
+        0.07993979128269606,
+        0.08101522418473804
+      ],
+      "gain": 0.0,
+      "metrics_mean": {
+        "AP_50": 0.19043241717462514,
+        "AP_75": 0.058492884291948814,
+        "AP_all": 0.08022406396688536,
+        "AR_1": 0.006262325262669817,
+        "AR_10": 0.0407998367778258,
+        "AR_100": 0.13969628701138184,
+        "AR_500": 0.21860304006523168
+      },
+      "metrics_sample_std": {
+        "AP_50": 0.0024535144914260196,
+        "AP_75": 0.0012101455403883972,
+        "AP_all": 0.0006941471101546956,
+        "AR_1": 0.00017548217144528296,
+        "AR_10": 0.0008895025650870583,
+        "AR_100": 0.0016826427589961789,
+        "AR_500": 0.0007109383603367358
+      },
+      "paired_vs_default": {
+        "AP_differences": [
+          0.00018913229294673095,
+          -0.0013490171726545375,
+          -0.0007118070175205632
+        ],
+        "AP_mean_difference": -0.0006238972990761232,
+        "AP_sample_std": 0.0007728337684004902,
+        "exploratory_95pct_t_interval": [
+          -0.0025437228081461013,
+          0.001295928209993855
+        ],
+        "positive_seeds": 1
+      },
+      "paired_vs_gain0": {
+        "AP_differences": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "AP_mean_difference": 0.0,
+        "AP_sample_std": 0.0,
+        "exploratory_95pct_t_interval": [
+          0.0,
+          0.0
+        ],
+        "positive_seeds": 0
+      },
+      "training_gpu_hours_mean": 1.8946345522668626
+    },
+    {
+      "AP_values": [
+        0.08046644825265245,
+        0.08143919509811318,
+        0.08155546444305486
+      ],
+      "gain": 0.03,
+      "metrics_mean": {
+        "AP_50": 0.1910954249300366,
+        "AP_75": 0.06103940698128955,
+        "AP_all": 0.08115370259794016,
+        "AR_1": 0.006599197553482661,
+        "AR_10": 0.041472476486336035,
+        "AR_100": 0.14078716238115566,
+        "AR_500": 0.21897748823787166
+      },
+      "metrics_sample_std": {
+        "AP_50": 0.0006444941540134023,
+        "AP_75": 0.0008729196283699782,
+        "AP_all": 0.0005980121583052681,
+        "AR_1": 0.0005416009961522999,
+        "AR_10": 0.0004595392056056209,
+        "AR_100": 0.0014579219451369128,
+        "AR_500": 0.0016677570657966248
+      },
+      "paired_vs_default": {
+        "AP_differences": [
+          0.0009384041123771947,
+          0.00015038664276258162,
+          -0.00017156675920373954
+        ],
+        "AP_mean_difference": 0.0003057413319786789,
+        "AP_sample_std": 0.0005710605427935004,
+        "exploratory_95pct_t_interval": [
+          -0.0011128516981206188,
+          0.0017243343620779767
+        ],
+        "positive_seeds": 2
+      },
+      "paired_vs_gain0": {
+        "AP_differences": [
+          0.0007492718194304637,
+          0.001499403815417119,
+          0.0005402402583168237
+        ],
+        "AP_mean_difference": 0.0009296386310548022,
+        "AP_sample_std": 0.0005043786497949433,
+        "exploratory_95pct_t_interval": [
+          -0.0003233073939496497,
+          0.0021825846560592542
+        ],
+        "positive_seeds": 3
+      },
+      "training_gpu_hours_mean": 1.8846621578269536
+    },
+    {
+      "AP_values": [
+        0.07726332129035565,
+        0.08333313302386548,
+        0.08336140032273281
+      ],
+      "gain": 0.1,
+      "metrics_mean": {
+        "AP_50": 0.19139913501826922,
+        "AP_75": 0.060513774967580515,
+        "AP_all": 0.08131928487898465,
+        "AR_1": 0.007005009881935436,
+        "AR_10": 0.0420569149421819,
+        "AR_100": 0.14006341423372418,
+        "AR_500": 0.21796047029572788
+      },
+      "metrics_sample_std": {
+        "AP_50": 0.006239052723426465,
+        "AP_75": 0.0037838870273383795,
+        "AP_all": 0.003512595939509621,
+        "AR_1": 0.0002574360754287131,
+        "AR_10": 0.0009028210996993352,
+        "AR_100": 0.0013386704693006224,
+        "AR_500": 0.0022217828472320604
+      },
+      "paired_vs_default": {
+        "AP_differences": [
+          -0.0022647228499196037,
+          0.002044324568514888,
+          0.0016343691204742106
+        ],
+        "AP_mean_difference": 0.000471323613023165,
+        "AP_sample_std": 0.00237833524821056,
+        "exploratory_95pct_t_interval": [
+          -0.005436788668463958,
+          0.006379435894510289
+        ],
+        "positive_seeds": 2
+      },
+      "paired_vs_gain0": {
+        "AP_differences": [
+          -0.0024538551428663347,
+          0.0033933417411694256,
+          0.0023461761379947738
+        ],
+        "AP_mean_difference": 0.0010952209120992883,
+        "AP_sample_std": 0.003117866992523221,
+        "exploratory_95pct_t_interval": [
+          -0.006649990064540509,
+          0.008840431888739085
+        ],
+        "positive_seeds": 2
+      },
+      "training_gpu_hours_mean": 1.8855558240413666
+    },
+    {
+      "AP_values": [
+        0.07874039474934827,
+        0.08219622202347386,
+        0.0815003356126829
+      ],
+      "gain": 0.3,
+      "metrics_mean": {
+        "AP_50": 0.19077709462925477,
+        "AP_75": 0.05963711889185025,
+        "AP_all": 0.08081231746183501,
+        "AR_1": 0.006230329508840586,
+        "AR_10": 0.041407120053951856,
+        "AR_100": 0.14008222852553648,
+        "AR_500": 0.21830254440431787
+      },
+      "metrics_sample_std": {
+        "AP_50": 0.002722712766646635,
+        "AP_75": 0.002117921203380812,
+        "AP_all": 0.0018277615460091314,
+        "AR_1": 9.958902876547351e-05,
+        "AR_10": 0.0013841242828484294,
+        "AR_100": 0.0013969568108677403,
+        "AR_500": 0.0014694044068929344
+      },
+      "paired_vs_default": {
+        "AP_differences": [
+          -0.0007876493909269866,
+          0.0009074135681232665,
+          -0.00022669558957570668
+        ],
+        "AP_mean_difference": -3.564380412647561e-05,
+        "AP_sample_std": 0.0008635306580131098,
+        "exploratory_95pct_t_interval": [
+          -0.0021807728770300923,
+          0.002109485268777141
+        ],
+        "positive_seeds": 1
+      },
+      "paired_vs_gain0": {
+        "AP_differences": [
+          -0.0009767816838737176,
+          0.002256430740777804,
+          0.0004851114279448565
+        ],
+        "AP_mean_difference": 0.0005882534949496476,
+        "AP_sample_std": 0.001619072067642376,
+        "exploratory_95pct_t_interval": [
+          -0.0034337444864736173,
+          0.004610251476372913
+        ],
+        "positive_seeds": 2
+      },
+      "training_gpu_hours_mean": 1.908219391769833
+    }
+  ],
+  "identity": {
+    "commit": "993aee4d32168616fb96cedb2b524379c09d35fd",
+    "contract_sha256": "1b5b1ede7250b21c03f5ba7d6875e565f5fc39e3e4d2eba169d56848d1614e0e"
+  },
+  "input_manifest_sha256": "f552f0d0cb14386b3f576ac13666a5b0ea1aaa9844d9b1a1bb830b476292e528",
+  "metric_units": "ratios 0..1; multiply by 100 for AP points",
+  "new_runs": 9,
+  "new_training_gpu_hours": 17.062548305590948,
+  "new_training_started": false,
+  "official_checkpoint_policy": "fixed epoch 60; no best-seed or best-epoch selection",
+  "official_curve_scope": "Only fixed epoch60 scored; all 432 scheduled exports retained, not a complete official standard-best curve",
+  "official_reports": [
+    {
+      "backend": "official-matlab",
+      "candidate": {
+        "balance": 0.01,
+        "gain": 0.1,
+        "seed": 0,
+        "z": 0.001
+      },
+      "checkpoint_epoch": 60,
+      "checkpoint_sha256": "5ad86ec8a8a20071c20226142e72e9089ce4f88a08008d75f690f4f14aca5085",
+      "empty_input_policy": "empty TXT becomes zeros(0,8); matching/AP routines unchanged",
+      "export_sha256": "39a27cfcb5cbe3436a3ea1ab9bf8b10fd5b7c8cbe1dfa72b6fc5fcfe49e442e9",
+      "image_count": 548,
+      "input_manifest_sha256": "ea324ed3175bc98c9d36b31c092c5a0b5f6227b01f46814d808752aeca68e1da",
+      "matlab_version": "26.1.0.3346908 (R2026a) Update 5",
+      "mean2_implementation": "scripts/d1/visdrone_matlab_compat/mean2.m",
+      "metrics": {
+        "AP_50": 0.1888327772854354,
+        "AP_75": 0.05763425857158056,
+        "AP_all": 0.07952804414027526,
+        "AR_1": 0.006268376565772853,
+        "AR_10": 0.041455624735333776,
+        "AR_100": 0.14039348605504062,
+        "AR_500": 0.21877034997317857
+      },
+      "metrics_percent": {
+        "AP_50": 18.88327772854354,
+        "AP_75": 5.763425857158056,
+        "AP_all": 7.952804414027526,
+        "AR_1": 0.6268376565772853,
+        "AR_10": 4.145562473533378,
+        "AR_100": 14.039348605504061,
+        "AR_500": 21.877034997317857
+      },
+      "run_id": "E3-screen-b0.01-z0.001-g0.1-s0",
+      "scoring_seconds": 27.2841148,
+      "source_report_sha256": "d953de685d3ca4113591f6be890bd78652e9b78f4fd8d9cf01d8ccb03b60f462",
+      "toolkit_commit": "005445782213e20cb91bc50a597db3dd949e749a",
+      "toolkit_manifest_sha256": "b5ab2def85f4b191802a0f219c317630d5e2f43d5d536ede773da10f9f638917"
+    },
+    {
+      "backend": "official-matlab",
+      "candidate": {
+        "balance": 0.01,
+        "gain": 0.1,
+        "seed": 1,
+        "z": 0.001
+      },
+      "checkpoint_epoch": 60,
+      "checkpoint_sha256": "a8c4812440001c47f926bcf4c0a159befaedb4102f17044df9953b4af2c10903",
+      "empty_input_policy": "empty TXT becomes zeros(0,8); matching/AP routines unchanged",
+      "export_sha256": "25997ad95d11645747fc6625ac7ee57bf918d2d923fed2bcf1a929446d90c151",
+      "image_count": 548,
+      "input_manifest_sha256": "ea324ed3175bc98c9d36b31c092c5a0b5f6227b01f46814d808752aeca68e1da",
+      "matlab_version": "26.1.0.3346908 (R2026a) Update 5",
+      "mean2_implementation": "scripts/d1/visdrone_matlab_compat/mean2.m",
+      "metrics": {
+        "AP_50": 0.19006972519874984,
+        "AP_75": 0.06128011538408564,
+        "AP_all": 0.0812888084553506,
+        "AR_1": 0.0064948404515325076,
+        "AR_10": 0.04183844144640982,
+        "AR_100": 0.14071257254936373,
+        "AR_500": 0.2183835233798174
+      },
+      "metrics_percent": {
+        "AP_50": 19.006972519874985,
+        "AP_75": 6.128011538408564,
+        "AP_all": 8.12888084553506,
+        "AR_1": 0.6494840451532508,
+        "AR_10": 4.183844144640982,
+        "AR_100": 14.071257254936372,
+        "AR_500": 21.83835233798174
+      },
+      "run_id": "E3-screen-b0.01-z0.001-g0.1-s1",
+      "scoring_seconds": 22.6437126,
+      "source_report_sha256": "eb7972007eecd5e0595625733d74f8d7eef69c5ac2909dd91ace23e5e848a775",
+      "toolkit_commit": "005445782213e20cb91bc50a597db3dd949e749a",
+      "toolkit_manifest_sha256": "b5ab2def85f4b191802a0f219c317630d5e2f43d5d536ede773da10f9f638917"
+    },
+    {
+      "backend": "official-matlab",
+      "candidate": {
+        "balance": 0.01,
+        "gain": 0.1,
+        "seed": 2,
+        "z": 0.001
+      },
+      "checkpoint_epoch": 60,
+      "checkpoint_sha256": "4761e17922520c35143fd7a5d212968fd58c4ce32e52e039903be299ba8b2e0f",
+      "empty_input_policy": "empty TXT becomes zeros(0,8); matching/AP routines unchanged",
+      "export_sha256": "7c3317507a02826fd629d01acc2c822e8cd7e09fd26ac434caa44cc145283ddd",
+      "image_count": 548,
+      "input_manifest_sha256": "ea324ed3175bc98c9d36b31c092c5a0b5f6227b01f46814d808752aeca68e1da",
+      "matlab_version": "26.1.0.3346908 (R2026a) Update 5",
+      "mean2_implementation": "scripts/d1/visdrone_matlab_compat/mean2.m",
+      "metrics": {
+        "AP_50": 0.19303532968544856,
+        "AP_75": 0.05952368379889811,
+        "AP_all": 0.0817270312022586,
+        "AR_1": 0.006976033353951997,
+        "AR_10": 0.04219185557021854,
+        "AR_100": 0.1383472457086492,
+        "AR_500": 0.2137951302073083
+      },
+      "metrics_percent": {
+        "AP_50": 19.303532968544857,
+        "AP_75": 5.952368379889811,
+        "AP_all": 8.17270312022586,
+        "AR_1": 0.6976033353951997,
+        "AR_10": 4.219185557021854,
+        "AR_100": 13.834724570864921,
+        "AR_500": 21.37951302073083
+      },
+      "run_id": "E3-screen-b0.01-z0.001-g0.1-s2",
+      "scoring_seconds": 21.6052769,
+      "source_report_sha256": "afced500773efb4af5cbf2f8b234e94bd7c0919b7f6d603c60d0e57cedc7ea97",
+      "toolkit_commit": "005445782213e20cb91bc50a597db3dd949e749a",
+      "toolkit_manifest_sha256": "b5ab2def85f4b191802a0f219c317630d5e2f43d5d536ede773da10f9f638917"
+    },
+    {
+      "backend": "official-matlab",
+      "candidate": {
+        "balance": 0.1,
+        "gain": 0,
+        "seed": 0,
+        "z": 0
+      },
+      "checkpoint_epoch": 60,
+      "checkpoint_sha256": "03bd94fe166418a018b05673948e963217aeaf9c225d27733dfa9464098eda9b",
+      "empty_input_policy": "empty TXT becomes zeros(0,8); matching/AP routines unchanged",
+      "export_sha256": "465bf9a6c555d716331ac50c6bd6193648bcccf4a318fc12ac60ee67e6c87311",
+      "image_count": 548,
+      "input_manifest_sha256": "f552f0d0cb14386b3f576ac13666a5b0ea1aaa9844d9b1a1bb830b476292e528",
+      "matlab_version": "26.1.0.3346908 (R2026a) Update 5",
+      "mean2_implementation": "scripts/d1/visdrone_matlab_compat/mean2.m",
+      "metrics": {
+        "AP_50": 0.1919283305718752,
+        "AP_75": 0.05725466627536175,
+        "AP_all": 0.07971717643322199,
+        "AR_1": 0.00608292244464681,
+        "AR_10": 0.04009562358184351,
+        "AR_100": 0.14083972310596418,
+        "AR_500": 0.21935805879273254
+      },
+      "metrics_percent": {
+        "AP_50": 19.19283305718752,
+        "AP_75": 5.725466627536175,
+        "AP_all": 7.971717643322198,
+        "AR_1": 0.608292244464681,
+        "AR_10": 4.0095623581843505,
+        "AR_100": 14.083972310596417,
+        "AR_500": 21.935805879273254
+      },
+      "run_id": "E3-screen-b0.1-z0-g0-s0",
+      "scoring_seconds": 22.1848968,
+      "source_report_sha256": "93e758d93ee844bbd61167e75927bd574dbb28044ad2ff941345656612d96038",
+      "toolkit_commit": "005445782213e20cb91bc50a597db3dd949e749a",
+      "toolkit_manifest_sha256": "b5ab2def85f4b191802a0f219c317630d5e2f43d5d536ede773da10f9f638917"
+    },
+    {
+      "backend": "official-matlab",
+      "candidate": {
+        "balance": 0.1,
+        "gain": 0,
+        "seed": 1,
+        "z": 0
+      },
+      "checkpoint_epoch": 60,
+      "checkpoint_sha256": "d4fec6e80f56ea49c4848adfaf4e5426e03ca0b2281f40f50f4205ea3072d6b1",
+      "empty_input_policy": "empty TXT becomes zeros(0,8); matching/AP routines unchanged",
+      "export_sha256": "4ed01ff165727f14aba07c02922c3c234b6a8241beae9208a302dbbc64090a04",
+      "image_count": 548,
+      "input_manifest_sha256": "f552f0d0cb14386b3f576ac13666a5b0ea1aaa9844d9b1a1bb830b476292e528",
+      "matlab_version": "26.1.0.3346908 (R2026a) Update 5",
+      "mean2_implementation": "scripts/d1/visdrone_matlab_compat/mean2.m",
+      "metrics": {
+        "AP_50": 0.18760085406149105,
+        "AP_75": 0.05855113294643641,
+        "AP_all": 0.07993979128269606,
+        "AR_1": 0.006270448707995015,
+        "AR_10": 0.04050442685537152,
+        "AR_100": 0.1377641638488375,
+        "AR_500": 0.21794643682293763
+      },
+      "metrics_percent": {
+        "AP_50": 18.760085406149106,
+        "AP_75": 5.85511329464364,
+        "AP_all": 7.993979128269606,
+        "AR_1": 0.6270448707995014,
+        "AR_10": 4.050442685537152,
+        "AR_100": 13.776416384883749,
+        "AR_500": 21.794643682293763
+      },
+      "run_id": "E3-screen-b0.1-z0-g0-s1",
+      "scoring_seconds": 20.0577135,
+      "source_report_sha256": "8fa9dc9b1c5e967687451676bbfe2ed220f03fd817291a310ed3101b6330267e",
+      "toolkit_commit": "005445782213e20cb91bc50a597db3dd949e749a",
+      "toolkit_manifest_sha256": "b5ab2def85f4b191802a0f219c317630d5e2f43d5d536ede773da10f9f638917"
+    },
+    {
+      "backend": "official-matlab",
+      "candidate": {
+        "balance": 0.1,
+        "gain": 0,
+        "seed": 2,
+        "z": 0
+      },
+      "checkpoint_epoch": 60,
+      "checkpoint_sha256": "77a838213587d077a0e9fa9e96af21c3921dba72475472d6931d508fe1fc670d",
+      "empty_input_policy": "empty TXT becomes zeros(0,8); matching/AP routines unchanged",
+      "export_sha256": "5fa572886d15d9415508dafdd0f937d8ce019152584dab48a611ca64e6178aa6",
+      "image_count": 548,
+      "input_manifest_sha256": "f552f0d0cb14386b3f576ac13666a5b0ea1aaa9844d9b1a1bb830b476292e528",
+      "matlab_version": "26.1.0.3346908 (R2026a) Update 5",
+      "mean2_implementation": "scripts/d1/visdrone_matlab_compat/mean2.m",
+      "metrics": {
+        "AP_50": 0.19176806689050918,
+        "AP_75": 0.059672853654048286,
+        "AP_all": 0.08101522418473804,
+        "AR_1": 0.006433604635367628,
+        "AR_10": 0.04179945989626238,
+        "AR_100": 0.14048497407934382,
+        "AR_500": 0.21850462458002487
+      },
+      "metrics_percent": {
+        "AP_50": 19.176806689050917,
+        "AP_75": 5.967285365404829,
+        "AP_all": 8.101522418473804,
+        "AR_1": 0.6433604635367628,
+        "AR_10": 4.179945989626238,
+        "AR_100": 14.048497407934383,
+        "AR_500": 21.850462458002486
+      },
+      "run_id": "E3-screen-b0.1-z0-g0-s2",
+      "scoring_seconds": 24.2168263,
+      "source_report_sha256": "bae5f916e2b88e1e7baaf16c96fa1854f16f06f5b63d0349e4f9a6b22c87a653",
+      "toolkit_commit": "005445782213e20cb91bc50a597db3dd949e749a",
+      "toolkit_manifest_sha256": "b5ab2def85f4b191802a0f219c317630d5e2f43d5d536ede773da10f9f638917"
+    },
+    {
+      "backend": "official-matlab",
+      "candidate": {
+        "balance": 0.1,
+        "gain": 0.03,
+        "seed": 0,
+        "z": 0
+      },
+      "checkpoint_epoch": 60,
+      "checkpoint_sha256": "c65b32ab02aa03d173d998e2b161e1b03fcd208c1249ad7c849f995463a87bcb",
+      "empty_input_policy": "empty TXT becomes zeros(0,8); matching/AP routines unchanged",
+      "export_sha256": "17f9a7e3d6905465cb50dcdc137df2078d6265c997b84b38a3899076f9401f7a",
+      "image_count": 548,
+      "input_manifest_sha256": "f552f0d0cb14386b3f576ac13666a5b0ea1aaa9844d9b1a1bb830b476292e528",
+      "matlab_version": "26.1.0.3346908 (R2026a) Update 5",
+      "mean2_implementation": "scripts/d1/visdrone_matlab_compat/mean2.m",
+      "metrics": {
+        "AP_50": 0.1905869528778128,
+        "AP_75": 0.06030082974008513,
+        "AP_all": 0.08046644825265245,
+        "AR_1": 0.006838121453913521,
+        "AR_10": 0.04105861580164476,
+        "AR_100": 0.1408115207005149,
+        "AR_500": 0.21950904666328952
+      },
+      "metrics_percent": {
+        "AP_50": 19.05869528778128,
+        "AP_75": 6.030082974008513,
+        "AP_all": 8.046644825265245,
+        "AR_1": 0.6838121453913522,
+        "AR_10": 4.1058615801644756,
+        "AR_100": 14.08115207005149,
+        "AR_500": 21.950904666328952
+      },
+      "run_id": "E3-screen-b0.1-z0-g0.03-s0",
+      "scoring_seconds": 22.0216645,
+      "source_report_sha256": "476d0cc7246d4ed95bb23433cd6c04b89dfb6d8c5f03dea3fc17bf392dca9700",
+      "toolkit_commit": "005445782213e20cb91bc50a597db3dd949e749a",
+      "toolkit_manifest_sha256": "b5ab2def85f4b191802a0f219c317630d5e2f43d5d536ede773da10f9f638917"
+    },
+    {
+      "backend": "official-matlab",
+      "candidate": {
+        "balance": 0.1,
+        "gain": 0.03,
+        "seed": 1,
+        "z": 0
+      },
+      "checkpoint_epoch": 60,
+      "checkpoint_sha256": "36e98115ce188d17494730c47f20a8eea599f8fd96230c2caee2c2e1bdcfc25e",
+      "empty_input_policy": "empty TXT becomes zeros(0,8); matching/AP routines unchanged",
+      "export_sha256": "ccb56441736a6533b74aa7c138942d1a41b0b084a2f476653bce0e5769075e4a",
+      "image_count": 548,
+      "input_manifest_sha256": "f552f0d0cb14386b3f576ac13666a5b0ea1aaa9844d9b1a1bb830b476292e528",
+      "matlab_version": "26.1.0.3346908 (R2026a) Update 5",
+      "mean2_implementation": "scripts/d1/visdrone_matlab_compat/mean2.m",
+      "metrics": {
+        "AP_50": 0.19087906044229627,
+        "AP_75": 0.062002721208810126,
+        "AP_all": 0.08143919509811318,
+        "AR_1": 0.0069802535014340614,
+        "AR_10": 0.04139180331385824,
+        "AR_100": 0.14223275254558748,
+        "AR_500": 0.22031467435878352
+      },
+      "metrics_percent": {
+        "AP_50": 19.087906044229626,
+        "AP_75": 6.200272120881013,
+        "AP_all": 8.143919509811317,
+        "AR_1": 0.6980253501434062,
+        "AR_10": 4.139180331385824,
+        "AR_100": 14.223275254558748,
+        "AR_500": 22.03146743587835
+      },
+      "run_id": "E3-screen-b0.1-z0-g0.03-s1",
+      "scoring_seconds": 20.2967604,
+      "source_report_sha256": "e63e8e4ace27693b2aee550c480f78dcc6aa0d89ff34411e7c6b24dec6518bb6",
+      "toolkit_commit": "005445782213e20cb91bc50a597db3dd949e749a",
+      "toolkit_manifest_sha256": "b5ab2def85f4b191802a0f219c317630d5e2f43d5d536ede773da10f9f638917"
+    },
+    {
+      "backend": "official-matlab",
+      "candidate": {
+        "balance": 0.1,
+        "gain": 0.03,
+        "seed": 2,
+        "z": 0
+      },
+      "checkpoint_epoch": 60,
+      "checkpoint_sha256": "cca865207a7c9fd427c18cb0048d1fe06713794be3aff71085295cd72db0c5a0",
+      "empty_input_policy": "empty TXT becomes zeros(0,8); matching/AP routines unchanged",
+      "export_sha256": "0fa54ca60dc992944e650d8597f983cdbd1a8dd7defe8cd869ffd1edacb319b2",
+      "image_count": 548,
+      "input_manifest_sha256": "f552f0d0cb14386b3f576ac13666a5b0ea1aaa9844d9b1a1bb830b476292e528",
+      "matlab_version": "26.1.0.3346908 (R2026a) Update 5",
+      "mean2_implementation": "scripts/d1/visdrone_matlab_compat/mean2.m",
+      "metrics": {
+        "AP_50": 0.19182026147000067,
+        "AP_75": 0.06081466999497339,
+        "AP_all": 0.08155546444305486,
+        "AR_1": 0.0059792177051004,
+        "AR_10": 0.04196701034350511,
+        "AR_100": 0.13931721389736462,
+        "AR_500": 0.21710874369154193
+      },
+      "metrics_percent": {
+        "AP_50": 19.182026147000066,
+        "AP_75": 6.081466999497339,
+        "AP_all": 8.155546444305486,
+        "AR_1": 0.59792177051004,
+        "AR_10": 4.196701034350511,
+        "AR_100": 13.931721389736463,
+        "AR_500": 21.710874369154194
+      },
+      "run_id": "E3-screen-b0.1-z0-g0.03-s2",
+      "scoring_seconds": 20.1927495,
+      "source_report_sha256": "caef910d4fc80fdc1b25ee6203993cc76da67bd9476de442a30ea205ef667095",
+      "toolkit_commit": "005445782213e20cb91bc50a597db3dd949e749a",
+      "toolkit_manifest_sha256": "b5ab2def85f4b191802a0f219c317630d5e2f43d5d536ede773da10f9f638917"
+    },
+    {
+      "backend": "official-matlab",
+      "candidate": {
+        "balance": 0.1,
+        "gain": 0.1,
+        "seed": 0,
+        "z": 0
+      },
+      "checkpoint_epoch": 60,
+      "checkpoint_sha256": "df449f1d10b7ff74c888741157e9146e5c92bc159993ce25809b07a6e8f553a1",
+      "empty_input_policy": "empty TXT becomes zeros(0,8); matching/AP routines unchanged",
+      "export_sha256": "6654980eaae39f25eb57b8349e46ae50dd7cfee6798e24f0e9546742b7989132",
+      "image_count": 548,
+      "input_manifest_sha256": "ea324ed3175bc98c9d36b31c092c5a0b5f6227b01f46814d808752aeca68e1da",
+      "matlab_version": "26.1.0.3346908 (R2026a) Update 5",
+      "mean2_implementation": "scripts/d1/visdrone_matlab_compat/mean2.m",
+      "metrics": {
+        "AP_50": 0.1842364194010323,
+        "AP_75": 0.056174997694145405,
+        "AP_all": 0.07726332129035565,
+        "AR_1": 0.0067849610585294364,
+        "AR_10": 0.04101780703762434,
+        "AR_100": 0.13917375241285335,
+        "AR_500": 0.21692362802242218
+      },
+      "metrics_percent": {
+        "AP_50": 18.42364194010323,
+        "AP_75": 5.6174997694145405,
+        "AP_all": 7.726332129035565,
+        "AR_1": 0.6784961058529436,
+        "AR_10": 4.101780703762434,
+        "AR_100": 13.917375241285335,
+        "AR_500": 21.69236280224222
+      },
+      "run_id": "E3-screen-b0.1-z0-g0.1-s0",
+      "scoring_seconds": 22.5766746,
+      "source_report_sha256": "3162af684bf32a3ff5f656682b88d77dc082374eff76c6061da0edec4d6ace40",
+      "toolkit_commit": "005445782213e20cb91bc50a597db3dd949e749a",
+      "toolkit_manifest_sha256": "b5ab2def85f4b191802a0f219c317630d5e2f43d5d536ede773da10f9f638917"
+    },
+    {
+      "backend": "official-matlab",
+      "candidate": {
+        "balance": 0.1,
+        "gain": 0.1,
+        "seed": 1,
+        "z": 0
+      },
+      "checkpoint_epoch": 60,
+      "checkpoint_sha256": "ce3617b53c0a27dd161e0d63dedc6847db6a34e461a804f8497b8b5e73506c9c",
+      "empty_input_policy": "empty TXT becomes zeros(0,8); matching/AP routines unchanged",
+      "export_sha256": "d5522b98734c70838a4df25e1d086a7fddf6c070cd4880c87f0a1203e9485ac6",
+      "image_count": 548,
+      "input_manifest_sha256": "ea324ed3175bc98c9d36b31c092c5a0b5f6227b01f46814d808752aeca68e1da",
+      "matlab_version": "26.1.0.3346908 (R2026a) Update 5",
+      "mean2_implementation": "scripts/d1/visdrone_matlab_compat/mean2.m",
+      "metrics": {
+        "AP_50": 0.19431160746627796,
+        "AP_75": 0.06223700235059943,
+        "AP_all": 0.08333313302386548,
+        "AR_1": 0.00728811583344082,
+        "AR_10": 0.04264911192631378,
+        "AR_100": 0.14160296657390378,
+        "AR_500": 0.22051114082541035
+      },
+      "metrics_percent": {
+        "AP_50": 19.431160746627796,
+        "AP_75": 6.223700235059943,
+        "AP_all": 8.333313302386548,
+        "AR_1": 0.728811583344082,
+        "AR_10": 4.264911192631378,
+        "AR_100": 14.160296657390377,
+        "AR_500": 22.051114082541034
+      },
+      "run_id": "E3-screen-b0.1-z0-g0.1-s1",
+      "scoring_seconds": 22.5958431,
+      "source_report_sha256": "c7d7932cd09f363594085bc84573cc150f3a256bfa48c6e55206eb93663b2d52",
+      "toolkit_commit": "005445782213e20cb91bc50a597db3dd949e749a",
+      "toolkit_manifest_sha256": "b5ab2def85f4b191802a0f219c317630d5e2f43d5d536ede773da10f9f638917"
+    },
+    {
+      "backend": "official-matlab",
+      "candidate": {
+        "balance": 0.1,
+        "gain": 0.1,
+        "seed": 2,
+        "z": 0
+      },
+      "checkpoint_epoch": 60,
+      "checkpoint_sha256": "256f2303c4e638a010e76bc84ae28f6a2c635d09187a7fdb53a0ca371f56ee46",
+      "empty_input_policy": "empty TXT becomes zeros(0,8); matching/AP routines unchanged",
+      "export_sha256": "7148f7c4b124118a8a38471196604bc759d4f20eb87aba4e94e95816e949a09f",
+      "image_count": 548,
+      "input_manifest_sha256": "ea324ed3175bc98c9d36b31c092c5a0b5f6227b01f46814d808752aeca68e1da",
+      "matlab_version": "26.1.0.3346908 (R2026a) Update 5",
+      "mean2_implementation": "scripts/d1/visdrone_matlab_compat/mean2.m",
+      "metrics": {
+        "AP_50": 0.1956493781874974,
+        "AP_75": 0.0631293248579967,
+        "AP_all": 0.08336140032273281,
+        "AR_1": 0.00694195275383605,
+        "AR_10": 0.042503825862607585,
+        "AR_100": 0.13941352371441543,
+        "AR_500": 0.21644664203935107
+      },
+      "metrics_percent": {
+        "AP_50": 19.56493781874974,
+        "AP_75": 6.31293248579967,
+        "AP_all": 8.336140032273281,
+        "AR_1": 0.694195275383605,
+        "AR_10": 4.250382586260758,
+        "AR_100": 13.941352371441543,
+        "AR_500": 21.644664203935108
+      },
+      "run_id": "E3-screen-b0.1-z0-g0.1-s2",
+      "scoring_seconds": 21.2504736,
+      "source_report_sha256": "1f9b6f0d9f26770d9735aedcf61f16d5853046c12488721a0f8687568aec2445",
+      "toolkit_commit": "005445782213e20cb91bc50a597db3dd949e749a",
+      "toolkit_manifest_sha256": "b5ab2def85f4b191802a0f219c317630d5e2f43d5d536ede773da10f9f638917"
+    },
+    {
+      "backend": "official-matlab",
+      "candidate": {
+        "balance": 0.1,
+        "gain": 0.3,
+        "seed": 0,
+        "z": 0
+      },
+      "checkpoint_epoch": 60,
+      "checkpoint_sha256": "c0908f09c05d6ca897d56935b4e658d4c9c2d69f696800f181cb1fe10ffbad45",
+      "empty_input_policy": "empty TXT becomes zeros(0,8); matching/AP routines unchanged",
+      "export_sha256": "be3187a8cad22f8c26009a9b5f1c0cb2db0fc8dfaa23bfcb15626c2e21621dfa",
+      "image_count": 548,
+      "input_manifest_sha256": "f552f0d0cb14386b3f576ac13666a5b0ea1aaa9844d9b1a1bb830b476292e528",
+      "matlab_version": "26.1.0.3346908 (R2026a) Update 5",
+      "mean2_implementation": "scripts/d1/visdrone_matlab_compat/mean2.m",
+      "metrics": {
+        "AP_50": 0.1877008622220086,
+        "AP_75": 0.05724180769712553,
+        "AP_all": 0.07874039474934827,
+        "AR_1": 0.00620296906611596,
+        "AR_10": 0.03994101455602972,
+        "AR_100": 0.13883905099367783,
+        "AR_500": 0.21801328233923203
+      },
+      "metrics_percent": {
+        "AP_50": 18.77008622220086,
+        "AP_75": 5.724180769712553,
+        "AP_all": 7.874039474934826,
+        "AR_1": 0.620296906611596,
+        "AR_10": 3.994101455602972,
+        "AR_100": 13.883905099367784,
+        "AR_500": 21.801328233923204
+      },
+      "run_id": "E3-screen-b0.1-z0-g0.3-s0",
+      "scoring_seconds": 23.0980076,
+      "source_report_sha256": "6c527a25928ddc797936e7c04fdf12b77a43c45f565ae56e8681ae7dd08e96b3",
+      "toolkit_commit": "005445782213e20cb91bc50a597db3dd949e749a",
+      "toolkit_manifest_sha256": "b5ab2def85f4b191802a0f219c317630d5e2f43d5d536ede773da10f9f638917"
+    },
+    {
+      "backend": "official-matlab",
+      "candidate": {
+        "balance": 0.1,
+        "gain": 0.3,
+        "seed": 1,
+        "z": 0
+      },
+      "checkpoint_epoch": 60,
+      "checkpoint_sha256": "20408d8a5e4fbf9cc768c71920f08b4c605afb3275501fe98c3e67bfb12dde1b",
+      "empty_input_policy": "empty TXT becomes zeros(0,8); matching/AP routines unchanged",
+      "export_sha256": "a0fe77190585e1b95ffae656bfd7e95cc17f7e15dabca73af4d15d7e161c6327",
+      "image_count": 548,
+      "input_manifest_sha256": "f552f0d0cb14386b3f576ac13666a5b0ea1aaa9844d9b1a1bb830b476292e528",
+      "matlab_version": "26.1.0.3346908 (R2026a) Update 5",
+      "mean2_implementation": "scripts/d1/visdrone_matlab_compat/mean2.m",
+      "metrics": {
+        "AP_50": 0.1917532851775488,
+        "AP_75": 0.0612619201716792,
+        "AP_all": 0.08219622202347386,
+        "AR_1": 0.006147280575958251,
+        "AR_10": 0.042691263568660764,
+        "AR_100": 0.14159396927266965,
+        "AR_500": 0.219895068700977
+      },
+      "metrics_percent": {
+        "AP_50": 19.17532851775488,
+        "AP_75": 6.12619201716792,
+        "AP_all": 8.219622202347386,
+        "AR_1": 0.6147280575958252,
+        "AR_10": 4.269126356866076,
+        "AR_100": 14.159396927266965,
+        "AR_500": 21.9895068700977
+      },
+      "run_id": "E3-screen-b0.1-z0-g0.3-s1",
+      "scoring_seconds": 33.4486053,
+      "source_report_sha256": "eefebb702f963708c4710751ab4c913b303e1bb054023babb026d02d53b025a6",
+      "toolkit_commit": "005445782213e20cb91bc50a597db3dd949e749a",
+      "toolkit_manifest_sha256": "b5ab2def85f4b191802a0f219c317630d5e2f43d5d536ede773da10f9f638917"
+    },
+    {
+      "backend": "official-matlab",
+      "candidate": {
+        "balance": 0.1,
+        "gain": 0.3,
+        "seed": 2,
+        "z": 0
+      },
+      "checkpoint_epoch": 60,
+      "checkpoint_sha256": "cb210811a7d9da041bcd284378046b65baee89990c24847ae981d9c705c0ecf1",
+      "empty_input_policy": "empty TXT becomes zeros(0,8); matching/AP routines unchanged",
+      "export_sha256": "d7412b43f22c06f153738ad2fd97caef0cd78619fc1429203a058754c67e515d",
+      "image_count": 548,
+      "input_manifest_sha256": "f552f0d0cb14386b3f576ac13666a5b0ea1aaa9844d9b1a1bb830b476292e528",
+      "matlab_version": "26.1.0.3346908 (R2026a) Update 5",
+      "mean2_implementation": "scripts/d1/visdrone_matlab_compat/mean2.m",
+      "metrics": {
+        "AP_50": 0.19287713648820687,
+        "AP_75": 0.060407628806746015,
+        "AP_all": 0.0815003356126829,
+        "AR_1": 0.006340738884447545,
+        "AR_10": 0.04158908203716509,
+        "AR_100": 0.13981366531026193,
+        "AR_500": 0.21699928217274458
+      },
+      "metrics_percent": {
+        "AP_50": 19.287713648820688,
+        "AP_75": 6.040762880674602,
+        "AP_all": 8.15003356126829,
+        "AR_1": 0.6340738884447545,
+        "AR_10": 4.158908203716509,
+        "AR_100": 13.981366531026193,
+        "AR_500": 21.699928217274458
+      },
+      "run_id": "E3-screen-b0.1-z0-g0.3-s2",
+      "scoring_seconds": 25.2265319,
+      "source_report_sha256": "ce058634e988b0411475ff5d64ee7d323da710bf5094e434f414a043595b470a",
+      "toolkit_commit": "005445782213e20cb91bc50a597db3dd949e749a",
+      "toolkit_manifest_sha256": "b5ab2def85f4b191802a0f219c317630d5e2f43d5d536ede773da10f9f638917"
+    }
+  ],
+  "ranking": [
+    0.1,
+    0.03,
+    0.3,
+    0.0
+  ],
+  "reused_stage1_runs": 3,
+  "rows": [
+    {
+      "AP_50": 0.1919283305718752,
+      "AP_75": 0.05725466627536175,
+      "AP_all": 0.07971717643322199,
+      "AR_1": 0.00608292244464681,
+      "AR_10": 0.04009562358184351,
+      "AR_100": 0.14083972310596418,
+      "AR_500": 0.21935805879273254,
+      "attempt_count": 1,
+      "balance": 0.1,
+      "gain": 0.0,
+      "reused_stage1": false,
+      "run_id": "E3-screen-b0.1-z0-g0-s0",
+      "seed": 0,
+      "training_gpu_hours": 1.886890038649241,
+      "z": 0.0
+    },
+    {
+      "AP_50": 0.18760085406149105,
+      "AP_75": 0.05855113294643641,
+      "AP_all": 0.07993979128269606,
+      "AR_1": 0.006270448707995015,
+      "AR_10": 0.04050442685537152,
+      "AR_100": 0.1377641638488375,
+      "AR_500": 0.21794643682293763,
+      "attempt_count": 1,
+      "balance": 0.1,
+      "gain": 0.0,
+      "reused_stage1": false,
+      "run_id": "E3-screen-b0.1-z0-g0-s1",
+      "seed": 1,
+      "training_gpu_hours": 1.910962378581365,
+      "z": 0.0
+    },
+    {
+      "AP_50": 0.19176806689050918,
+      "AP_75": 0.059672853654048286,
+      "AP_all": 0.08101522418473804,
+      "AR_1": 0.006433604635367628,
+      "AR_10": 0.04179945989626238,
+      "AR_100": 0.14048497407934382,
+      "AR_500": 0.21850462458002487,
+      "attempt_count": 1,
+      "balance": 0.1,
+      "gain": 0.0,
+      "reused_stage1": false,
+      "run_id": "E3-screen-b0.1-z0-g0-s2",
+      "seed": 2,
+      "training_gpu_hours": 1.886051239569982,
+      "z": 0.0
+    },
+    {
+      "AP_50": 0.1905869528778128,
+      "AP_75": 0.06030082974008513,
+      "AP_all": 0.08046644825265245,
+      "AR_1": 0.006838121453913521,
+      "AR_10": 0.04105861580164476,
+      "AR_100": 0.1408115207005149,
+      "AR_500": 0.21950904666328952,
+      "attempt_count": 1,
+      "balance": 0.1,
+      "gain": 0.03,
+      "reused_stage1": false,
+      "run_id": "E3-screen-b0.1-z0-g0.03-s0",
+      "seed": 0,
+      "training_gpu_hours": 1.8794390634695688,
+      "z": 0.0
+    },
+    {
+      "AP_50": 0.19087906044229627,
+      "AP_75": 0.062002721208810126,
+      "AP_all": 0.08143919509811318,
+      "AR_1": 0.0069802535014340614,
+      "AR_10": 0.04139180331385824,
+      "AR_100": 0.14223275254558748,
+      "AR_500": 0.22031467435878352,
+      "attempt_count": 1,
+      "balance": 0.1,
+      "gain": 0.03,
+      "reused_stage1": false,
+      "run_id": "E3-screen-b0.1-z0-g0.03-s1",
+      "seed": 1,
+      "training_gpu_hours": 1.8855643804868063,
+      "z": 0.0
+    },
+    {
+      "AP_50": 0.19182026147000067,
+      "AP_75": 0.06081466999497339,
+      "AP_all": 0.08155546444305486,
+      "AR_1": 0.0059792177051004,
+      "AR_10": 0.04196701034350511,
+      "AR_100": 0.13931721389736462,
+      "AR_500": 0.21710874369154193,
+      "attempt_count": 1,
+      "balance": 0.1,
+      "gain": 0.03,
+      "reused_stage1": false,
+      "run_id": "E3-screen-b0.1-z0-g0.03-s2",
+      "seed": 2,
+      "training_gpu_hours": 1.8889830295244854,
+      "z": 0.0
+    },
+    {
+      "AP_50": 0.1842364194010323,
+      "AP_75": 0.056174997694145405,
+      "AP_all": 0.07726332129035565,
+      "AR_1": 0.0067849610585294364,
+      "AR_10": 0.04101780703762434,
+      "AR_100": 0.13917375241285335,
+      "AR_500": 0.21692362802242218,
+      "attempt_count": 1,
+      "balance": 0.1,
+      "gain": 0.1,
+      "reused_stage1": true,
+      "run_id": "E3-screen-b0.1-z0-g0.1-s0",
+      "seed": 0,
+      "training_gpu_hours": 1.8814596978823344,
+      "z": 0.0
+    },
+    {
+      "AP_50": 0.19431160746627796,
+      "AP_75": 0.06223700235059943,
+      "AP_all": 0.08333313302386548,
+      "AR_1": 0.00728811583344082,
+      "AR_10": 0.04264911192631378,
+      "AR_100": 0.14160296657390378,
+      "AR_500": 0.22051114082541035,
+      "attempt_count": 1,
+      "balance": 0.1,
+      "gain": 0.1,
+      "reused_stage1": true,
+      "run_id": "E3-screen-b0.1-z0-g0.1-s1",
+      "seed": 1,
+      "training_gpu_hours": 1.883826081752777,
+      "z": 0.0
+    },
+    {
+      "AP_50": 0.1956493781874974,
+      "AP_75": 0.0631293248579967,
+      "AP_all": 0.08336140032273281,
+      "AR_1": 0.00694195275383605,
+      "AR_10": 0.042503825862607585,
+      "AR_100": 0.13941352371441543,
+      "AR_500": 0.21644664203935107,
+      "attempt_count": 1,
+      "balance": 0.1,
+      "gain": 0.1,
+      "reused_stage1": true,
+      "run_id": "E3-screen-b0.1-z0-g0.1-s2",
+      "seed": 2,
+      "training_gpu_hours": 1.8913816924889881,
+      "z": 0.0
+    },
+    {
+      "AP_50": 0.1877008622220086,
+      "AP_75": 0.05724180769712553,
+      "AP_all": 0.07874039474934827,
+      "AR_1": 0.00620296906611596,
+      "AR_10": 0.03994101455602972,
+      "AR_100": 0.13883905099367783,
+      "AR_500": 0.21801328233923203,
+      "attempt_count": 1,
+      "balance": 0.1,
+      "gain": 0.3,
+      "reused_stage1": false,
+      "run_id": "E3-screen-b0.1-z0-g0.3-s0",
+      "seed": 0,
+      "training_gpu_hours": 1.9104187603791554,
+      "z": 0.0
+    },
+    {
+      "AP_50": 0.1917532851775488,
+      "AP_75": 0.0612619201716792,
+      "AP_all": 0.08219622202347386,
+      "AR_1": 0.006147280575958251,
+      "AR_10": 0.042691263568660764,
+      "AR_100": 0.14159396927266965,
+      "AR_500": 0.219895068700977,
+      "attempt_count": 1,
+      "balance": 0.1,
+      "gain": 0.3,
+      "reused_stage1": false,
+      "run_id": "E3-screen-b0.1-z0-g0.3-s1",
+      "seed": 1,
+      "training_gpu_hours": 1.909830785592397,
+      "z": 0.0
+    },
+    {
+      "AP_50": 0.19287713648820687,
+      "AP_75": 0.060407628806746015,
+      "AP_all": 0.0815003356126829,
+      "AR_1": 0.006340738884447545,
+      "AR_10": 0.04158908203716509,
+      "AR_100": 0.13981366531026193,
+      "AR_500": 0.21699928217274458,
+      "attempt_count": 1,
+      "balance": 0.1,
+      "gain": 0.3,
+      "reused_stage1": false,
+      "run_id": "E3-screen-b0.1-z0-g0.3-s2",
+      "seed": 2,
+      "training_gpu_hours": 1.9044086293379465,
+      "z": 0.0
+    }
+  ],
+  "schedule_epochs": 300,
+  "schema_version": "d1-e3-stage2-official-v1",
+  "screen_epochs": 60,
+  "selection_rule": "raw AP mean descending; sample SD, comparable mean GPU-hours and gain ascending",
+  "stage1_evidence_sha256": "75a9dff826f226e670b76b7e1bd1109ced2486f0976785a1fb016760e91eb1d6",
+  "stage2_matlab_seconds": 211.3154176,
+  "stage2_plan_sha256": "3a823dc1eddf56eef2c91ee17829a412f720b0e304bb2a1dc71f0f03204b2865",
+  "stage2_queue_wall_seconds": 10245.916020393372,
+  "statistical_scope": "n=3 paired training seeds used in selection; exploratory intervals, not independent confirmation",
+  "status": "E3_AUX_SELECTION_COMPLETE",
+  "summary_script_sha256": "046d5aeb60a611c77b2252686c9020bb4046b2e52904bd357cbeb5a69177e74e",
+  "unique_runs_both_stages": 36,
+  "validation_images": 548
+}
