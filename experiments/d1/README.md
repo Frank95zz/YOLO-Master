@@ -345,6 +345,10 @@ DDP 在首次训练和恢复时先进行三次无 optimizer 更新的前反向�
 | COCO / 50 / seed 0 | Scratch | 27.272 / 40.526 / 28.944 | 40.828 / 43.541 | 5.4838 | 32.9026 |
 | VisDrone / 120 / seed 0 | 冻结 DINOv3 + BN64 | 7.096 / 17.470 / 4.882 | 5.280 / 10.393 | 0.6063 | 3.6378 |
 | VisDrone / 120 / seed 0 | Scratch | 11.385 / 22.078 / 10.453 | 13.761 / 17.920 | 1.3973 | 8.3840 |
+| VisDrone / 120 / seed 1 | Scratch | 10.625 / 20.643 / 9.686 | 13.672 / 18.014 | 1.3751 | 8.2507 |
+
+VisDrone Scratch seed 1 已完成同一120轮合同、548张官方DET评测及严格重载，训练作业4,950.414秒。执行提交ee23d3edf04b3741e1a6441c57a9cc2ff4d2516c，固定末轮checkpoint SHA256为 ba0f6ed0b653f09ff2921c85ce06eaf189f3ed90b3f4d1f440475378c111adf2；完整记录见复现包results/visdrone-SCRATCH-seed1.json。BN64 seed 1继续训练，待配对齐全后再报告本seed的保留率与降低率。
+
 
 
 COCO seed 0 两组固定第50轮现已完成标准评测与严格重载。BN64的APs/APm/APl为11.789/30.798/41.191，训练作业6,380.461秒，末轮checkpoint SHA256为 8dd58343ca57fe9453bff232ba76de74f21e0a520c9c6cafb3fbda021a6e0fd6；两组共享本节50轮预算、全量COCO、seed0、640输入、batch384、六卡与BF16/FP32策略。相对Scratch固定末轮，BN64的AP增加0.907个绝对百分点，AP保留率103.33%，训练GPU-hours降低67.68%。周期最佳作为补充：BN64第35轮AP28.308，Scratch第20轮AP31.539；固定预算末轮比较与周期最佳比较分别报告。两数据集seed0三维对照已齐，当前结果仍是单seed，seed1/2及三seed统计继续补齐；训练时间不包含Teacher抽取和独立评测。
