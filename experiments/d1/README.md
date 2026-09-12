@@ -345,9 +345,10 @@ DDP 在首次训练和恢复时先进行三次无 optimizer 更新的前反向�
 | COCO / 50 / seed 0 | Scratch | 27.272 / 40.526 / 28.944 | 40.828 / 43.541 | 5.4838 | 32.9026 |
 | VisDrone / 120 / seed 0 | 冻结 DINOv3 + BN64 | 7.096 / 17.470 / 4.882 | 5.280 / 10.393 | 0.6063 | 3.6378 |
 | VisDrone / 120 / seed 0 | Scratch | 11.385 / 22.078 / 10.453 | 13.761 / 17.920 | 1.3973 | 8.3840 |
+| VisDrone / 120 / seed 1 | 冻结 DINOv3 + BN64 | 7.465 / 17.883 / 5.401 | 5.279 / 11.057 | 0.6028 | 3.6170 |
 | VisDrone / 120 / seed 1 | Scratch | 10.625 / 20.643 / 9.686 | 13.672 / 18.014 | 1.3751 | 8.2507 |
 
-VisDrone Scratch seed 1 已完成同一120轮合同、548张官方DET评测及严格重载，训练作业4,950.414秒。执行提交ee23d3edf04b3741e1a6441c57a9cc2ff4d2516c，固定末轮checkpoint SHA256为 ba0f6ed0b653f09ff2921c85ce06eaf189f3ed90b3f4d1f440475378c111adf2；完整记录见复现包results/visdrone-SCRATCH-seed1.json。BN64 seed 1继续训练，待配对齐全后再报告本seed的保留率与降低率。
+VisDrone seed 1 两组均完成同一 120 轮合同、548 张官方 MATLAB DET 评测及严格重载。BN64 / Scratch 训练作业分别为 2,170.178 / 4,950.414 秒，固定末轮 AP 保留率为 **70.26%**，训练 GPU-hours 降低 **56.16%**；这是 seed 1 的配对结果，三 seed 统计在 seed 2 完成后汇总。两组执行提交均为 ee23d3edf04b3741e1a6441c57a9cc2ff4d2516c，BN64 / Scratch 末轮 checkpoint SHA256 分别为 894896088a4f85c24c0e4e10675b98ba27b4a76a7053329334ee4dfbbc844ff9 / ba0f6ed0b653f09ff2921c85ce06eaf189f3ed90b3f4d1f440475378c111adf2；复现包 results/visdrone-BN64-seed1.json 与 results/visdrone-SCRATCH-seed1.json 记录完整配置、各 rank 显存和产物校验。训练成本口径沿用下文定义，特征抽取和独立评分单列。
 
 
 
