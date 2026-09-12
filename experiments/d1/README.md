@@ -11,7 +11,7 @@
 | 任务 | 完成状态 | 已完成内容与证据 | 结果与交付 |
 |---|---|---|---|
 | P0：冻结特征检测闭环 | **已完成** | 多层 Teacher、可复现缓存、九分支 Adapter、LatentMixture、Detect、训练、评测、保存与严格重载 | COCO 检测结果、VisDrone 官方评分，以及最终入口四组真实六卡五轮验收 |
-| P1：同预算、同总参数量对照 | **实现与实验准备已完成，正式结果待补** | 两数据集、两架构、三个 seed 的统一合同与队列已实现、验证并启动 | 按统一口径报告 AP、显存、GPU-hours、精度保留率及成本降低率，对照至少 50% 降本目标 |
+| P1：精度 / 显存 / 时长三维对照 | **实现与实验准备已完成，正式结果待补** | 两数据集、两架构、三个 seed 的统一合同与队列已实现、验证并启动 | 按统一口径报告 AP、显存、GPU-hours、精度保留率及成本降低率，对照至少 50% 降本目标 |
 | P2：latent aux 消融 | **已完成（消融路径）** | balance/z 的 27 次运行、gain 的 9 次新增运行，共 36 次独立训练 | 官方 MATLAB 评分、逐 seed 分析、关闭项验证和配置选择结论 |
 
 P2 采用任务书中的消融路线，在 DINOv3 ViT-S/16 底座上完成 balance、z-loss 和 aux gain 扫描，给出各配置的精度、种子波动与选型依据。
@@ -314,13 +314,34 @@ DDP 在首次训练和恢复时先进行三次无 optimizer 更新的前反向�
 
 上述五轮短测用于预算与工程验收；正式结果按完整周期的标准评测与资源记录汇总。
 
-### 最终结果口径
+### P1 精度 / 显存 / 时长三维对照
 
-- AP 统一按 0-100 点报告；COCO 同时报 AP50/AP75/APs/APm/APl，VisDrone 报官方 AP/AP50/AP75/AR1/AR10/AR100/AR500。
-- 主表比较相同固定末轮，不混用一组 best 与另一组 last。标准 best 作为单独补充结果。
-- 报告每个 seed、均值、样本标准差及配对差值；精度保留率为冻结组 AP / scratch AP。
-- GPU-hours 包含已分配 GPU 的数据等待，训练、独立评测和抽取分别计量；同时报告训练-only、含一次 Teacher 抽取的冷启动成本及实际复用次数下的摊销成本。
-- 成本降低率为 1 - 冻结组成本 / scratch 成本。无法可靠恢复的旧抽取成本标记未知，不用 ETA 或缓存读取吞吐宣称达到 50%。
+按课题页要求，在 COCO 2017 与 VisDrone2019-DET 上，将冻结 DINOv3 + BN64 与同总参数量 Scratch 进行三维配对比较。每个数据集使用 seeds 0/1/2，两组共享输入尺寸、训练预算、batch、设备和精度策略，共 12 次正式运行。现有训练与评测入口已覆盖以下原始记录，最终汇总直接读取这些产物。
+
+| 维度 | 主指标与统一口径 | 原始记录 |
+|---|---|---|
+| 精度 | COCO 第 80 轮标准 bbox AP；VisDrone 第 120 轮官方 DET AP；均按 0-100 点报告，并补充 AP50/AP75 | 各运行的 evaluations/last/evaluation.json、预测文件、VisDrone 官方 MATLAB 评分与 checkpoint SHA256 |
+| 显存 | 训练窗口内单卡峰值 allocated GiB：对全部 epoch、六个 rank 取最大值；同时报告每卡峰值范围及 reserved GiB | epochs/rank-{rank}-epoch-{epoch:03d}.json 的 peak_allocated_bytes、peak_reserved_bytes |
+| 时长 | 完整训练作业墙钟小时、训练 GPU-hours；补充平均每轮耗时与数据等待 | jobs/*.json 的 elapsed_seconds、validation/epoch-*.json 的 epoch_wall_seconds、各 rank 的 data_wait_seconds |
+
+**精度。** 两组主表使用相同固定末轮 checkpoint，标准 best 另表展示。COCO 同时报 APs/APm/APl，VisDrone 同时报 AR1/10/100/500。训练内置 P/R/mAP 用于过程监控，最终结果来自对应数据集的独立评测。
+
+**显存。** 每轮开始重置 PyTorch CUDA 峰值统计，在训练批次结束后、当轮验证前写出各 rank 的峰值。主指标定义为 M = max(epoch, rank, peak_allocated_bytes) / 2^30；先分别计算六张卡的全程峰值，再给出范围。allocated 表示 PyTorch 活跃张量内存，reserved 表示分配器保留池，后者可能延续前面训练或验证的分配历史。两项均按同一方法汇总，覆盖各自下游模型、梯度、优化器、EMA 和输入张量；GPU 驱动、CUDA context 等进程外或分配器外占用属于另一个监测范围。冻结 Teacher 的离线抽取阶段独立计量，训练阶段从缓存读取特征。
+
+**时长。** 每次运行的训练作业时间 T 为所属训练进程段 elapsed_seconds 之和，计入启动、训练、数据等待、轮内验证和保存。当前 VisDrone Scratch seed 0 的前 40 轮与后续 41-120 轮合并为一次运行，40 轮只计一次；段间空闲时间另记。六卡训练 GPU-hours = 6 × T / 3600。平均 epoch 时间来自逐轮 epoch_wall_seconds，数据等待按 rank 汇总用于瓶颈分析。恢复门禁和独立短测归入工程验收成本；训练后独立预测、MATLAB 评分、Teacher 抽取分别列项。
+
+**统计与验收。** 先逐 seed 配对，再报告三 seed 均值、样本标准差与配对差。精度保留率 = AP_frozen / AP_scratch × 100%；训练显存降低率 = (1 - M_frozen / M_scratch) × 100%；训练 GPU 时间降低率 = (1 - H_frozen / H_scratch) × 100%。各数据集的汇总降低率使用两组对应成本均值计算，保留逐 seed 结果。课题验收对应至少一个数据集明确报告精度保留率且 GPU 时间降低 ≥50%；显存作为第三维同时给出实测差值和降低率。
+
+最终主表按下列结构回填，GiB = bytes / 2^30，时间均为实测：
+
+| 数据集 / 固定末轮 | 架构 | AP / AP50 / AP75 | 峰值 allocated / reserved（GiB） | 训练作业（小时） | 训练 GPU-hours |
+|---|---|---|---|---|---|
+| COCO / 80 | 冻结 DINOv3 + BN64 | 训练评测后汇总 | 全程逐卡记录后汇总 | 完整作业汇总 | 六卡实测换算 |
+| COCO / 80 | Scratch | 训练评测后汇总 | 全程逐卡记录后汇总 | 完整作业汇总 | 六卡实测换算 |
+| VisDrone / 120 | 冻结 DINOv3 + BN64 | 官方评分后汇总 | 全程逐卡记录后汇总 | 完整作业汇总 | 六卡实测换算 |
+| VisDrone / 120 | Scratch | 官方评分后汇总 | 全程逐卡记录后汇总 | 完整作业汇总 | 六卡实测换算 |
+
+每行给出三 seed 的均值 ± 样本标准差，并提供逐 seed 明细及每卡显存峰值范围。另列每个数据集的精度保留率、显存降低率、训练 GPU 时间降低率与 ≥50% 判定。成本附表同时列训练-only、含一次 Teacher 抽取的冷启动和注明复用次数的摊销口径；抽取成本使用可追溯实测记录，并标注记录完整性。
 
 ## 测试与兼容性
 
