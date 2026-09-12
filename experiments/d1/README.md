@@ -343,6 +343,44 @@ DDP 在首次训练和恢复时先进行三次无 optimizer 更新的前反向�
 
 每行给出三 seed 的均值 ± 样本标准差，并提供逐 seed 明细及每卡显存峰值范围。另列每个数据集的精度保留率、显存降低率、训练 GPU 时间降低率与 ≥50% 判定。成本附表同时列训练-only、含一次 Teacher 抽取的冷启动和注明复用次数的摊销口径；抽取成本使用可追溯实测记录，并标注记录完整性。
 
+### 实验记录与复现包
+
+每次正式运行按附录 B 汇总以下 11 个字段，原始训练记录保留在外部工作区，阶段归档保存独立快照：
+
+| 字段 | 记录内容 |
+|---|---|
+| experiment_id | D1、数据集、架构、整数 seed 与首次启动 UTC 时间组成唯一 ID |
+| git_ref | 完整执行 commit、工作区状态；采用 commit 固定版本 |
+| config | 配方、模型、数据 YAML 路径与 hash；区分文件 SHA256 和规范化模型配置摘要 |
+| dataset | COCO 2017 / VisDrone2019-DET、train/val、样本数与列表摘要 |
+| hardware | GPU 型号/显存、CPU、驱动、CUDA、cuDNN、PyTorch/Python；注明采集时刻，TensorRT 标记为本流程不适用 |
+| budget | 总 epochs、batch、imgsz、已完成 epoch、分段耗时与最终 GPU-hours |
+| seed | 明确整数 0/1/2 |
+| metrics | 官方主指标、辅助指标、训练显存与耗时；三 seed 均值及配对差采用探索性 95% t 区间（n=3、df=2） |
+| artifact | checkpoint/export/log/report 路径与 SHA256；动态文件注明采样时间，结束后封存完整清单 |
+| status | success / failed / inconclusive 为结论状态，execution_status 单列运行进度 |
+| limitation | seed 数、筛选窗口、预处理、硬件采集时刻、评测与产物归档状态 |
+
+阶段训练和恢复窗口使用 inconclusive 表示结论尚在生成，窗口完成与整项成功分别记录。最终 success 在完整预算、独立评分与产物校验完成后确认；执行错误使用 failed；结果完整但未达到量化目标时，执行状态与验收结论分别报告。
+
+复现包采用 configs/、scripts/、results/、env/、README.md、limitations.md。configs 保存执行配方，scripts 提供从零复现与记录归档入口，results 保存机器可读阶段记录及文件摘要，env 保存依赖和硬件；大数据、缓存和权重按文档中的外部输入与产物引用管理。包与 PR 源码分别交付，阶段包注明 interim_archive，最终评分和全部产物清单在结项归档时补齐。
+
+### 提交前七项核对
+
+| 验收项 | 本 PR 对应做法 |
+|---|---|
+| 命令与配置齐全 | 固定执行版本的模块入口、模型/配方 YAML、数据与缓存准备命令；复现包提供安装与启动脚本 |
+| 固定基线 | BASE_REF、UPSTREAM_REF、RUN_REF、FINAL_REF 均用完整 commit；main 仅表示 PR 合并目标 |
+| seed 与统计 | 正式对照和 aux 消融使用 seeds 0/1/2；P5 单 seed 筛选明确注明范围；同时报告逐 seed 值与统计区间 |
+| 对照口径一致 | 每个数据集内部固定预算、数据划分、640 输入、增强、batch、精度和官方评测；训练路径、EMA 与预训练差异显式列出 |
+| 负结果与证据链 | 沿用已锁定的有限值/恢复门禁、固定末轮、选参规则和 ≥50% 成本目标；由运行身份、日志、checkpoint 和官方评分支撑结论 |
+| PR 四节 | 改动摘要、测试证据、消融数据、已知局限，分别覆盖动机、命令/环境/结果、统计和支持范围/开销/后续工作 |
+| 文档与源码成熟度 | 当前源码已实现的接口以固定 commit 和测试核对；历史筛选、当前工程验证、最终对照结果分开列示，源码引用采用文件/符号及固定版本 |
+
+负结果判读沿用既定实验合同：非有限值、漏更新、数据身份或精确恢复检查失败时停止并保留证据；GPU 时间降低率低于 50% 时据实报告差距及精度保留率；均值差的探索性区间跨 0 时报告均值、区间与种子波动。性能诊断参考逐轮等待、单步时间、显存、存储和共享资源记录，机制解释与直接观测区分呈现。最终使用固定末轮评分，标准 best 单列。
+
+本次补充将既有合同与判读规则集中列出，保留规则和执行版本的时间顺序；最终三 seed 结果按已锁定口径汇总。新增探索性分析另行标注。
+
 ## 测试与兼容性
 
 测试按功能组织：test_d1_contracts/cache/cache_cli/adapter/model/pipeline/training/visdrone，公共 Teacher 测试并入已有的 test_foundation_dinov3.py。覆盖非法输入、缓存校验与续写、九条分支梯度、aux 标量组合、Teacher 隔离、checkpoint 严格重载、默认 Attention 行为、AMP 有限值及恢复协议。
