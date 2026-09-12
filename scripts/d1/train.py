@@ -20,7 +20,7 @@ import torch
 from scripts.d1.artifacts import write_json
 from scripts.d1.ema import EMA_IMPLEMENTATIONS, configure_d1_ema, validate_ema_implementation
 from scripts.d1.rgb import ExportMixin, ExportRGBValidator, ScratchTrainer, audit_model, build_model
-from scripts.d1.runtime import AMP_GROWTH_INTERVAL, AMP_INIT_SCALE, RunMixin
+from scripts.d1.runtime import TRAINING_PRECISION, VALIDATION_PRECISION, RunMixin
 from ultralytics.models.yolo.detect.foundation_train import D1FoundationDetectionTrainer
 from ultralytics.models.yolo.detect.foundation_val import D1FoundationDetectionValidator
 from ultralytics.nn.foundation.cache import canonical_json_bytes, sha256_bytes, sha256_file
@@ -184,10 +184,6 @@ def input_contract(args):
             raise ValueError("Checkpoint type does not match the requested variant")
         model_cfg = checkpoint_model.yaml if scratch else checkpoint_model.config_dict()
     runtime = value["runtime"]
-    if args.telemetry and (
-        runtime["amp_init_scale"] != AMP_INIT_SCALE or runtime["amp_growth_interval"] != AMP_GROWTH_INTERVAL
-    ):
-        raise ValueError("Measured runtime requires the registered AMP scaler settings")
     lists = {}
     for split in ("train", "val"):
         paths = data.get(split, [])
@@ -216,6 +212,12 @@ def input_contract(args):
         "dataset": args.dataset,
         "variant": args.variant,
         "epoch_loader_policy": "bounded-v1" if args.telemetry else "shared",
+        "validation_precision": VALIDATION_PRECISION if args.telemetry or args.command == "evaluate" else "shared",
+        "training_precision": TRAINING_PRECISION
+        if args.telemetry and not args.fp32
+        else "fp32"
+        if args.fp32
+        else "shared",
         "ddp_reducer_policy": "prebuild-restore-v1" if args.telemetry and world_size > 1 else "shared",
         "command": args.command,
         "seed": args.seed,
@@ -352,7 +354,7 @@ def run(args):
     trainer.model = model.to(trainer.device)
     trainer.set_model_attributes()
     trainer.model.set_head_attr(max_det=overrides["max_det"], agnostic_nms=False)
-    trainer.amp = trainer.device.type == "cuda" and not args.fp32
+    trainer.amp = False  # Match measured training validation; FP16 activations can overflow in eval mode.
     trainer.world_size, trainer.epoch, trainer.epochs = 1, 0, 1
     trainer.stopper = SimpleNamespace(possible_stop=True)
     trainer.ema = SimpleNamespace(ema=None)
@@ -394,6 +396,7 @@ def run(args):
         "identity": identity,
         "checkpoint_epoch_zero_based": epoch,
         "strict_reload": True,
+        "validation_precision": VALIDATION_PRECISION,
         "images": expected,
         "seconds": time.perf_counter() - started,
         "internal_metrics": metrics,

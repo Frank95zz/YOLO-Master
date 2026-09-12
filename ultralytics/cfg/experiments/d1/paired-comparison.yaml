@@ -1,5 +1,7 @@
 # Final fixed-budget comparison. Paths and launch approval are runtime inputs.
-schema_version: d1-paired-comparison-v1
+schema_version: d1-paired-comparison-v2
+validation_precision: fp32-v1
+training_precision: bf16-mixed-fp32-loss-v1
 seeds: [0, 1, 2]
 world_size: 6
 workers: 4
@@ -16,7 +18,7 @@ datasets:
     nc: 80
     train_images: 118287
     val_images: 5000
-    epochs: 100
+    epochs: 80
     global_batch: 384
     frozen_total_parameters: 23001383
     scratch_parameters: 23133560
@@ -26,7 +28,7 @@ datasets:
     nc: 10
     train_images: 6471
     val_images: 548
-    epochs: 300
+    epochs: 120
     global_batch: 96
     frozen_total_parameters: 22936803
     scratch_parameters: 23032340

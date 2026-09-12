@@ -26,6 +26,8 @@ from ultralytics.utils.torch_utils import torch_distributed_zero_first, unwrap_m
 
 AMP_INIT_SCALE = 0.0625
 AMP_GROWTH_INTERVAL = 1_000_000
+VALIDATION_PRECISION = "fp32-v1"
+TRAINING_PRECISION = "bf16-mixed-fp32-loss-v1"
 
 
 def detached_state(value):
@@ -189,7 +191,21 @@ class RunMixin:
         # Construction is CPU-only; do not seed or consume the rank's CUDA stream.
         with torch.random.fork_rng(devices=[]):
             torch.random.default_generator.manual_seed(self.args.seed)
-            return super().get_model(cfg=cfg, weights=weights, verbose=verbose)
+            model = super().get_model(cfg=cfg, weights=weights, verbose=verbose)
+        model._d1_loss_fp32 = True
+        return model
+
+    def check_amp_compatibility(self):
+        """Select native BF16 for measured CUDA runs before the shared AMP broadcast."""
+        if not getattr(self, "_run_enabled", False):
+            return super().check_amp_compatibility()
+        return self.device.type == "cuda" and torch.cuda.is_bf16_supported()
+
+    def training_autocast(self):
+        """Keep BF16 local to this run; model parameters and optimizer state stay FP32."""
+        if not getattr(self, "_run_enabled", False):
+            return super().training_autocast()
+        return torch.autocast(self.device.type, dtype=torch.bfloat16, enabled=self.amp)
 
     def get_dataloader(self, dataset_path, batch_size=16, rank=0, mode="train"):
         if not getattr(self, "_run_enabled", False):
@@ -252,7 +268,7 @@ class RunMixin:
         if self.args.amp and not self.amp:
             raise RuntimeError("Requested AMP was disabled")
         if self.amp:
-            self.scaler = torch.amp.GradScaler("cuda", init_scale=AMP_INIT_SCALE, growth_interval=AMP_GROWTH_INTERVAL)
+            self.scaler = torch.amp.GradScaler(self.device.type, enabled=False)
         self._run_rank = dist.get_rank() if dist.is_initialized() else 0
         self._run_actual_steps = 0
         self.optimizer.register_step_post_hook(self._run_step_recorded)
@@ -285,7 +301,7 @@ class RunMixin:
             model.train()
             for _ in range(3):
                 self.optimizer.zero_grad(set_to_none=True)
-                with torch.autocast(self.device.type, enabled=self.amp):
+                with self.training_autocast():
                     loss, _ = self.model(batch)
                     loss = loss.sum() * self.world_size
                 if not bool(torch.isfinite(loss).all()):
@@ -352,8 +368,9 @@ class RunMixin:
             "optimizer_groups": groups,
             "amp": {
                 "enabled": bool(self.amp),
-                "policy_init_scale": AMP_INIT_SCALE,
-                "policy_growth_interval": AMP_GROWTH_INTERVAL,
+                "training_precision": TRAINING_PRECISION if self.amp else "fp32",
+                "validation_precision": VALIDATION_PRECISION,
+                "gradient_scaling": self.scaler.is_enabled(),
                 "current_scale": self.scaler.get_scale(),
             },
             "identity": self.run_identity,
@@ -414,13 +431,26 @@ class RunMixin:
         self._run_check_finite()
         return False
 
+    def validate(self):
+        """Keep measured validation in FP32 while preserving the training AMP policy."""
+        if not getattr(self, "_run_enabled", False):
+            return super().validate()
+        training_amp = self.amp
+        try:
+            self.amp = False
+            with torch.autocast(self.device.type, enabled=False):
+                return super().validate()
+        finally:
+            self.amp = training_amp
+
     def _handle_nan_recovery(self, epoch):
         if not getattr(self, "_run_enabled", False):
             return super()._handle_nan_recovery(epoch)
-        metrics = list((getattr(self, "metrics", None) or {}).values())
+        metrics = dict(getattr(self, "metrics", None) or {})
         if getattr(self, "fitness", None) is not None:
-            metrics.append(self.fitness)
-        self._run_fail(any(not math.isfinite(float(v)) for v in metrics), "Non-finite validation metrics")
+            metrics["fitness"] = self.fitness
+        invalid = {key: str(float(value)) for key, value in metrics.items() if not math.isfinite(float(value))}
+        self._run_fail(bool(invalid), f"Non-finite validation metrics at epoch {epoch + 1}: {invalid}")
         self._run_check_finite()
         return False
 

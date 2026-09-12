@@ -16,7 +16,7 @@
 
 P2 采用任务书中的消融路线，在 DINOv3 ViT-S/16 底座上完成 balance、z-loss 和 aux gain 扫描，给出各配置的精度、种子波动与选型依据。
 
-正式配对实验固定执行提交为 [9004eac](https://github.com/Frank95zz/YOLO-Master/commit/9004eac438acd7de0023702e26029b14276069a6)，统一公共验收基线固定为 [acce839](https://github.com/Tencent/YOLO-Master/commit/acce839c7e895d6b179de7f7093fa879e237cc7b)。版本与贡献审计集中放在后文，不影响前面的方法和复现阅读；历史筛选与最终对照分别记录预算和代码，不混合统计。
+正式配对实验在 PR 正文固定的代码版本上启动，执行 SHA、配方摘要和数据身份写入外部 plan.json 与 run.json。统一公共验收基线为 [acce839](https://github.com/Tencent/YOLO-Master/commit/acce839c7e895d6b179de7f7093fa879e237cc7b)；历史筛选和本轮对照分别记录预算与代码。
 
 ## 架构与实现
 
@@ -201,7 +201,7 @@ python -m scripts.d1.train inspect --variant BN64
 python -m scripts.d1.train train --approved --variant BN64 --dataset coco \
   --data /path/to/coco-local.yaml \
   --train-cache "$D1_WORK/coco-npy/train2017" --val-cache "$D1_WORK/coco-npy/val2017" \
-  --output "$D1_WORK/runs/example" --device 0 --batch 16 --epochs 100 --workers 4 --seed 0
+  --output "$D1_WORK/runs/example" --device 0 --batch 16 --epochs 80 --workers 4 --seed 0
 
 python -m scripts.d1.train evaluate --variant BN64 --dataset coco \
   --data /path/to/coco-local.yaml --val-cache "$D1_WORK/coco-npy/val2017" \
@@ -214,7 +214,7 @@ coco-local.yaml 使用仓库常规检测 YAML，指定 path、train、val 与 80
 
 多卡由外部 torchrun 启动，使用 --standalone --nproc_per_node=6 -m scripts.d1.train train，并传 --device 0,1,2,3,4,5 与可整除的全局 batch。--ema scalar-v1/foreach-v1、--p3-upsample bilinear/separable_bilinear2x 保留实现选择；--fp32 用于数值对照。只有提前完成全量缓存校验才使用 --trusted-cache。
 
-精确恢复用于启用 --telemetry 的运行：重复原训练命令，并追加 --resume-snapshot 指向该运行的 resume.pt；提交、数据、模型、batch、seed 等身份必须一致。--window 仅限制已执行轮数，不缩短学习率调度。恢复 9004eac 的运行须使用 9004eac，不能以更新后的 PR 提交绕过身份校验；普通 last.pt 用于评测，不替代精确恢复快照。
+精确恢复用于启用 --telemetry 的运行：重复原训练命令并追加 --resume-snapshot，使用同一执行提交、数据、模型、精度策略、batch 和 seed。--window 仅限制已执行轮数，保持完整学习率调度；普通 last.pt 用于评测，resume.pt 用于完整状态恢复。调整总预算后在新目录从头训练，旧运行记录独立保留。
 
 评测严格重载 checkpoint，输出 evaluation.json、predictions.json 和 checkpoint SHA256。COCO 只有提供 --annotations 才报告标准 AP，使用 faster-coco-eval 1.8.0、完整 5,000 张验证图、maxDets=[1,10,100]；最多导出 300 个预测框不改变标准 AP 的 maxDets=100。
 
@@ -261,8 +261,8 @@ P1 实现、统一合同、数据准备与工程验收均已完成，正式队�
 
 | 数据集 | train / val | 每组预算 | seeds | 每卡 / 全局 batch | 运行数 |
 |---|---:|---:|---|---:|---:|
-| COCO 2017 | 118,287 / 5,000 | 100 epochs | 0/1/2 | 64 / 384 | 6 |
-| VisDrone2019-DET | 6,471 / 548 | 300 epochs | 0/1/2 | 16 / 96 | 6 |
+| COCO 2017 | 118,287 / 5,000 | 80 epochs | 0/1/2 | 64 / 384 | 6 |
+| VisDrone2019-DET | 6,471 / 548 | 120 epochs | 0/1/2 | 16 / 96 | 6 |
 
 | 参数口径 | COCO | VisDrone |
 |---|---:|---:|
@@ -276,7 +276,7 @@ P1 实现、统一合同、数据准备与工程验收均已完成，正式队�
 
 每次运行独占六张 A40，各组串行。固定 640 方形单次 LetterBox、无颜色/几何/翻转/Mosaic/MixUp/Copy-Paste/多尺度增强，两组 RGB/NPY 均使用 NVMe。AdamW 使用共享参数分组，lr0=0.001、lrf=0.01、momentum=0.9、weight_decay=0.0005、cosine、warmup=3；Router 沿用半学习率分组。nbs 等于全局 batch，每 batch 一次有效更新。
 
-两组统一 AMP 初始 scale=0.0625、growth_interval=1000000、workers=4/rank、prefetch=1。Scratch 显式启用 fp32_attention：三个 Attention 的 QK、softmax 与加权 V 使用 FP32，其余继续 AMP；不改变参数量或拓扑。该策略经真实输入有限性校准，训练、评测和恢复采用同一配置，不静默升级旧 checkpoint 或跳过失败更新。Frozen 使用 foreach EMA 和可分离 P3，Scratch 使用原生 EMA，实际实现成本纳入比较。
+两组统一采用 BF16 混合精度训练、FP32 主参数/优化器/EMA、FP32 检测损失和 FP32 验证/独立评测。BF16 路径关闭 GradScaler，记录 scale=1 与 gradient_scaling=false。Scratch 保留三个 Attention 的 FP32 敏感计算，workers=4/rank、prefetch=1；Frozen 使用 foreach EMA 和可分离 P3，Scratch 使用原生 EMA，实际开销全部计时。
 
 ~~~bash
 python -m scripts.d1.compare --approved --output "$D1_WORK/final-comparison" \
@@ -285,7 +285,17 @@ python -m scripts.d1.compare --approved --output "$D1_WORK/final-comparison" \
   --device 0,1,2,3,4,5
 ~~~
 
-入口要求干净代码提交、新的外部输出目录及明确批准，不下载或删除数据。外部目录记录 plan.json、status.json、日志、运行身份和 ETA。正式主结果固定第 100/300 轮；每 5 轮保留周期 checkpoint，单组训练结束后依次独立评测周期快照、last.pt 与内部 best.pt。COCO 从周期快照选标准 AP 最优者并生成 standard-best.json，平局取更早轮；VisDrone 导出预测后标记等待 MATLAB 评分。
+入口要求干净代码提交、新的外部输出目录及明确批准，不下载或删除数据。外部目录记录 plan.json、status.json、日志、运行身份和 ETA。正式主结果固定 COCO 第 80 轮、VisDrone 第 120 轮；每 5 轮保留周期 checkpoint，单组训练结束后依次独立评测周期快照、last.pt 与内部 best.pt。COCO 从周期快照选标准 AP 最优者并生成 standard-best.json，平局取更早轮；VisDrone 导出预测后标记等待 MATLAB 评分。
+
+### 数值策略与新版预算
+
+正式合同为 d1-paired-comparison-v2：COCO 80 轮、VisDrone 120 轮，均从第 1 轮采用对应的余弦调度，保持三 seed、总参数匹配及原 batch 配置。早期 100/300 轮配方的记录独立归档。
+
+已用同一真实验证批次核对精度：Scratch P5 下采样卷积的 FP32 输出最大绝对值为 80,257.84；BF16 输出为 79,872，预测与 loss 有限。对应在线模型和 EMA 的对照表明，验证模式下的 BN 运行统计会显著影响激活范围；保留原 EMA/BN 算法，使用 BF16 的动态范围承载训练，并以 FP32 计算检测损失和正式验证。该批次还完成一次 BF16 反向及参数更新，558 组非零梯度均有限。
+
+启动顺序为四组模型/数据组合的六卡恢复一致性门禁，随后 Scratch 在 VisDrone 新 120 轮调度下连续运行至第 40 轮。通过有限值、更新次数、精度身份和完整快照检查后，同一运行从第 41 轮继续，之后执行其余正式组合。其余 seed 保留正反运行顺序；首个 seed 因稳定性验收先 Scratch 后 BN64，实际顺序纳入时间记录。
+
+本轮精度与预算改动的相关回归结果为 **687 passed、56 skipped、2 deselected**，耗时 74.90 秒；两个排除项沿用下文记录的已有问题。真实异常批次另通过 FP32 验证、BF16 前向、FP32 原生损失、有限梯度和优化器更新验收。
 
 ### 工程验收
 
@@ -356,7 +366,7 @@ git diff --check
 
 本轮 45 个相关 Python 文件的 Ruff 格式和全部支持文件的 codespell 检查通过。完整变更质量命令返回非零，包含 66 条与 UPSTREAM_REF=af961b9 同文件、规则、消息和源行一致的 Ruff 告警，D1 新增告警为 0。必要的析构清理、第三方路由兼容和训练生命周期异常处理保留原行为，并以局部注释说明。
 
-PR 整理仅涉及导入、格式、脚本权限、说明及无数值行为变化的清理。16 个训练入口、运行实现、配置与 manifest 文件相对 9004eac 逐字节不变；BN64/scratch 在 10/80 类、固定初始化和 640 输入下的 CPU 模型状态及前向输出摘要一致。这不是新的真实六卡训练，也不保证不同提交可绕过运行身份进行恢复。完整回归、质量输出和四组摘要保存在外部提交验证记录中。
+此前整理版本已验证 BN64/Scratch 在 10/80 类、固定初始化和 640 输入下的 CPU 状态及前向摘要一致。本轮新增显式 BF16 训练上下文、FP32 损失与验证策略；普通 Trainer 保持原精度行为。恢复身份包含精度策略、总预算和代码提交，完整测试与运行记录保存在外部工作区。
 
 ## 基线与新增贡献
 
@@ -379,7 +389,7 @@ PR 整理仅涉及导入、格式、脚本权限、说明及无数值行为变�
 | BASE_REF：统一公共验收基线 | acce839c7e895d6b179de7f7093fa879e237cc7b | 所有新增成果按此固定起点审计，不随 main 移动 |
 | 发布来源：YOLO-Master-v26.08 | 43d40117c30811204fb9347efeabddce15f11a62 | 仅说明发布版本来源，不代替 BASE_REF |
 | UPSTREAM_REF：本 PR 整合采用的上游快照 | af961b99b8ef80491e58cb5fd16e25ebaf3741eb | 分离后续上游同步与 D1 自有改动；不是新的验收基线 |
-| RUN_REF：正式配对实验执行提交 | 9004eac438acd7de0023702e26029b14276069a6 | 固定代码、运行合同、checkpoint 与评测身份 |
+| RUN_REF：正式配对实验执行提交 | 本轮 plan.json/run.json 中的 code_commit；启动时与 PR 正文固定提交一致 | 固定代码、运行合同、checkpoint 与评测身份 |
 | FINAL_REF：提交给评审的代码快照 | 在 PR 正文锁定完整 40 位 SHA；检出该版本后用 git rev-parse HEAD 核对 | 后续结果补充若形成新提交，保留旧引用并重新锁定，不用可移动分支名代替 |
 
 本 PR 面向 Tencent/YOLO-Master 的 main，基于上述上游快照整合。已验证 BASE_REF 是 UPSTREAM_REF 和当前 PR 提交的祖先，当前 PR 提交与 UPSTREAM_REF 的 merge-base 为 af961b9；正式实验继续固定 RUN_REF。
@@ -389,8 +399,8 @@ PR 整理仅涉及导入、格式、脚本权限、说明及无数值行为变�
 ~~~bash
 BASE_REF=acce839c7e895d6b179de7f7093fa879e237cc7b
 UPSTREAM_REF=af961b99b8ef80491e58cb5fd16e25ebaf3741eb
-RUN_REF=9004eac438acd7de0023702e26029b14276069a6
 FINAL_REF=$(git rev-parse HEAD)
+RUN_REF=$FINAL_REF
 test -z "$(git status --porcelain)"
 git merge-base --is-ancestor "$BASE_REF" "$FINAL_REF"
 git merge-base "$UPSTREAM_REF" "$FINAL_REF"

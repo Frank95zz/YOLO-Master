@@ -86,6 +86,49 @@ def test_training_needs_approval_before_reading_data(inputs):
         train.input_contract(inputs)
 
 
+@pytest.mark.parametrize("telemetry", [False, True])
+def test_validation_precision_is_part_of_run_identity(inputs, telemetry):
+    inputs.telemetry = telemetry
+    identity, _, _, _ = train.input_contract(inputs)
+    assert identity["validation_precision"] == ("fp32-v1" if telemetry else "shared")
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+@pytest.mark.parametrize("fails", [False, True])
+def test_validation_fp32_restores_training_amp(enabled, fails):
+    from scripts.d1.runtime import RunMixin
+
+    class Parent:
+        def validate(self):
+            assert self.amp is (not enabled)
+            assert torch.is_autocast_enabled("cpu") is (not enabled)
+            if fails:
+                raise RuntimeError("validation failed")
+            return {"AP": 0.1}, 0.1
+
+    class Measured(RunMixin, Parent):
+        pass
+
+    trainer = object.__new__(Measured)
+    trainer._run_enabled, trainer.amp, trainer.device = enabled, True, torch.device("cpu")
+    with torch.autocast("cpu"):
+        if fails:
+            with pytest.raises(RuntimeError, match="validation failed"):
+                trainer.validate()
+        else:
+            assert trainer.validate() == ({"AP": 0.1}, 0.1)
+        assert torch.is_autocast_enabled("cpu")
+    assert trainer.amp is True
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf")])
+def test_validation_failure_names_metric(tmp_path, value):
+    trainer = _runtime_trainer(tmp_path / "validation-failure")
+    trainer.metrics = {"metrics/mAP50(B)": 0.2, "val/cls_loss": value}
+    with pytest.raises(RuntimeError, match="epoch 37.*val/cls_loss"):
+        trainer._handle_nan_recovery(36)
+
+
 def test_rejects_internal_ddp_launch(inputs, monkeypatch):
     monkeypatch.delenv("WORLD_SIZE", raising=False)
     inputs.device = "0,1"
@@ -166,6 +209,7 @@ def test_independent_evaluation_uses_all_images(inputs, dataset):
 
     report = json.loads((inputs.output / "evaluation.json").read_text())
     assert report["strict_reload"] and report["images"] == 1
+    assert report["validation_precision"] == "fp32-v1"
     assert report["checkpoint_epoch_zero_based"] == 3
     assert report["official"] is None
     assert (inputs.output / "predictions.json").is_file()
@@ -694,8 +738,80 @@ def test_runtime_amp_policy_is_shared(tmp_path, monkeypatch):
     monkeypatch.setattr(_RuntimeBase, "_setup_train", amp_setup)
     monkeypatch.setattr(torch.amp, "GradScaler", lambda device, **kwargs: scaler("cpu", **kwargs))
     trainer = _runtime_trainer(tmp_path / "amp-policy")
-    assert trainer.scaler.get_scale() == 0.0625
-    assert trainer.scaler.state_dict()["growth_interval"] == 1_000_000
+    assert trainer.scaler.get_scale() == 1.0
+    assert not trainer.scaler.is_enabled()
+    assert trainer.scaler.state_dict() == {}
+
+
+def test_bf16_training_context_and_fp32_loss_keep_gradients(tmp_path):
+    from scripts.d1.runtime import RunMixin
+    from ultralytics.nn.mixture_loss import CompositeCriterion, build_composite_criterion
+
+    trainer = object.__new__(RunMixin)
+    trainer._run_enabled, trainer.amp, trainer.device = True, True, torch.device("cpu")
+    model = torch.nn.Linear(4, 2)
+    model._d1_loss_fp32 = True
+    observations = []
+
+    def native(predictions, batch):
+        observations.append((predictions["scores"].dtype, torch.is_autocast_enabled("cpu")))
+        assert predictions["indices"].dtype == torch.int64
+        loss = predictions["scores"].square().mean()
+        return loss, loss.detach().reshape(1)
+
+    criterion = build_composite_criterion(model, native)
+    assert isinstance(criterion, CompositeCriterion) and not criterion.enabled
+    with trainer.training_autocast():
+        predictions = model(torch.ones(2, 4))
+        assert predictions.dtype == torch.bfloat16
+        loss, _ = criterion({"scores": predictions, "indices": torch.tensor([1])}, {})
+        assert torch.is_autocast_enabled("cpu")
+    loss.backward()
+    assert observations == [(torch.float32, False)]
+    assert loss.dtype == torch.float32
+    assert model.weight.grad is not None
+    assert torch.isfinite(model.weight.grad).all() and model.weight.grad.abs().sum() > 0
+    assert model.weight.dtype == torch.float32
+
+
+def test_fp32_loss_policy_default_preserves_native_input():
+    from ultralytics.nn.mixture_loss import CompositeCriterion
+
+    model = torch.nn.Linear(1, 1)
+    predictions = torch.ones(1, dtype=torch.bfloat16)
+    calls = []
+
+    def native(value, batch):
+        calls.append((value is predictions, value.dtype, torch.is_autocast_enabled("cpu")))
+        return value.sum(), value
+
+    with torch.autocast("cpu"):
+        CompositeCriterion(model, native)(predictions, {})
+    assert calls == [(True, torch.bfloat16, True)]
+
+
+def test_measured_bf16_hardware_check_and_default_delegation(monkeypatch):
+    from scripts.d1.runtime import RunMixin
+
+    class Parent:
+        def check_amp_compatibility(self):
+            return "default"
+
+        def training_autocast(self):
+            return "default-context"
+
+    class Trainer(RunMixin, Parent):
+        pass
+
+    trainer = object.__new__(Trainer)
+    trainer._run_enabled = False
+    assert trainer.check_amp_compatibility() == "default"
+    assert trainer.training_autocast() == "default-context"
+    trainer._run_enabled, trainer.device = True, torch.device("cuda")
+    monkeypatch.setattr(torch.cuda, "is_bf16_supported", lambda: False)
+    assert not trainer.check_amp_compatibility()
+    monkeypatch.setattr(torch.cuda, "is_bf16_supported", lambda: True)
+    assert trainer.check_amp_compatibility()
 
 
 def test_runtime_restores_rank_local_buffers_without_rank_local_ema(tmp_path, monkeypatch):
@@ -745,7 +861,8 @@ def test_runtime_setup_manifest(tmp_path):
     assert report["datasets"]["train"]["dataset_size"] == report["datasets"]["val"]["dataset_size"] == 16
     assert report["datasets"]["train"]["rank_batches"] == 4
     assert report["optimizer_groups"][0]["names"] == ["weight"]
-    assert report["amp"]["policy_init_scale"] == 0.0625
+    assert report["amp"]["training_precision"] == "fp32"
+    assert report["amp"]["validation_precision"] == "fp32-v1"
 
 
 def test_runtime_last_best_periodic_share_fp32_tensor_bits(tmp_path):

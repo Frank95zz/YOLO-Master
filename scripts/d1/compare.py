@@ -17,6 +17,7 @@ from pathlib import Path
 import torch
 
 from scripts.d1.artifacts import digest, encoded, file_sha, immutable, write_json
+from scripts.d1.runtime import TRAINING_PRECISION, VALIDATION_PRECISION
 from ultralytics.nn.foundation.npy_cache import open_feature_cache
 from ultralytics.utils import YAML
 
@@ -457,6 +458,10 @@ def run_queue(args):
             if git("status", "--porcelain"):
                 raise RuntimeError("Commit the tested code before starting")
             contract = YAML.load(CONTRACT)
+            if contract.get("validation_precision") != VALIDATION_PRECISION:
+                raise ValueError("Comparison validation precision differs from the runtime policy")
+            if contract.get("training_precision") != TRAINING_PRECISION:
+                raise ValueError("Comparison training precision differs from the runtime policy")
             devices = [int(value) for value in args.device.split(",")]
             available = {int(row.split(",")[0]) for row in resource_snapshot()["gpu"].splitlines()}
             if (

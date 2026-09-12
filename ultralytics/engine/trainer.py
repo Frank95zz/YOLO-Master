@@ -766,7 +766,7 @@ class BaseTrainer:
                 sync_context = self.model.no_sync() if RANK != -1 and not should_step else nullcontext()
                 try:
                     with sync_context:
-                        with autocast(self.amp):
+                        with self.training_autocast():
                             batch = self.preprocess_batch(batch)
                             if self.args.compile:
                                 # Decouple inference and loss calculations for improved compile performance
@@ -1115,6 +1115,10 @@ class BaseTrainer:
         if self.ema:
             self.ema.update(self.model)
         return True
+
+    def training_autocast(self):
+        """Provide a scoped mixed-precision context for model-specific trainers."""
+        return autocast(self.amp)
 
     def preprocess_batch(self, batch):
         """Allow custom preprocessing of model inputs and ground truths depending on task type."""

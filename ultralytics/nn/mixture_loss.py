@@ -385,6 +385,19 @@ def _add_aux_once(native_loss: torch.Tensor, aux: torch.Tensor) -> torch.Tensor:
     return native_loss.sum() + aux.reshape(())
 
 
+def _fp32_loss_predictions(value):
+    """Cast prediction tensors without detaching the native detection gradient graph."""
+    if isinstance(value, torch.Tensor):
+        return value.float() if value.is_floating_point() else value
+    if isinstance(value, dict):
+        return {key: _fp32_loss_predictions(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return tuple(_fp32_loss_predictions(item) for item in value)
+    if isinstance(value, list):
+        return [_fp32_loss_predictions(item) for item in value]
+    return value
+
+
 class CompositeCriterion:
     """Add one model-level routed auxiliary term after the native criterion."""
 
@@ -408,6 +421,13 @@ class CompositeCriterion:
         return getattr(self.native_criterion, name)
 
     def __call__(self, preds: Any, batch: dict[str, torch.Tensor]):
+        if getattr(self.model, "_d1_loss_fp32", False):
+            device = next(self.model.parameters()).device.type
+            with torch.autocast(device, enabled=False):
+                return self._call(_fp32_loss_predictions(preds), batch)
+        return self._call(preds, batch)
+
+    def _call(self, preds: Any, batch: dict[str, torch.Tensor]):
         native_result = self.native_criterion(preds, batch)
         if not self.enabled:
             return native_result
@@ -454,8 +474,10 @@ class CompositeCriterion:
 
 
 def build_composite_criterion(model: nn.Module, native_criterion: Any):
-    """Return a no-overhead native path for dense models and a wrapper for routed models."""
-    return CompositeCriterion(model, native_criterion) if has_routed_modules(model) else native_criterion
+    """Wrap routed or explicit FP32-loss models; preserve the ordinary dense fast path."""
+    if getattr(model, "_d1_loss_fp32", False) or has_routed_modules(model):
+        return CompositeCriterion(model, native_criterion)
+    return native_criterion
 
 
 def compose_native_result(model: nn.Module, native_loss: torch.Tensor, native_items: torch.Tensor):
