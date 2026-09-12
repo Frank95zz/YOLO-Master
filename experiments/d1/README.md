@@ -201,7 +201,7 @@ python -m scripts.d1.train inspect --variant BN64
 python -m scripts.d1.train train --approved --variant BN64 --dataset coco \
   --data /path/to/coco-local.yaml \
   --train-cache "$D1_WORK/coco-npy/train2017" --val-cache "$D1_WORK/coco-npy/val2017" \
-  --output "$D1_WORK/runs/example" --device 0 --batch 16 --epochs 80 --workers 4 --seed 0
+  --output "$D1_WORK/runs/example" --device 0 --batch 16 --epochs 50 --workers 4 --seed 0
 
 python -m scripts.d1.train evaluate --variant BN64 --dataset coco \
   --data /path/to/coco-local.yaml --val-cache "$D1_WORK/coco-npy/val2017" \
@@ -261,7 +261,7 @@ P1 实现、统一合同、数据准备与工程验收均已完成，正式队�
 
 | 数据集 | train / val | 每组预算 | seeds | 每卡 / 全局 batch | 运行数 |
 |---|---:|---:|---|---:|---:|
-| COCO 2017 | 118,287 / 5,000 | 80 epochs | 0/1/2 | 64 / 384 | 6 |
+| COCO 2017 | 118,287 / 5,000 | 50 epochs | 0/1/2 | 64 / 384 | 6 |
 | VisDrone2019-DET | 6,471 / 548 | 120 epochs | 0/1/2 | 16 / 96 | 6 |
 
 | 参数口径 | COCO | VisDrone |
@@ -285,11 +285,13 @@ python -m scripts.d1.compare --approved --output "$D1_WORK/final-comparison" \
   --device 0,1,2,3,4,5
 ~~~
 
-入口要求干净代码提交、新的外部输出目录及明确批准，不下载或删除数据。外部目录记录 plan.json、status.json、日志、运行身份和 ETA。正式主结果固定 COCO 第 80 轮、VisDrone 第 120 轮；每 5 轮保留周期 checkpoint，单组训练结束后依次独立评测周期快照、last.pt 与内部 best.pt。COCO 从周期快照选标准 AP 最优者并生成 standard-best.json，平局取更早轮；VisDrone 导出预测后标记等待 MATLAB 评分。
+入口要求干净代码提交、新的外部输出目录及明确批准，不下载或删除数据。外部目录记录 plan.json、status.json、日志、运行身份和 ETA。正式主结果固定 COCO 第 50 轮、VisDrone 第 120 轮；每 5 轮保留周期 checkpoint，单组训练结束后依次独立评测周期快照、last.pt 与内部 best.pt。COCO 从周期快照选标准 AP 最优者并生成 standard-best.json，平局取更早轮；VisDrone 导出预测后标记等待 MATLAB 评分。
 
 ### 数值策略与新版预算
 
-正式合同为 d1-paired-comparison-v2：COCO 80 轮、VisDrone 120 轮，均从第 1 轮采用对应的余弦调度，保持三 seed、总参数匹配及原 batch 配置。早期 100/300 轮配方的记录独立归档。
+正式合同为 d1-paired-comparison-v2：COCO 50 轮、VisDrone 120 轮，均从第 1 轮采用对应的余弦调度，保持三 seed、总参数匹配及原 batch 配置。早期 100/300 轮配方的记录独立归档。
+
+2026-09-12 经确认，将 COCO 两种架构、seeds 0/1/2 的完整预算统一调整为 50 轮，学习率调度从第 1 轮按 50 轮计算；VisDrone 保持 120 轮。调整时 COCO 正式训练尚未开始。已启动的 VisDrone seed 0 两组保留执行提交 1f940445d4833794aa224fb626d99a8e2ed9703f；后续任务使用 ee23d3edf04b3741e1a6441c57a9cc2ff4d2516c，模型、训练实现与精度策略不变。每 5 轮保存及独立评测安排保持不变，COCO 每组包含 10 个周期快照。预算变更前的计划与运行身份保留在外部归档。 50/120 轮合同更新后，18 项合同测试通过（3.48 秒），git diff --check 通过。
 
 已用同一真实验证批次核对精度：Scratch P5 下采样卷积的 FP32 输出最大绝对值为 80,257.84；BF16 输出为 79,872，预测与 loss 有限。对应在线模型和 EMA 的对照表明，验证模式下的 BN 运行统计会显著影响激活范围；保留原 EMA/BN 算法，使用 BF16 的动态范围承载训练，并以 FP32 计算检测损失和正式验证。该批次还完成一次 BF16 反向及参数更新，558 组非零梯度均有限。
 
@@ -320,7 +322,7 @@ DDP 在首次训练和恢复时先进行三次无 optimizer 更新的前反向�
 
 | 维度 | 主指标与统一口径 | 原始记录 |
 |---|---|---|
-| 精度 | COCO 第 80 轮标准 bbox AP；VisDrone 第 120 轮官方 DET AP；均按 0-100 点报告，并补充 AP50/AP75 | 各运行的 evaluations/last/evaluation.json、预测文件、VisDrone 官方 MATLAB 评分与 checkpoint SHA256 |
+| 精度 | COCO 第 50 轮标准 bbox AP；VisDrone 第 120 轮官方 DET AP；均按 0-100 点报告，并补充 AP50/AP75 | 各运行的 evaluations/last/evaluation.json、预测文件、VisDrone 官方 MATLAB 评分与 checkpoint SHA256 |
 | 显存 | 训练窗口内单卡峰值 allocated GiB：对全部 epoch、六个 rank 取最大值；同时报告每卡峰值范围及 reserved GiB | epochs/rank-{rank}-epoch-{epoch:03d}.json 的 peak_allocated_bytes、peak_reserved_bytes |
 | 时长 | 完整训练作业墙钟小时、训练 GPU-hours；补充平均每轮耗时与数据等待 | jobs/*.json 的 elapsed_seconds、validation/epoch-*.json 的 epoch_wall_seconds、各 rank 的 data_wait_seconds |
 
@@ -336,8 +338,8 @@ DDP 在首次训练和恢复时先进行三次无 optimizer 更新的前反向�
 
 | 数据集 / 固定末轮 | 架构 | AP / AP50 / AP75 | 峰值 allocated / reserved（GiB） | 训练作业（小时） | 训练 GPU-hours |
 |---|---|---|---|---|---|
-| COCO / 80 | 冻结 DINOv3 + BN64 | 训练评测后汇总 | 全程逐卡记录后汇总 | 完整作业汇总 | 六卡实测换算 |
-| COCO / 80 | Scratch | 训练评测后汇总 | 全程逐卡记录后汇总 | 完整作业汇总 | 六卡实测换算 |
+| COCO / 50 | 冻结 DINOv3 + BN64 | 训练评测后汇总 | 全程逐卡记录后汇总 | 完整作业汇总 | 六卡实测换算 |
+| COCO / 50 | Scratch | 训练评测后汇总 | 全程逐卡记录后汇总 | 完整作业汇总 | 六卡实测换算 |
 | VisDrone / 120 | 冻结 DINOv3 + BN64 | 官方评分后汇总 | 全程逐卡记录后汇总 | 完整作业汇总 | 六卡实测换算 |
 | VisDrone / 120 | Scratch | 官方评分后汇总 | 全程逐卡记录后汇总 | 完整作业汇总 | 六卡实测换算 |
 
@@ -450,7 +452,7 @@ git diff --check
 | BASE_REF：统一公共验收基线 | acce839c7e895d6b179de7f7093fa879e237cc7b | 所有新增成果按此固定起点审计，不随 main 移动 |
 | 发布来源：YOLO-Master-v26.08 | 43d40117c30811204fb9347efeabddce15f11a62 | 仅说明发布版本来源，不代替 BASE_REF |
 | UPSTREAM_REF：本 PR 整合采用的上游快照 | af961b99b8ef80491e58cb5fd16e25ebaf3741eb | 分离后续上游同步与 D1 自有改动；不是新的验收基线 |
-| RUN_REF：正式配对实验执行提交 | 1f940445d4833794aa224fb626d99a8e2ed9703f | 与本轮 plan.json/run.json 的 code_commit 一致；后续仅补文档时保持此执行身份 |
+| RUN_REF：50/120 轮配对执行提交 | ee23d3edf04b3741e1a6441c57a9cc2ff4d2516c | 后续任务使用本提交；已启动的 VisDrone seed 0 两组保留原始执行身份 |
 | FINAL_REF：提交给评审的代码快照 | 在 PR 正文锁定完整 40 位 SHA；检出该版本后用 git rev-parse HEAD 核对 | 后续结果补充若形成新提交，保留旧引用并重新锁定，不用可移动分支名代替 |
 
 本 PR 面向 Tencent/YOLO-Master 的 main，基于上述上游快照整合。已验证 BASE_REF 是 UPSTREAM_REF 和当前 PR 提交的祖先，当前 PR 提交与 UPSTREAM_REF 的 merge-base 为 af961b9；正式实验继续固定 RUN_REF。
@@ -461,7 +463,7 @@ git diff --check
 BASE_REF=acce839c7e895d6b179de7f7093fa879e237cc7b
 UPSTREAM_REF=af961b99b8ef80491e58cb5fd16e25ebaf3741eb
 FINAL_REF=$(git rev-parse HEAD)
-RUN_REF=1f940445d4833794aa224fb626d99a8e2ed9703f
+RUN_REF=ee23d3edf04b3741e1a6441c57a9cc2ff4d2516c
 test -z "$(git status --porcelain)"
 git merge-base --is-ancestor "$BASE_REF" "$FINAL_REF"
 git merge-base "$UPSTREAM_REF" "$FINAL_REF"
