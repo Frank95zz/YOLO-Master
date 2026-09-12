@@ -18,7 +18,7 @@ datasets:
     nc: 80
     train_images: 118287
     val_images: 5000
-    epochs: 80
+    epochs: 50
     global_batch: 384
     frozen_total_parameters: 23001383
     scratch_parameters: 23133560

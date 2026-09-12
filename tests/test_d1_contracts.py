@@ -349,7 +349,7 @@ def test_final_comparison_budget_and_parameter_contract():
     assert contract["seeds"] == [0, 1, 2]
     assert contract["world_size"] == 6
     assert contract["models"] == ["BN64", "SCRATCH"]
-    assert {key: value["epochs"] for key, value in contract["datasets"].items()} == {"coco": 80, "visdrone": 120}
+    assert {key: value["epochs"] for key, value in contract["datasets"].items()} == {"coco": 50, "visdrone": 120}
     from scripts.d1.runtime import TRAINING_PRECISION, VALIDATION_PRECISION
 
     assert contract["validation_precision"] == VALIDATION_PRECISION == "fp32-v1"
@@ -378,12 +378,12 @@ def test_final_comparison_keeps_full_schedule_for_gate(tmp_path):
     from scripts.d1.compare import training_command
 
     plan = {
-        "contract": {"datasets": {"coco": {"global_batch": 384, "epochs": 80}}},
+        "contract": {"datasets": {"coco": {"global_batch": 384, "epochs": 50}}},
         "data": {"coco": {"splits": {"train": {"cache": "train"}, "val": {"cache": "val"}}}},
         "device": "0,1,2,3,4,5",
     }
     command = training_command(plan, "coco", "SCRATCH", tmp_path, tmp_path / "data.yaml", window=2)
-    assert command[command.index("--epochs") + 1] == "80"
+    assert command[command.index("--epochs") + 1] == "50"
     assert command[command.index("--window") + 1] == "2"
     assert "--train-cache" not in command
     assert "--approved" in command and "--telemetry" in command
