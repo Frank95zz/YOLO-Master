@@ -293,7 +293,9 @@ python -m scripts.d1.compare --approved --output "$D1_WORK/final-comparison" \
 
 已用同一真实验证批次核对精度：Scratch P5 下采样卷积的 FP32 输出最大绝对值为 80,257.84；BF16 输出为 79,872，预测与 loss 有限。对应在线模型和 EMA 的对照表明，验证模式下的 BN 运行统计会显著影响激活范围；保留原 EMA/BN 算法，使用 BF16 的动态范围承载训练，并以 FP32 计算检测损失和正式验证。该批次还完成一次 BF16 反向及参数更新，558 组非零梯度均有限。
 
-启动顺序为四组模型/数据组合的六卡恢复一致性门禁，随后 Scratch 在 VisDrone 新 120 轮调度下连续运行至第 40 轮。通过有限值、更新次数、精度身份和完整快照检查后，同一运行从第 41 轮继续，之后执行其余正式组合。其余 seed 保留正反运行顺序；首个 seed 因稳定性验收先 Scratch 后 BN64，实际顺序纳入时间记录。
+上述 compare 命令是通用复现入口：依次完成四组恢复门禁、各五轮完整短测与 ETA 估计，再执行配对训练。本轮实际执行使用外部调度器复用 compare.py 的数据校验、训练命令、恢复比较与评测函数；额外安排 VisDrone Scratch 的 40 轮稳定性检查，完整训练合同保持一致。
+
+本轮启动顺序为四组模型/数据组合的六卡恢复一致性门禁，随后 Scratch 在 VisDrone 新 120 轮调度下连续运行至第 40 轮。通过有限值、更新次数、精度身份和完整快照检查后，同一运行从第 41 轮继续，之后执行其余正式组合。seed 0/1 先 Scratch 后 BN64，seed 2 先 BN64 后 Scratch，实际顺序纳入时间记录。该 40 轮窗口可通过 train 入口的 --epochs 120 --window 40 复现，后续保留 --epochs 120、去掉 --window 并指定 --resume-snapshot；完整数据、模型、batch、seed、精度与执行提交必须保持一致。外部调度器与日志保留在实验归档，不增加 PR 的公共入口。
 
 本轮精度与预算改动的相关回归结果为 **687 passed、56 skipped、2 deselected**，耗时 74.90 秒；两个排除项沿用下文记录的已有问题。真实异常批次另通过 FP32 验证、BF16 前向、FP32 原生损失、有限梯度和优化器更新验收。
 
@@ -355,7 +357,7 @@ CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS
   --deselect=tests/test_foundation_config.py::test_enabled_without_teacher_is_rejected
 ~~~
 
-训练执行提交 9004eac 的相关回归为 637 passed、56 skipped、2 deselected；PR 整理版本 5af743f 的扩展 CPU 回归为 675 passed、56 skipped、2 deselected，pytest 耗时 80.42 秒。测试范围为下列相关模块；两个 deselected 用例在 UPSTREAM_REF=af961b9 和 PR 整理版本上均复现，节点及原因随命令列出。
+当前执行代码 1f940445d4833794aa224fb626d99a8e2ed9703f 的相关回归为 **687 passed、56 skipped、2 deselected**，pytest 耗时 74.90 秒，范围为上述相关模块。历史执行提交 9004eac 为 637 passed、56 skipped、2 deselected；历史整理版本 5af743f 为 675 passed、56 skipped、2 deselected。两个 deselected 用例在 UPSTREAM_REF=af961b9 和 PR 整理版本上均复现，节点及原因随命令列出。
 
 仓库质量入口以下使用 UPSTREAM_REF 检查 D1 相对整合上游的质量增量，不替代后文 BASE_REF 的成果审计：
 
@@ -389,7 +391,7 @@ git diff --check
 | BASE_REF：统一公共验收基线 | acce839c7e895d6b179de7f7093fa879e237cc7b | 所有新增成果按此固定起点审计，不随 main 移动 |
 | 发布来源：YOLO-Master-v26.08 | 43d40117c30811204fb9347efeabddce15f11a62 | 仅说明发布版本来源，不代替 BASE_REF |
 | UPSTREAM_REF：本 PR 整合采用的上游快照 | af961b99b8ef80491e58cb5fd16e25ebaf3741eb | 分离后续上游同步与 D1 自有改动；不是新的验收基线 |
-| RUN_REF：正式配对实验执行提交 | 本轮 plan.json/run.json 中的 code_commit；启动时与 PR 正文固定提交一致 | 固定代码、运行合同、checkpoint 与评测身份 |
+| RUN_REF：正式配对实验执行提交 | 1f940445d4833794aa224fb626d99a8e2ed9703f | 与本轮 plan.json/run.json 的 code_commit 一致；后续仅补文档时保持此执行身份 |
 | FINAL_REF：提交给评审的代码快照 | 在 PR 正文锁定完整 40 位 SHA；检出该版本后用 git rev-parse HEAD 核对 | 后续结果补充若形成新提交，保留旧引用并重新锁定，不用可移动分支名代替 |
 
 本 PR 面向 Tencent/YOLO-Master 的 main，基于上述上游快照整合。已验证 BASE_REF 是 UPSTREAM_REF 和当前 PR 提交的祖先，当前 PR 提交与 UPSTREAM_REF 的 merge-base 为 af961b9；正式实验继续固定 RUN_REF。
@@ -400,7 +402,7 @@ git diff --check
 BASE_REF=acce839c7e895d6b179de7f7093fa879e237cc7b
 UPSTREAM_REF=af961b99b8ef80491e58cb5fd16e25ebaf3741eb
 FINAL_REF=$(git rev-parse HEAD)
-RUN_REF=$FINAL_REF
+RUN_REF=1f940445d4833794aa224fb626d99a8e2ed9703f
 test -z "$(git status --porcelain)"
 git merge-base --is-ancestor "$BASE_REF" "$FINAL_REF"
 git merge-base "$UPSTREAM_REF" "$FINAL_REF"
