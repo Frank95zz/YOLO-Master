@@ -8,6 +8,8 @@
 
 本项目已完成 P0 冻结特征检测闭环和 P2 latent aux 消融。P1 的实现、数据准备、工程验收与正式实验启动已完成，训练和独立评测结束后补充最终量化结果。
 
+**结果更新时间（北京时间，2026-09-12 预算调整后的估算）：** COCO 50 轮、VisDrone 120 轮，两种架构各完成 seeds 0/1/2。预计全部训练及预测导出于 **2026-09-13 11:00～15:00** 完成；计划预留官方 MATLAB 评分、三 seed 统计与证据核验时间，**目标在 2026-09-13 20:00 前补齐 PR、README 和机器可读结果**。补充内容包括逐 seed AP、峰值显存、训练 GPU-hours、均值与标准差、探索性置信区间及固定末轮 checkpoint 校验信息。该时间基于已有轮时估算，以训练持续正常、计算资源可用和本机官方评分顺利完成为前提；如有偏移，将在 PR 中更新进度和预计时间。
+
 | 任务 | 完成状态 | 已完成内容与证据 | 结果与交付 |
 |---|---|---|---|
 | P0：冻结特征检测闭环 | **已完成** | 多层 Teacher、可复现缓存、九分支 Adapter、LatentMixture、Detect、训练、评测、保存与严格重载 | COCO 检测结果、VisDrone 官方评分，以及最终入口四组真实六卡五轮验收 |
@@ -123,7 +125,8 @@ P5 卷积 MAC 按输出网格×输出通道×每个输出的卷积乘加数计�
 D1 使用 Linux 和 Python >=3.10。已验证环境为 Python 3.11.15、PyTorch 2.6.0+cu124、Transformers 5.15.1、Ultralytics 8.4.101、safetensors 0.8.0；真实多卡验收使用六张 A40。该记录是实测环境，不保证任意依赖组合均等价。
 
 ~~~bash
-pip install -e ".[dev,foundation]"
+python -m pip install torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cu124
+python -m pip install -e ".[dev,foundation]"
 pip install faster-coco-eval==1.8.0
 export D1_WORK=/path/to/external/d1-work
 export COCO_ROOT="$D1_WORK/datasets/coco"
@@ -299,7 +302,7 @@ python -m scripts.d1.compare --approved --output "$D1_WORK/final-comparison" \
 
 本轮启动顺序为四组模型/数据组合的六卡恢复一致性门禁，随后 Scratch 在 VisDrone 新 120 轮调度下连续运行至第 40 轮。通过有限值、更新次数、精度身份和完整快照检查后，同一运行从第 41 轮继续，之后执行其余正式组合。seed 0/1 先 Scratch 后 BN64，seed 2 先 BN64 后 Scratch，实际顺序纳入时间记录。该 40 轮窗口可通过 train 入口的 --epochs 120 --window 40 复现，后续保留 --epochs 120、去掉 --window 并指定 --resume-snapshot；完整数据、模型、batch、seed、精度与执行提交必须保持一致。外部调度器与日志保留在实验归档，不增加 PR 的公共入口。
 
-本轮精度与预算改动的相关回归结果为 **687 passed、56 skipped、2 deselected**，耗时 74.90 秒；两个排除项沿用下文记录的已有问题。真实异常批次另通过 FP32 验证、BF16 前向、FP32 原生损失、有限梯度和优化器更新验收。
+本轮精度与预算改动的相关回归结果为 **687 passed、56 skipped、2 deselected**，耗时 70.35 秒；两个排除项沿用下文记录的已有问题。真实异常批次另通过 FP32 验证、BF16 前向、FP32 原生损失、有限梯度和优化器更新验收。
 
 ### 工程验收
 
@@ -418,7 +421,7 @@ CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS
   --deselect=tests/test_foundation_config.py::test_enabled_without_teacher_is_rejected
 ~~~
 
-当前执行代码 1f940445d4833794aa224fb626d99a8e2ed9703f 的相关回归为 **687 passed、56 skipped、2 deselected**，pytest 耗时 74.90 秒，范围为上述相关模块。历史执行提交 9004eac 为 637 passed、56 skipped、2 deselected；历史整理版本 5af743f 为 675 passed、56 skipped、2 deselected。两个 deselected 用例在 UPSTREAM_REF=af961b9 和 PR 整理版本上均复现，节点及原因随命令列出。
+50/120 轮执行代码 ee23d3edf04b3741e1a6441c57a9cc2ff4d2516c 的相关回归为 **687 passed、56 skipped、2 deselected**，pytest 耗时 70.35 秒，范围为上述相关模块。历史执行提交 9004eac 为 637 passed、56 skipped、2 deselected；历史整理版本 5af743f 为 675 passed、56 skipped、2 deselected。两个 deselected 用例在 UPSTREAM_REF=af961b9 和 PR 整理版本上均复现，节点及原因随命令列出。
 
 仓库质量入口以下使用 UPSTREAM_REF 检查 D1 相对整合上游的质量增量，不替代后文 BASE_REF 的成果审计：
 
@@ -427,7 +430,7 @@ python scripts/check_changed_quality.py --base af961b99b8ef80491e58cb5fd16e25eba
 git diff --check
 ~~~
 
-本轮 45 个相关 Python 文件的 Ruff 格式和全部支持文件的 codespell 检查通过。完整变更质量命令返回非零，包含 66 条与 UPSTREAM_REF=af961b9 同文件、规则、消息和源行一致的 Ruff 告警，D1 新增告警为 0。必要的析构清理、第三方路由兼容和训练生命周期异常处理保留原行为，并以局部注释说明。
+提交前使用 Ruff 0.11.13 复核 45 个相关 Python 文件，ruff check、ruff format --check 以及支持文件的 codespell 检查均通过；以下完整变更质量命令退出码为 0。
 
 此前整理版本已验证 BN64/Scratch 在 10/80 类、固定初始化和 640 输入下的 CPU 状态及前向摘要一致。本轮新增显式 BF16 训练上下文、FP32 损失与验证策略；普通 Trainer 保持原精度行为。恢复身份包含精度策略、总预算和代码提交，完整测试与运行记录保存在外部工作区。
 
